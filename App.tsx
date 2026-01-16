@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { ActiveTab, Expense, InvestmentState, SavingsGoal as SavingsGoalType, FIREState, PortfolioAsset, IncomeState, Stock } from './types';
+import React, { useState, useEffect } from 'react';
+import { ActiveTab, Expense, InvestmentState, SavingsGoal as SavingsGoalType, FIREState, PortfolioAsset, IncomeState, Stock, GoogleSheetsState } from './types';
 import { Expenses } from './components/Expenses';
 import { InvestmentCalculator } from './components/InvestmentCalculator';
 import { SavingsGoal } from './components/SavingsGoal';
@@ -7,33 +7,57 @@ import { FIRECalculator } from './components/FIRECalculator';
 import { Portfolio } from './components/Portfolio';
 import { Stocks } from './components/Stocks';
 import { AIAdvisor } from './components/AIAdvisor';
-import { LayoutDashboard, PieChart, TrendingUp, PiggyBank, Sparkles, Flame, Briefcase, BarChart4 } from 'lucide-react';
+import { DataManagement } from './components/DataManagement';
+import { LayoutDashboard, PieChart, TrendingUp, PiggyBank, Sparkles, Flame, Briefcase, BarChart4, Database } from 'lucide-react';
+
+// Helper hook for local storage persistence
+function usePersistedState<T>(key: string, initialValue: T): [T, React.Dispatch<React.SetStateAction<T>>] {
+  const [state, setState] = useState<T>(() => {
+    try {
+      const item = window.localStorage.getItem(key);
+      return item ? JSON.parse(item) : initialValue;
+    } catch (error) {
+      console.error(error);
+      return initialValue;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(key, JSON.stringify(state));
+    } catch (error) {
+      console.error(error);
+    }
+  }, [key, state]);
+
+  return [state, setState];
+}
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<ActiveTab>('expenses');
 
-  // Shared State
-  const [expenses, setExpenses] = useState<Expense[]>([]);
+  // Persisted State
+  const [expenses, setExpenses] = usePersistedState<Expense[]>('expenses', []);
   
-  const [income, setIncome] = useState<IncomeState>({
+  const [income, setIncome] = usePersistedState<IncomeState>('income', {
     salaryMe: 0,
     salaryPartner: 0
   });
 
-  const [investment, setInvestment] = useState<InvestmentState>({
+  const [investment, setInvestment] = usePersistedState<InvestmentState>('investment', {
     initialPrincipal: 5000,
     monthlyContribution: 500,
     annualInterestRate: 7,
     yearsToGrow: 10
   });
 
-  const [goal, setGoal] = useState<SavingsGoalType>({
+  const [goal, setGoal] = usePersistedState<SavingsGoalType>('goal', {
     targetAmount: 10000,
     currentSavings: 1000,
     targetDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0]
   });
 
-  const [fire, setFire] = useState<FIREState>({
+  const [fire, setFire] = usePersistedState<FIREState>('fire', {
     currentAge: 30,
     annualExpenses: 30000,
     currentNetWorth: 50000,
@@ -42,8 +66,22 @@ const App: React.FC = () => {
     withdrawalRate: 4
   });
 
-  const [portfolio, setPortfolio] = useState<PortfolioAsset[]>([]);
-  const [stocks, setStocks] = useState<Stock[]>([]);
+  const [portfolio, setPortfolio] = usePersistedState<PortfolioAsset[]>('portfolio', []);
+  const [stocks, setStocks] = usePersistedState<Stock[]>('stocks', []);
+  const [sheetState, setSheetState] = usePersistedState<GoogleSheetsState>('sheets', { spreadsheetId: '' });
+
+  const clearAllData = () => {
+    localStorage.clear();
+    setExpenses([]);
+    setIncome({ salaryMe: 0, salaryPartner: 0 });
+    setInvestment({ initialPrincipal: 5000, monthlyContribution: 500, annualInterestRate: 7, yearsToGrow: 10 });
+    setGoal({ targetAmount: 10000, currentSavings: 1000, targetDate: '' });
+    setFire({ currentAge: 30, annualExpenses: 30000, currentNetWorth: 50000, annualSavings: 12000, annualReturn: 7, withdrawalRate: 4 });
+    setPortfolio([]);
+    setStocks([]);
+    setSheetState({ spreadsheetId: '' });
+    window.location.reload();
+  };
 
   const renderContent = () => {
     switch (activeTab) {
@@ -61,6 +99,18 @@ const App: React.FC = () => {
         return <Stocks stocks={stocks} setStocks={setStocks} />;
       case 'advisor':
         return <AIAdvisor expenses={expenses} investment={investment} goal={goal} fire={fire} portfolio={portfolio} stocks={stocks} income={income} />;
+      case 'data':
+        return <DataManagement 
+                  expenses={expenses} 
+                  portfolio={portfolio} 
+                  stocks={stocks}
+                  sheetState={sheetState}
+                  setExpenses={setExpenses} 
+                  setPortfolio={setPortfolio} 
+                  setStocks={setStocks}
+                  setSheetState={setSheetState}
+                  clearAllData={clearAllData}
+               />;
       default:
         return <Expenses expenses={expenses} setExpenses={setExpenses} income={income} setIncome={setIncome} />;
     }
@@ -103,6 +153,7 @@ const App: React.FC = () => {
               <NavItem id="savings" label="Goals" icon={PiggyBank} />
               <NavItem id="fire" label="FIRE" icon={Flame} />
               <NavItem id="advisor" label="Advisor" icon={Sparkles} />
+              <NavItem id="data" label="Data" icon={Database} />
             </nav>
           </div>
         </div>

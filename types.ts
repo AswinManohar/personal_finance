@@ -68,4 +68,9 @@ export interface CalculationResult {
   value: number;
 }
 
-export type ActiveTab = 'expenses' | 'investment' | 'savings' | 'fire' | 'portfolio' | 'stocks' | 'advisor';
+export interface GoogleSheetsState {
+  spreadsheetId: string;
+  lastSynced?: string;
+}
+
+export type ActiveTab = 'expenses' | 'investment' | 'savings' | 'fire' | 'portfolio' | 'stocks' | 'advisor' | 'data';
