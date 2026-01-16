@@ -1,512 +1,331 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card } from './ui/Card';
-import { Download, Upload, Database, Trash2, FileSpreadsheet, Save, Link as LinkIcon, AlertCircle, CheckCircle, RefreshCw } from 'lucide-react';
-import { Expense, PortfolioAsset, Stock, ExpenseCategory, GoogleSheetsState } from '../types';
+import { 
+  Download, Upload, Database, CheckCircle, RefreshCw, AlertCircle, Cloud, 
+  LogOut, History, CloudOff, Key, Copy, Check, WifiOff
+} from 'lucide-react';
+import { Expense, PortfolioAsset, Stock, ExpenseCategory, IncomeState, InvestmentState, SavingsGoal, FIREState, NetWorthState, InvestmentFrequency, AssetType } from '../types';
+import { pushToCloud, pullFromCloud, isNetworkError } from '../services/supabaseService';
 
 interface DataManagementProps {
   expenses: Expense[];
   portfolio: PortfolioAsset[];
   stocks: Stock[];
-  sheetState: GoogleSheetsState;
+  income: IncomeState;
+  investment: InvestmentState;
+  goal: SavingsGoal;
+  fire: FIREState;
+  netWorthData: NetWorthState;
+  uniqueSyncId: string | null;
+  lastSyncedAt: string | null;
   setExpenses: (data: Expense[]) => void;
   setPortfolio: (data: PortfolioAsset[]) => void;
   setStocks: (data: Stock[]) => void;
-  setSheetState: (data: GoogleSheetsState) => void;
-  clearAllData: () => void;
-}
-
-declare global {
-  interface Window {
-    google: any;
-  }
+  setIncome: (data: IncomeState) => void;
+  setInvestment: (data: InvestmentState) => void;
+  setGoal: (data: SavingsGoal) => void;
+  setFire: (data: FIREState) => void;
+  setNetWorthData: (data: NetWorthState) => void;
+  onLogout: () => void;
+  onRetryPull?: () => void;
 }
 
 export const DataManagement: React.FC<DataManagementProps> = ({
-  expenses, portfolio, stocks, sheetState, setExpenses, setPortfolio, setStocks, setSheetState, clearAllData
+  expenses, portfolio, stocks, income, investment, goal, fire, netWorthData,
+  uniqueSyncId, lastSyncedAt,
+  setExpenses, setPortfolio, setStocks, setIncome, setInvestment, setGoal, setFire, setNetWorthData,
+  onLogout, onRetryPull
 }) => {
-  const [accessToken, setAccessToken] = useState<string | null>(null);
-  const [tokenClient, setTokenClient] = useState<any>(null);
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+  const [isCloudSyncing, setIsCloudSyncing] = useState(false);
+  const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error' | 'info' | 'offline', text: string } | null>(null);
+  const [copied, setCopied] = useState(false);
 
-  useEffect(() => {
-    const storedId = localStorage.getItem('google_client_id');
-    // Check if window.google is available and storedId exists to prevent crash
-    if (window.google && storedId) {
-      try {
-        const client = window.google.accounts.oauth2.initTokenClient({
-          client_id: storedId,
-          scope: 'https://www.googleapis.com/auth/spreadsheets',
-          callback: (response: any) => {
-            if (response.access_token) {
-              setAccessToken(response.access_token);
-              setStatusMsg({ type: 'success', text: 'Connected to Google!' });
-            } else {
-              setStatusMsg({ type: 'error', text: 'Failed to connect.' });
-            }
-          },
-        });
-        setTokenClient(client);
-      } catch (e) {
-        console.error("Failed to init token client", e);
+  const activeSyncKey = uniqueSyncId;
+
+  const handleCloudSyncPush = async () => {
+    if (!activeSyncKey) return;
+    setIsCloudSyncing(true);
+    setStatusMsg(null);
+
+    const payload = {
+      expenses, portfolio, stocks, income, investment, goal, fire, netWorthData
+    };
+
+    try {
+      await pushToCloud(activeSyncKey, payload);
+      setStatusMsg({ type: 'success', text: 'Cloud backup updated successfully!' });
+      setTimeout(() => setStatusMsg(null), 3000);
+    } catch (error: any) {
+      if (isNetworkError(error)) {
+        setStatusMsg({ type: 'offline', text: 'Cloud Unreachable. Check network or firewall settings.' });
+      } else {
+        setStatusMsg({ type: 'error', text: typeof error === 'object' ? error.message : String(error) });
       }
-    }
-  }, []);
-
-  const [clientIdInput, setClientIdInput] = useState(localStorage.getItem('google_client_id') || '');
-
-  const saveClientId = () => {
-    localStorage.setItem('google_client_id', clientIdInput);
-    window.location.reload(); // Reload to re-init client
-  };
-
-  const handleConnect = () => {
-    if (!clientIdInput) {
-        setStatusMsg({ type: 'error', text: 'Please enter a Google Client ID first.' });
-        return;
-    }
-    
-    // Use existing client if available
-    if (tokenClient) {
-      tokenClient.requestAccessToken();
-      return;
-    }
-
-    // Lazy initialization if client wasn't ready on mount (e.g. script loaded late or ID just entered)
-    if (window.google) {
-        try {
-            const client = window.google.accounts.oauth2.initTokenClient({
-                client_id: clientIdInput,
-                scope: 'https://www.googleapis.com/auth/spreadsheets',
-                callback: (response: any) => {
-                    if (response.access_token) {
-                        setAccessToken(response.access_token);
-                        setStatusMsg({ type: 'success', text: 'Connected to Google!' });
-                    } else {
-                        setStatusMsg({ type: 'error', text: 'Failed to connect.' });
-                    }
-                },
-            });
-            setTokenClient(client);
-            client.requestAccessToken();
-        } catch (e: any) {
-            console.error(e);
-            setStatusMsg({ type: 'error', text: 'Error initializing Google Sign-In: ' + e.message });
-        }
-    } else {
-        setStatusMsg({ type: 'error', text: 'Google Identity Services script not loaded. Please refresh.' });
+    } finally {
+      setIsCloudSyncing(false);
     }
   };
 
-  const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
-    if (!accessToken) throw new Error("Not authenticated");
-    return fetch(url, {
-      ...options,
-      headers: {
-        ...options.headers,
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-    });
-  };
-
-  const handleSheetSyncUpload = async () => {
-    if (!accessToken || !sheetState.spreadsheetId) return;
-    setIsSyncing(true);
+  const handleCloudSyncPull = async () => {
+    if (!activeSyncKey) return;
+    setIsCloudSyncing(true);
     setStatusMsg(null);
 
     try {
-      // 1. Ensure Tabs Exist
-      const spreadsheetData = await fetchWithAuth(`https://sheets.googleapis.com/v4/spreadsheets/${sheetState.spreadsheetId}`);
-      const sheetMeta = await spreadsheetData.json();
+      const { data } = await pullFromCloud(activeSyncKey);
       
-      if (sheetMeta.error) throw new Error(sheetMeta.error.message);
+      if (data.expenses) setExpenses(data.expenses);
+      if (data.portfolio) setPortfolio(data.portfolio);
+      if (data.stocks) setStocks(data.stocks);
+      if (data.income) setIncome(data.income);
+      if (data.investment) setInvestment(data.investment);
+      if (data.goal) setGoal(data.goal);
+      if (data.fire) setFire(data.fire);
+      if (data.netWorthData) setNetWorthData(data.netWorthData);
 
-      const existingTitles = sheetMeta.sheets.map((s: any) => s.properties.title);
-      const requiredSheets = ['Expenses', 'Portfolio', 'Stocks'];
-      const requests = [];
-
-      requiredSheets.forEach(title => {
-        if (!existingTitles.includes(title)) {
-          requests.push({ addSheet: { properties: { title } } });
-        }
-      });
-
-      if (requests.length > 0) {
-        await fetchWithAuth(`https://sheets.googleapis.com/v4/spreadsheets/${sheetState.spreadsheetId}:batchUpdate`, {
-          method: 'POST',
-          body: JSON.stringify({ requests })
-        });
+      setStatusMsg({ type: 'success', text: 'Data restored from cloud!' });
+      setTimeout(() => setStatusMsg(null), 3000);
+    } catch (error: any) {
+      if (isNetworkError(error)) {
+        setStatusMsg({ type: 'offline', text: 'Could not connect to server. Restored from local only.' });
+      } else {
+        setStatusMsg({ type: 'error', text: typeof error === 'object' ? error.message : String(error) });
       }
+    } finally {
+      setIsCloudSyncing(false);
+    }
+  };
 
-      // 2. Prepare Data
-      const expenseRows = [['Name', 'Category', 'Amount'], ...expenses.map(e => [e.name, e.category, e.amount])];
-      const portfolioRows = [['Name', 'Type', 'Value', 'Monthly Inv', 'Return %', 'TER %', 'Tax %'], ...portfolio.map(p => [p.name, p.type, p.currentValue, p.monthlyInvestment, p.expectedReturn, p.expenseRatio, p.taxRate])];
-      const stockRows = [['Symbol', 'Quantity', 'Buy Price'], ...stocks.map(s => [s.symbol, s.quantity, s.buyPrice])];
+  const copySyncId = () => {
+    if (uniqueSyncId) {
+      navigator.clipboard.writeText(uniqueSyncId);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
 
-      // 3. Clear & Write Data
-      const updateBody = {
-        valueInputOption: 'USER_ENTERED',
-        data: [
-            { range: 'Expenses!A1', values: expenseRows },
-            { range: 'Portfolio!A1', values: portfolioRows },
-            { range: 'Stocks!A1', values: stockRows }
-        ]
+  const exportCSV = (type: 'expenses' | 'portfolio' | 'stocks') => {
+    const downloadCSV = (content: string, filename: string) => {
+        const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', filename);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
       };
 
-      const updateRes = await fetchWithAuth(`https://sheets.googleapis.com/v4/spreadsheets/${sheetState.spreadsheetId}/values:batchUpdate`, {
-        method: 'POST',
-        body: JSON.stringify(updateBody)
-      });
-
-      if (!updateRes.ok) throw new Error('Failed to update sheets');
-
-      setSheetState({ ...sheetState, lastSynced: new Date().toLocaleString() });
-      setStatusMsg({ type: 'success', text: 'Data uploaded successfully!' });
-
-    } catch (error: any) {
-      console.error(error);
-      setStatusMsg({ type: 'error', text: error.message || 'Sync failed' });
-    } finally {
-      setIsSyncing(false);
+    if (type === 'expenses') {
+      const headers = ['Name,Category,Amount,Recurring'];
+      const rows = expenses.map(e => `"${e.name}","${e.category}",${e.amount},${e.isRecurring}`);
+      downloadCSV([headers, ...rows].join('\n'), 'expenses.csv');
+    } else if (type === 'portfolio') {
+      const headers = ['Name,Type,Current Value,Monthly Investment,Return %,TER %,Tax Rate %,Frequency'];
+      const rows = portfolio.map(p => `"${p.name}","${p.type}",${p.currentValue},${p.monthlyInvestment},${p.expectedReturn},${p.expenseRatio},${p.taxRate},"${p.frequency}"`);
+      downloadCSV([headers, ...rows].join('\n'), 'portfolio.csv');
+    } else if (type === 'stocks') {
+      const headers = ['Symbol,Quantity,Buy Price,Frequency'];
+      const rows = stocks.map(s => `"${s.symbol}",${s.quantity},${s.buyPrice},"${s.frequency}"`);
+      downloadCSV([headers, ...rows].join('\n'), 'stocks.csv');
     }
-  };
-
-  const handleSheetSyncDownload = async () => {
-    if (!accessToken || !sheetState.spreadsheetId) return;
-    setIsSyncing(true);
-    setStatusMsg(null);
-
-    try {
-        const ranges = ['Expenses!A:C', 'Portfolio!A:G', 'Stocks!A:C'];
-        const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetState.spreadsheetId}/values:batchGet?majorDimension=ROWS&${ranges.map(r => `ranges=${r}`).join('&')}`;
-        
-        const res = await fetchWithAuth(url);
-        const json = await res.json();
-        
-        if (json.error) throw new Error(json.error.message);
-
-        const valueRanges = json.valueRanges;
-        
-        // Process Expenses
-        if (valueRanges[0].values && valueRanges[0].values.length > 1) {
-            const newExpenses: Expense[] = valueRanges[0].values.slice(1).map((row: any) => ({
-                id: crypto.randomUUID(),
-                name: row[0],
-                category: row[1] as ExpenseCategory,
-                amount: parseFloat(row[2]) || 0
-            }));
-            setExpenses(newExpenses);
-        }
-
-        // Process Portfolio
-        if (valueRanges[1].values && valueRanges[1].values.length > 1) {
-             const newPortfolio: PortfolioAsset[] = valueRanges[1].values.slice(1).map((row: any) => ({
-                id: crypto.randomUUID(),
-                name: row[0],
-                type: row[1] as any,
-                currentValue: parseFloat(row[2]) || 0,
-                monthlyInvestment: parseFloat(row[3]) || 0,
-                expectedReturn: parseFloat(row[4]) || 0,
-                expenseRatio: parseFloat(row[5]) || 0,
-                taxRate: parseFloat(row[6]) || 0,
-            }));
-            setPortfolio(newPortfolio);
-        }
-
-        // Process Stocks
-        if (valueRanges[2].values && valueRanges[2].values.length > 1) {
-             const newStocks: Stock[] = valueRanges[2].values.slice(1).map((row: any) => ({
-                id: crypto.randomUUID(),
-                symbol: row[0],
-                quantity: parseFloat(row[1]) || 0,
-                buyPrice: parseFloat(row[2]) || 0,
-            }));
-            setStocks(newStocks);
-        }
-
-        setSheetState({ ...sheetState, lastSynced: new Date().toLocaleString() });
-        setStatusMsg({ type: 'success', text: 'Data downloaded successfully!' });
-
-    } catch (error: any) {
-        console.error(error);
-        setStatusMsg({ type: 'error', text: error.message || 'Download failed' });
-    } finally {
-        setIsSyncing(false);
-    }
-  };
-
-  // -- Existing CSV Functions --
-  const downloadCSV = (content: string, filename: string) => {
-    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', filename);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  const exportExpenses = () => {
-    const headers = ['Name,Category,Amount'];
-    const rows = expenses.map(e => `"${e.name}","${e.category}",${e.amount}`);
-    downloadCSV([headers, ...rows].join('\n'), 'expenses.csv');
-  };
-
-  const exportPortfolio = () => {
-    const headers = ['Name,Type,Current Value,Monthly Investment,Return %,TER %,Tax Rate %'];
-    const rows = portfolio.map(p => `"${p.name}","${p.type}",${p.currentValue},${p.monthlyInvestment},${p.expectedReturn},${p.expenseRatio},${p.taxRate}`);
-    downloadCSV([headers, ...rows].join('\n'), 'portfolio.csv');
-  };
-
-  const exportStocks = () => {
-    const headers = ['Symbol,Quantity,Buy Price'];
-    const rows = stocks.map(s => `"${s.symbol}",${s.quantity},${s.buyPrice}`);
-    downloadCSV([headers, ...rows].join('\n'), 'stocks.csv');
   };
 
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>, type: 'expenses' | 'portfolio' | 'stocks') => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = (event) => {
       const text = event.target?.result as string;
       if (!text) return;
-      
       const lines = text.split('\n');
       const dataRows = lines.slice(1).filter(line => line.trim() !== '');
-      
       if (type === 'expenses') {
-        const newExpenses: Expense[] = [];
-        dataRows.forEach(row => {
+        const parsed: Expense[] = dataRows.map(row => {
           const parts = row.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || [];
-          if (parts.length >= 3) {
-             const name = parts[0].replace(/"/g, '');
-             const category = parts[1].replace(/"/g, '') as ExpenseCategory;
-             const amount = parseFloat(parts[2]);
-             if (name && !isNaN(amount)) newExpenses.push({ id: crypto.randomUUID(), name, category, amount });
-          }
+          return { 
+            id: crypto.randomUUID(), 
+            name: parts[0]?.replace(/"/g, '') || 'Imported', 
+            category: (parts[1]?.replace(/"/g, '') || 'Other') as ExpenseCategory, 
+            amount: parseFloat(parts[2]) || 0,
+            isRecurring: parts[3]?.toLowerCase() === 'true',
+            date: new Date().toISOString().split('T')[0]
+          };
         });
-        if (newExpenses.length > 0) setExpenses(newExpenses);
-      } 
-      else if (type === 'portfolio') {
-         const newAssets: PortfolioAsset[] = dataRows.map(row => {
-            const cols = row.split(',').map(c => c.replace(/"/g, ''));
-            return {
-               id: crypto.randomUUID(),
-               name: cols[0],
-               type: cols[1] as any,
-               currentValue: parseFloat(cols[2]) || 0,
-               monthlyInvestment: parseFloat(cols[3]) || 0,
-               expectedReturn: parseFloat(cols[4]) || 0,
-               expenseRatio: parseFloat(cols[5]) || 0,
-               taxRate: parseFloat(cols[6]) || 0
-            };
-         });
-         setPortfolio(newAssets);
+        setExpenses(parsed);
+      } else if (type === 'portfolio') {
+        const parsed: PortfolioAsset[] = dataRows.map(row => {
+          const parts = row.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || [];
+          return { 
+            id: crypto.randomUUID(), 
+            name: parts[0]?.replace(/"/g, '') || 'Imported', 
+            type: (parts[1]?.replace(/"/g, '') || 'OTHER') as AssetType, 
+            currentValue: parseFloat(parts[2]) || 0, 
+            monthlyInvestment: parseFloat(parts[3]) || 0, 
+            expectedReturn: parseFloat(parts[4]) || 0, 
+            expenseRatio: parseFloat(parts[5]) || 0, 
+            taxRate: parseFloat(parts[6]) || 0,
+            frequency: (parts[7]?.replace(/"/g, '') || 'Monthly') as InvestmentFrequency
+          };
+        });
+        setPortfolio(parsed);
+      } else if (type === 'stocks') {
+        const parsed: Stock[] = dataRows.map(row => {
+          const parts = row.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || [];
+          return { 
+            id: crypto.randomUUID(), 
+            symbol: parts[0]?.replace(/"/g, '') || 'UNKNOWN', 
+            quantity: parseFloat(parts[1]) || 0, 
+            buyPrice: parseFloat(parts[2]) || 0,
+            frequency: (parts[3]?.replace(/"/g, '') || 'One-time') as InvestmentFrequency
+          };
+        });
+        setStocks(parsed);
       }
-      else if (type === 'stocks') {
-         const newStocks: Stock[] = dataRows.map(row => {
-            const cols = row.split(',').map(c => c.replace(/"/g, ''));
-            return {
-               id: crypto.randomUUID(),
-               symbol: cols[0],
-               quantity: parseFloat(cols[1]) || 0,
-               buyPrice: parseFloat(cols[2]) || 0,
-            };
-         });
-         setStocks(newStocks);
-      }
+      setStatusMsg({ type: 'success', text: `Imported ${type} successfully.` });
     };
     reader.readAsText(file);
     e.target.value = '';
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 max-w-4xl mx-auto animate-in fade-in duration-500">
       <div className="flex items-center gap-3 mb-2">
-        <div className="p-3 bg-indigo-100 text-indigo-700 rounded-lg">
+        <div className="p-3 bg-primary-100 text-primary-700 rounded-xl">
           <Database size={24} />
         </div>
         <div>
-           <h2 className="text-2xl font-bold text-slate-900">Data Management</h2>
-           <p className="text-slate-500">Manage your data locally, export to CSV, or sync with Google Sheets.</p>
+           <h2 className="text-2xl font-bold text-slate-900">Settings & Account</h2>
+           <p className="text-slate-500">{uniqueSyncId ? 'Connected via Unique Sync ID' : 'Local Sandbox Mode'}</p>
         </div>
       </div>
 
-      {/* Google Sheets Integration */}
-      <Card className="border-green-100 bg-green-50/50">
-         <div className="flex items-start justify-between mb-4">
-             <div className="flex items-center gap-2">
-                 <FileSpreadsheet className="text-green-600" size={24} />
-                 <h3 className="text-lg font-bold text-slate-900">Google Sheets Sync</h3>
-             </div>
-             {sheetState.lastSynced && (
-                 <span className="text-xs text-slate-500 bg-white px-2 py-1 rounded border border-slate-200">
-                    Last Synced: {sheetState.lastSynced}
-                 </span>
-             )}
-         </div>
+      {statusMsg && (
+          <div className={`p-4 rounded-xl text-sm flex items-center justify-between transition-all ${statusMsg.type === 'success' ? 'bg-emerald-50 text-emerald-800 border border-emerald-100' : statusMsg.type === 'offline' ? 'bg-amber-50 text-amber-800 border border-amber-100' : 'bg-red-50 text-red-800 border border-red-100'}`}>
+              <div className="flex items-center gap-3">
+                {statusMsg.type === 'success' ? <CheckCircle size={18} /> : statusMsg.type === 'offline' ? <WifiOff size={18} /> : <AlertCircle size={18} />}
+                {statusMsg.text}
+              </div>
+              {statusMsg.type === 'offline' && onRetryPull && (
+                <button onClick={onRetryPull} className="text-amber-700 hover:text-amber-900 font-bold flex items-center gap-1">
+                  <RefreshCw size={14} /> Retry
+                </button>
+              )}
+          </div>
+      )}
 
-         <div className="space-y-4">
-            {!accessToken ? (
-                <div className="space-y-3">
-                    <p className="text-sm text-slate-600">
-                        To sync your data, you need to provide a Google Cloud Client ID (for OAuth) and then sign in.
-                        <br/><span className="text-xs text-slate-400">Note: The Client ID is stored locally in your browser.</span>
-                    </p>
-                    <div className="flex gap-2">
-                        <input 
-                            type="text" 
-                            placeholder="Enter Google Client ID" 
-                            value={clientIdInput}
-                            onChange={(e) => setClientIdInput(e.target.value)}
-                            className="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm"
-                        />
-                        <button onClick={saveClientId} className="text-xs bg-slate-200 px-3 py-2 rounded hover:bg-slate-300">Save</button>
-                    </div>
-                    <button 
-                        onClick={handleConnect}
-                        className="bg-white text-slate-700 border border-slate-300 px-4 py-2 rounded-lg font-medium hover:bg-slate-50 flex items-center gap-2 shadow-sm"
-                    >
-                        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5" alt="" />
-                        Sign in with Google
-                    </button>
-                </div>
-            ) : (
-                <div className="space-y-4">
-                    <div className="flex items-center gap-2 text-green-700 text-sm font-medium bg-green-100 p-2 rounded">
-                        <CheckCircle size={16} /> Connected to Google
-                    </div>
-                    
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Spreadsheet ID</label>
-                        <div className="flex gap-2">
-                            <input
-                                type="text"
-                                value={sheetState.spreadsheetId || ''}
-                                onChange={(e) => setSheetState({...sheetState, spreadsheetId: e.target.value})}
-                                placeholder="Paste ID from URL: docs.google.com/spreadsheets/d/[ID]/edit"
-                                className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none text-sm"
-                            />
-                            <a 
-                                href="https://sheets.new" 
-                                target="_blank" 
-                                rel="noreferrer"
-                                className="px-3 py-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 flex items-center gap-1 text-sm"
-                                title="Create new sheet"
-                            >
-                                <PlusIcon size={16} /> New
-                            </a>
-                        </div>
-                        <p className="text-xs text-slate-500 mt-1">
-                            Ensure the sheet is empty or has "Expenses", "Portfolio", "Stocks" tabs.
-                        </p>
-                    </div>
-
-                    <div className="flex gap-3">
-                         <button 
-                            onClick={handleSheetSyncUpload}
-                            disabled={isSyncing || !sheetState.spreadsheetId}
-                            className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors"
-                        >
-                            {isSyncing ? <RefreshCw className="animate-spin" size={18} /> : <Upload size={18} />}
-                            Upload to Sheet
-                        </button>
-                        <button 
-                            onClick={handleSheetSyncDownload}
-                            disabled={isSyncing || !sheetState.spreadsheetId}
-                            className="flex-1 bg-white text-green-700 border border-green-200 px-4 py-2 rounded-lg hover:bg-green-50 disabled:opacity-50 flex items-center justify-center gap-2 transition-colors"
-                        >
-                            {isSyncing ? <RefreshCw className="animate-spin" size={18} /> : <Download size={18} />}
-                            Download from Sheet
-                        </button>
-                    </div>
-                </div>
-            )}
-
-            {statusMsg && (
-                <div className={`p-3 rounded-lg text-sm flex items-center gap-2 ${statusMsg.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                    {statusMsg.type === 'success' ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
-                    {statusMsg.text}
-                </div>
-            )}
-         </div>
-      </Card>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* Expenses CSV */}
-        <Card title="Expenses CSV">
-          <div className="space-y-4">
-            <div className="flex gap-2">
-              <button onClick={exportExpenses} className="flex-1 flex items-center justify-center gap-2 bg-slate-50 text-slate-700 border border-slate-200 px-3 py-2 rounded-lg hover:bg-slate-100 text-sm">
-                <Download size={14} /> Export
-              </button>
-              <label className="flex-1 flex items-center justify-center gap-2 bg-white text-slate-700 border border-slate-200 px-3 py-2 rounded-lg hover:bg-slate-50 cursor-pointer text-sm">
-                <Upload size={14} /> Import
-                <input type="file" accept=".csv" className="hidden" onChange={(e) => handleImport(e, 'expenses')} />
-              </label>
+      {/* Account Profile Card */}
+      <Card className="bg-white border-slate-200">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="flex items-center gap-4 w-full md:w-auto">
+            <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 overflow-hidden">
+               {uniqueSyncId ? <Key size={32} className="text-indigo-600" /> : <CloudOff size={32} />}
             </div>
-            <div className="text-xs text-slate-400 text-center">{expenses.length} records</div>
-          </div>
-        </Card>
-
-        {/* Portfolio CSV */}
-        <Card title="Portfolio CSV">
-          <div className="space-y-4">
-            <div className="flex gap-2">
-              <button onClick={exportPortfolio} className="flex-1 flex items-center justify-center gap-2 bg-slate-50 text-slate-700 border border-slate-200 px-3 py-2 rounded-lg hover:bg-slate-100 text-sm">
-                <Download size={14} /> Export
-              </button>
-              <label className="flex-1 flex items-center justify-center gap-2 bg-white text-slate-700 border border-slate-200 px-3 py-2 rounded-lg hover:bg-slate-50 cursor-pointer text-sm">
-                <Upload size={14} /> Import
-                <input type="file" accept=".csv" className="hidden" onChange={(e) => handleImport(e, 'portfolio')} />
-              </label>
+            <div>
+              <h3 className="text-xl font-bold text-slate-900">{uniqueSyncId ? 'Sync ID Active' : 'Guest User'}</h3>
+              <p className="text-sm text-slate-500">{uniqueSyncId ? 'Private Cloud Sync Enabled' : 'No cloud session'}</p>
+              <div className="flex items-center gap-2 mt-1">
+                {uniqueSyncId ? (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-700 uppercase tracking-widest">Unique Sync ID</span>
+                ) : (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600 uppercase tracking-widest">Local Mode</span>
+                )}
+              </div>
             </div>
-            <div className="text-xs text-slate-400 text-center">{portfolio.length} assets</div>
           </div>
-        </Card>
-
-        {/* Stocks CSV */}
-        <Card title="Stocks CSV">
-          <div className="space-y-4">
-            <div className="flex gap-2">
-              <button onClick={exportStocks} className="flex-1 flex items-center justify-center gap-2 bg-slate-50 text-slate-700 border border-slate-200 px-3 py-2 rounded-lg hover:bg-slate-100 text-sm">
-                <Download size={14} /> Export
-              </button>
-              <label className="flex-1 flex items-center justify-center gap-2 bg-white text-slate-700 border border-slate-200 px-3 py-2 rounded-lg hover:bg-slate-50 cursor-pointer text-sm">
-                <Upload size={14} /> Import
-                <input type="file" accept=".csv" className="hidden" onChange={(e) => handleImport(e, 'stocks')} />
-              </label>
-            </div>
-            <div className="text-xs text-slate-400 text-center">{stocks.length} holdings</div>
-          </div>
-        </Card>
-      </div>
-
-      <Card className="border-red-100 bg-red-50">
-        <div className="flex items-center justify-between">
-          <div>
-             <h3 className="text-lg font-semibold text-red-900">Reset Database</h3>
-             <p className="text-red-700 text-sm">Delete all stored data from browser.</p>
-          </div>
-          <button 
-            onClick={() => {
-              if (confirm('Are you sure? This cannot be undone.')) clearAllData();
-            }}
-            className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
-          >
-            <Trash2 size={18} /> Clear
+          <button onClick={onLogout} className="w-full md:w-auto flex items-center justify-center gap-2 text-red-600 font-bold text-sm hover:bg-red-50 px-4 py-2 rounded-xl transition-all">
+            <LogOut size={18} /> {uniqueSyncId ? 'Exit' : 'Exit Guest'}
           </button>
         </div>
+        
+        {uniqueSyncId && (
+          <div className="mt-6 p-4 bg-slate-50 border border-slate-100 rounded-xl">
+             <div className="flex justify-between items-center mb-1">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Your Unique Sync ID</span>
+                <button onClick={copySyncId} className="text-indigo-600 hover:text-indigo-800 flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider">
+                  {copied ? <Check size={12} /> : <Copy size={12} />}
+                  {copied ? 'Copied' : 'Copy ID'}
+                </button>
+             </div>
+             <p className="font-mono text-sm font-bold text-slate-900 select-all tracking-wider break-all">{uniqueSyncId}</p>
+             <p className="text-[9px] text-slate-400 mt-2 italic">* Use this ID on other devices to restore your dashboard securely without an email account.</p>
+          </div>
+        )}
       </Card>
+
+      {/* Cloud Sync Status */}
+      <Card className={`bg-white shadow-lg ${activeSyncKey ? 'border-primary-100' : 'border-slate-200 opacity-60 grayscale'}`}>
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+              <div className="flex items-center gap-4">
+                  <div className={`p-4 rounded-2xl ${activeSyncKey ? (isCloudSyncing ? 'bg-primary-50 text-primary-600 animate-pulse' : 'bg-emerald-50 text-emerald-600') : 'bg-slate-50 text-slate-400'}`}>
+                      {activeSyncKey ? <Cloud size={32} /> : <CloudOff size={32} />}
+                  </div>
+                  <div>
+                      <h3 className="text-xl font-bold text-slate-900">Cloud Link</h3>
+                      <p className="text-sm text-slate-500">
+                        {!activeSyncKey ? 'Enter a Sync ID to enable cloud backup.' : (lastSyncedAt ? `Last active: ${lastSyncedAt}` : 'Securely connected to cloud.')}
+                      </p>
+                  </div>
+              </div>
+              {activeSyncKey && (
+                <div className="flex gap-3 w-full md:w-auto">
+                    <button 
+                        onClick={handleCloudSyncPush}
+                        disabled={isCloudSyncing}
+                        className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-primary-600 text-white px-6 py-3 rounded-xl hover:bg-primary-700 disabled:opacity-50 font-bold transition-all shadow-md active:scale-95"
+                    >
+                        {isCloudSyncing ? <RefreshCw className="animate-spin" size={18} /> : <Upload size={18} />}
+                        Sync
+                    </button>
+                    <button 
+                        onClick={handleCloudSyncPull}
+                        disabled={isCloudSyncing}
+                        className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-white text-primary-700 border border-primary-100 px-6 py-3 rounded-xl hover:bg-primary-50 disabled:opacity-50 font-bold transition-all shadow-sm active:scale-95"
+                    >
+                        <History size={18} />
+                        Reload
+                    </button>
+                </div>
+              )}
+          </div>
+      </Card>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card title="Expenses (CSV)">
+          <div className="flex gap-2">
+            <button onClick={() => exportCSV('expenses')} className="flex-1 flex items-center justify-center gap-2 bg-slate-50 text-slate-700 border border-slate-200 px-3 py-2 rounded-lg hover:bg-slate-100 text-xs font-bold transition-all">
+              <Download size={14} /> Export
+            </button>
+            <label className="flex-1 flex items-center justify-center gap-2 bg-white text-slate-700 border border-slate-200 px-3 py-2 rounded-lg hover:bg-slate-50 cursor-pointer text-xs font-bold transition-all">
+              <Upload size={14} /> Import
+              <input type="file" accept=".csv" className="hidden" onChange={(e) => handleImport(e, 'expenses')} />
+            </label>
+          </div>
+        </Card>
+        <Card title="Portfolio (CSV)">
+          <div className="flex gap-2">
+            <button onClick={() => exportCSV('portfolio')} className="flex-1 flex items-center justify-center gap-2 bg-slate-50 text-slate-700 border border-slate-200 px-3 py-2 rounded-lg hover:bg-slate-100 text-xs font-bold transition-all">
+              <Download size={14} /> Export
+            </button>
+            <label className="flex-1 flex items-center justify-center gap-2 bg-white text-slate-700 border border-slate-200 px-3 py-2 rounded-lg hover:bg-slate-50 cursor-pointer text-xs font-bold transition-all">
+              <Upload size={14} /> Import
+              <input type="file" accept=".csv" className="hidden" onChange={(e) => handleImport(e, 'portfolio')} />
+            </label>
+          </div>
+        </Card>
+        <Card title="Stocks (CSV)">
+          <div className="flex gap-2">
+            <button onClick={() => exportCSV('stocks')} className="flex-1 flex items-center justify-center gap-2 bg-slate-50 text-slate-700 border border-slate-200 px-3 py-2 rounded-lg hover:bg-slate-100 text-xs font-bold transition-all">
+              <Download size={14} /> Export
+            </button>
+            <label className="flex-1 flex items-center justify-center gap-2 bg-white text-slate-700 border border-slate-200 px-3 py-2 rounded-lg hover:bg-slate-50 cursor-pointer text-xs font-bold transition-all">
+              <Upload size={14} /> Import
+              <input type="file" accept=".csv" className="hidden" onChange={(e) => handleImport(e, 'stocks')} />
+            </label>
+          </div>
+        </Card>
+      </div>
     </div>
   );
 };
-
-const PlusIcon = ({ size }: { size: number }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-);

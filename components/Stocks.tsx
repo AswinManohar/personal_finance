@@ -1,21 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { Stock } from '../types';
+import { Stock, InvestmentFrequency } from '../types';
 import { Card } from './ui/Card';
 import { getStockPrices } from '../services/geminiService';
-import { Plus, Trash2, RefreshCw, TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
+import { Plus, Trash2, RefreshCw, ExternalLink, Calendar } from 'lucide-react';
 
 interface StocksProps {
   stocks: Stock[];
   setStocks: React.Dispatch<React.SetStateAction<Stock[]>>;
+  onSync?: (overrides?: any) => Promise<void>;
 }
 
-export const Stocks: React.FC<StocksProps> = ({ stocks, setStocks }) => {
+export const Stocks: React.FC<StocksProps> = ({ stocks, setStocks, onSync }) => {
   const [newSymbol, setNewSymbol] = useState('');
   const [newQuantity, setNewQuantity] = useState('');
   const [newBuyPrice, setNewBuyPrice] = useState('');
+  const [newFrequency, setNewFrequency] = useState<InvestmentFrequency>('One-time');
   const [loading, setLoading] = useState(false);
+  const [sources, setSources] = useState<any[]>([]);
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!newSymbol || !newQuantity || !newBuyPrice) return;
     
     const stock: Stock = {
@@ -23,43 +26,54 @@ export const Stocks: React.FC<StocksProps> = ({ stocks, setStocks }) => {
       symbol: newSymbol.toUpperCase(),
       quantity: parseFloat(newQuantity),
       buyPrice: parseFloat(newBuyPrice),
-      currentPrice: parseFloat(newBuyPrice) // Default to buy price until fetched
+      currentPrice: parseFloat(newBuyPrice),
+      frequency: newFrequency
     };
 
-    setStocks(prev => [...prev, stock]);
+    const updatedStocks = [...stocks, stock];
+    setStocks(updatedStocks);
+    
+    if (onSync) {
+      await onSync({ stocks: updatedStocks });
+    }
+
     setNewSymbol('');
     setNewQuantity('');
     setNewBuyPrice('');
   };
 
-  const handleDelete = (id: string) => {
-    setStocks(prev => prev.filter(s => s.id !== id));
+  const handleDelete = async (id: string) => {
+    const updatedStocks = stocks.filter(s => s.id !== id);
+    setStocks(updatedStocks);
+    if (onSync) {
+      await onSync({ stocks: updatedStocks });
+    }
   };
 
   const handleRefreshPrices = async () => {
     if (stocks.length === 0) return;
     setLoading(true);
     
-    const symbols = Array.from(new Set(stocks.map(s => s.symbol)));
-    const prices = await getStockPrices(symbols);
+    const symbols: string[] = [...new Set(stocks.map(s => s.symbol))];
+    const result = await getStockPrices(symbols);
     
-    setStocks(prev => prev.map(stock => ({
+    const updatedStocks = stocks.map(stock => ({
       ...stock,
-      currentPrice: prices[stock.symbol] || stock.currentPrice || stock.buyPrice
-    })));
+      currentPrice: result.prices[stock.symbol] || stock.currentPrice || stock.buyPrice
+    }));
+    
+    setStocks(updatedStocks);
+
+    if (result.sources) {
+      setSources(result.sources);
+    }
+    
+    if (onSync) {
+      await onSync({ stocks: updatedStocks });
+    }
     
     setLoading(false);
   };
-
-  // Initial fetch if we have stocks but no prices, or just on mount if desired
-  // Avoiding auto-fetch on mount to save API calls, relying on manual refresh mostly
-  // unless price is missing
-  useEffect(() => {
-    const missingPrices = stocks.some(s => s.currentPrice === undefined);
-    if (missingPrices && stocks.length > 0) {
-        // handleRefreshPrices(); 
-    }
-  }, []);
 
   const totalInvested = stocks.reduce((sum, s) => sum + (s.quantity * s.buyPrice), 0);
   const totalCurrentValue = stocks.reduce((sum, s) => sum + (s.quantity * (s.currentPrice || s.buyPrice)), 0);
@@ -87,7 +101,6 @@ export const Stocks: React.FC<StocksProps> = ({ stocks, setStocks }) => {
         </button>
       </div>
 
-      {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="bg-white border-slate-200">
            <p className="text-sm font-medium text-slate-500">Total Invested</p>
@@ -113,7 +126,6 @@ export const Stocks: React.FC<StocksProps> = ({ stocks, setStocks }) => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Add Stock Form */}
         <div className="lg:col-span-1">
           <Card title="Add Holding">
             <div className="space-y-4">
@@ -123,29 +135,46 @@ export const Stocks: React.FC<StocksProps> = ({ stocks, setStocks }) => {
                   type="text"
                   value={newSymbol}
                   onChange={(e) => setNewSymbol(e.target.value)}
-                  placeholder="e.g. AAPL, RELIANCE"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none uppercase"
+                  placeholder="e.g. AAPL, MSFT"
+                  className="w-full px-3 py-2 bg-white text-black border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none uppercase"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Quantity</label>
-                <input
-                  type="number"
-                  value={newQuantity}
-                  onChange={(e) => setNewQuantity(e.target.value)}
-                  placeholder="0"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-                />
+                <label className="block text-sm font-medium text-slate-700 mb-1">Frequency</label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-2.5 text-slate-400" size={14} />
+                  <select 
+                    value={newFrequency}
+                    onChange={(e) => setNewFrequency(e.target.value as InvestmentFrequency)}
+                    className="w-full pl-8 pr-3 py-2 bg-white text-black border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                  >
+                    <option value="One-time">One-time (Bulk)</option>
+                    <option value="Monthly">Monthly SIP</option>
+                    <option value="Bi-monthly">Bi-monthly</option>
+                  </select>
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Buy Price (€)</label>
-                <input
-                  type="number"
-                  value={newBuyPrice}
-                  onChange={(e) => setNewBuyPrice(e.target.value)}
-                  placeholder="0.00"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Quantity</label>
+                  <input
+                    type="number"
+                    value={newQuantity}
+                    onChange={(e) => setNewQuantity(e.target.value)}
+                    placeholder="0"
+                    className="w-full px-3 py-2 bg-white text-black border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Avg Buy Price</label>
+                  <input
+                    type="number"
+                    value={newBuyPrice}
+                    onChange={(e) => setNewBuyPrice(e.target.value)}
+                    placeholder="0.00"
+                    className="w-full px-3 py-2 bg-white text-black border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                  />
+                </div>
               </div>
               <button
                 onClick={handleAdd}
@@ -157,8 +186,7 @@ export const Stocks: React.FC<StocksProps> = ({ stocks, setStocks }) => {
           </Card>
         </div>
 
-        {/* Stock List */}
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 space-y-6">
            <Card title="Portfolio Holdings">
              {stocks.length === 0 ? (
                <div className="text-center py-8 text-slate-400">No stocks added yet.</div>
@@ -169,9 +197,7 @@ export const Stocks: React.FC<StocksProps> = ({ stocks, setStocks }) => {
                      <tr>
                        <th className="px-4 py-3 text-left font-semibold">Symbol</th>
                        <th className="px-4 py-3 text-right font-semibold">Qty</th>
-                       <th className="px-4 py-3 text-right font-semibold">Avg. Price</th>
                        <th className="px-4 py-3 text-right font-semibold">LTP</th>
-                       <th className="px-4 py-3 text-right font-semibold">Current Val</th>
                        <th className="px-4 py-3 text-right font-semibold">P&L</th>
                        <th className="px-4 py-3 text-center font-semibold">Action</th>
                      </tr>
@@ -185,16 +211,14 @@ export const Stocks: React.FC<StocksProps> = ({ stocks, setStocks }) => {
                        
                        return (
                          <tr key={stock.id} className="hover:bg-slate-50">
-                           <td className="px-4 py-3 font-bold text-slate-900">{stock.symbol}</td>
-                           <td className="px-4 py-3 text-right text-slate-600">{stock.quantity}</td>
-                           <td className="px-4 py-3 text-right text-slate-600">€{stock.buyPrice.toFixed(2)}</td>
-                           <td className="px-4 py-3 text-right font-medium text-slate-900">
-                             {loading ? <span className="animate-pulse bg-slate-200 h-4 w-12 inline-block rounded"></span> : `€${currentPrice.toFixed(2)}`}
+                           <td className="px-4 py-3">
+                              <span className="font-bold text-slate-900">{stock.symbol}</span>
+                              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{stock.frequency}</p>
                            </td>
-                           <td className="px-4 py-3 text-right font-bold text-slate-900">€{currentVal.toFixed(2)}</td>
+                           <td className="px-4 py-3 text-right text-slate-600">{stock.quantity}</td>
+                           <td className="px-4 py-3 text-right font-medium text-slate-900">€{currentPrice.toFixed(2)}</td>
                            <td className={`px-4 py-3 text-right font-medium ${gain >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                             {gain >= 0 ? '+' : ''}€{gain.toFixed(2)} <br/>
-                             <span className="text-xs">({gainPercent.toFixed(1)}%)</span>
+                             {gain >= 0 ? '+' : ''}€{gain.toFixed(2)}
                            </td>
                            <td className="px-4 py-3 text-center">
                              <button onClick={() => handleDelete(stock.id)} className="text-slate-300 hover:text-red-500 transition-colors">

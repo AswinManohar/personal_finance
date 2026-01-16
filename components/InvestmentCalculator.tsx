@@ -6,16 +6,21 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 interface InvestmentCalculatorProps {
   investment: InvestmentState;
   setInvestment: React.Dispatch<React.SetStateAction<InvestmentState>>;
+  onSync?: (overrides?: any) => Promise<void>;
 }
 
-export const InvestmentCalculator: React.FC<InvestmentCalculatorProps> = ({ investment, setInvestment }) => {
+export const InvestmentCalculator: React.FC<InvestmentCalculatorProps> = ({ investment, setInvestment, onSync }) => {
   
   const handleChange = (field: keyof InvestmentState, value: string) => {
     const numValue = parseFloat(value);
-    setInvestment(prev => ({
-      ...prev,
+    const newState = {
+      ...investment,
       [field]: isNaN(numValue) ? 0 : numValue
-    }));
+    };
+    setInvestment(newState);
+    if (onSync) {
+      onSync({ investment: newState });
+    }
   };
 
   const data: CalculationResult[] = useMemo(() => {
@@ -27,7 +32,7 @@ export const InvestmentCalculator: React.FC<InvestmentCalculatorProps> = ({ inve
     let totalInvested = investment.initialPrincipal;
 
     for (let i = 0; i <= months; i++) {
-      if (i % 12 === 0) { // Push data point every year
+      if (i % 12 === 0) {
         results.push({
           month: i / 12,
           value: parseFloat(currentValue.toFixed(2)),
@@ -58,7 +63,7 @@ export const InvestmentCalculator: React.FC<InvestmentCalculatorProps> = ({ inve
                 type="number"
                 value={investment.initialPrincipal}
                 onChange={(e) => handleChange('initialPrincipal', e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                className="w-full px-3 py-2 bg-white text-black border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
               />
             </div>
             <div>
@@ -67,7 +72,7 @@ export const InvestmentCalculator: React.FC<InvestmentCalculatorProps> = ({ inve
                 type="number"
                 value={investment.monthlyContribution}
                 onChange={(e) => handleChange('monthlyContribution', e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                className="w-full px-3 py-2 bg-white text-black border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
               />
             </div>
             <div>
@@ -76,7 +81,7 @@ export const InvestmentCalculator: React.FC<InvestmentCalculatorProps> = ({ inve
                 type="number"
                 value={investment.annualInterestRate}
                 onChange={(e) => handleChange('annualInterestRate', e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                className="w-full px-3 py-2 bg-white text-black border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
               />
             </div>
             <div>
@@ -85,7 +90,7 @@ export const InvestmentCalculator: React.FC<InvestmentCalculatorProps> = ({ inve
                 type="number"
                 value={investment.yearsToGrow}
                 onChange={(e) => handleChange('yearsToGrow', e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                className="w-full px-3 py-2 bg-white text-black border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
               />
               <input 
                 type="range" 

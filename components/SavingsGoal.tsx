@@ -6,9 +6,10 @@ import { Target, Calendar, TrendingUp } from 'lucide-react';
 interface SavingsGoalProps {
   goal: SavingsGoalType;
   setGoal: React.Dispatch<React.SetStateAction<SavingsGoalType>>;
+  onSync?: (overrides?: any) => Promise<void>;
 }
 
-export const SavingsGoal: React.FC<SavingsGoalProps> = ({ goal, setGoal }) => {
+export const SavingsGoal: React.FC<SavingsGoalProps> = ({ goal, setGoal, onSync }) => {
   const [result, setResult] = useState<{ monthly: number, monthsLeft: number } | null>(null);
 
   useEffect(() => {
@@ -16,7 +17,6 @@ export const SavingsGoal: React.FC<SavingsGoalProps> = ({ goal, setGoal }) => {
       const targetDateObj = new Date(goal.targetDate);
       const today = new Date();
       
-      // Calculate months difference
       let months = (targetDateObj.getFullYear() - today.getFullYear()) * 12;
       months -= today.getMonth();
       months += targetDateObj.getMonth();
@@ -41,7 +41,11 @@ export const SavingsGoal: React.FC<SavingsGoalProps> = ({ goal, setGoal }) => {
   }, [goal]);
 
   const handleChange = (field: keyof SavingsGoalType, value: string | number) => {
-    setGoal(prev => ({ ...prev, [field]: value }));
+    const newState = { ...goal, [field]: value };
+    setGoal(newState);
+    if (onSync) {
+      onSync({ goal: newState });
+    }
   };
 
   return (
@@ -62,7 +66,7 @@ export const SavingsGoal: React.FC<SavingsGoalProps> = ({ goal, setGoal }) => {
                   type="number"
                   value={goal.targetAmount}
                   onChange={(e) => handleChange('targetAmount', parseFloat(e.target.value) || 0)}
-                  className="w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                  className="w-full pl-10 pr-3 py-2 bg-white text-black border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
                 />
               </div>
             </div>
@@ -75,7 +79,7 @@ export const SavingsGoal: React.FC<SavingsGoalProps> = ({ goal, setGoal }) => {
                   type="number"
                   value={goal.currentSavings}
                   onChange={(e) => handleChange('currentSavings', parseFloat(e.target.value) || 0)}
-                  className="w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                  className="w-full pl-10 pr-3 py-2 bg-white text-black border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
                 />
               </div>
             </div>
@@ -88,7 +92,7 @@ export const SavingsGoal: React.FC<SavingsGoalProps> = ({ goal, setGoal }) => {
                   type="date"
                   value={goal.targetDate}
                   onChange={(e) => handleChange('targetDate', e.target.value)}
-                  className="w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                  className="w-full pl-10 pr-3 py-2 bg-white text-black border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
                 />
               </div>
             </div>

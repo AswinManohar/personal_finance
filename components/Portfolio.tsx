@@ -1,15 +1,16 @@
 import React, { useState, useMemo } from 'react';
-import { PortfolioAsset, AssetType } from '../types';
+import { PortfolioAsset, AssetType, InvestmentFrequency } from '../types';
 import { Card } from './ui/Card';
-import { Plus, Trash2, Globe, Building2, TrendingUp, AlertCircle, Briefcase } from 'lucide-react';
+import { Plus, Trash2, Globe, Building2, TrendingUp, AlertCircle, Briefcase, Calendar } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 interface PortfolioProps {
   assets: PortfolioAsset[];
   setAssets: React.Dispatch<React.SetStateAction<PortfolioAsset[]>>;
+  onSync?: (overrides?: any) => Promise<void>;
 }
 
-export const Portfolio: React.FC<PortfolioProps> = ({ assets, setAssets }) => {
+export const Portfolio: React.FC<PortfolioProps> = ({ assets, setAssets, onSync }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [projectionYears, setProjectionYears] = useState(10);
   
@@ -21,22 +22,22 @@ export const Portfolio: React.FC<PortfolioProps> = ({ assets, setAssets }) => {
   const [newReturn, setNewReturn] = useState('');
   const [newTER, setNewTER] = useState('');
   const [newTax, setNewTax] = useState('');
+  const [newFrequency, setNewFrequency] = useState<InvestmentFrequency>('Monthly');
 
-  // Defaults based on type
   const handleTypeChange = (type: AssetType) => {
     setNewType(type);
     if (type === 'MUTUAL_FUND_INDIA') {
       setNewReturn('12');
       setNewTER('0.8');
-      setNewTax('12.5'); // Typical LTCG > 1.25L
+      setNewTax('12.5');
     } else if (type === 'ETF_GLOBAL') {
       setNewReturn('10');
       setNewTER('0.15');
-      setNewTax('20'); // Typical for foreign assets
+      setNewTax('20');
     }
   };
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!newName) return;
     
     const asset: PortfolioAsset = {
@@ -48,17 +49,28 @@ export const Portfolio: React.FC<PortfolioProps> = ({ assets, setAssets }) => {
       expectedReturn: parseFloat(newReturn) || 0,
       expenseRatio: parseFloat(newTER) || 0,
       taxRate: parseFloat(newTax) || 0,
+      frequency: newFrequency
     };
 
-    setAssets([...assets, asset]);
+    const updatedAssets = [...assets, asset];
+    setAssets(updatedAssets);
+    
+    if (onSync) {
+      await onSync({ portfolio: updatedAssets });
+    }
+
     setNewName('');
     setNewCurrentValue('');
     setNewMonthly('');
     setIsAdding(false);
   };
 
-  const handleDelete = (id: string) => {
-    setAssets(assets.filter(a => a.id !== id));
+  const handleDelete = async (id: string) => {
+    const updatedAssets = assets.filter(a => a.id !== id);
+    setAssets(updatedAssets);
+    if (onSync) {
+      await onSync({ portfolio: updatedAssets });
+    }
   };
 
   // Complex Simulation
@@ -66,8 +78,6 @@ export const Portfolio: React.FC<PortfolioProps> = ({ assets, setAssets }) => {
     const data = [];
     const months = projectionYears * 12;
 
-    let currentTotalInvested = assets.reduce((sum, a) => sum + a.currentValue, 0);
-    // Track each asset individually
     let currentAssets = assets.map(a => ({
       ...a,
       simulatedValue: a.currentValue,
@@ -76,16 +86,11 @@ export const Portfolio: React.FC<PortfolioProps> = ({ assets, setAssets }) => {
 
     for (let i = 0; i <= months; i++) {
       if (i % 12 === 0) {
-        // Calculate totals for this year
         const grossValue = currentAssets.reduce((sum, a) => sum + a.simulatedValue, 0);
         const invested = currentAssets.reduce((sum, a) => sum + a.totalInvested, 0);
         
-        // Calculate potential exit tax
         let totalNetValue = 0;
-        let totalFeesLost = 0; // Implicitly calculated by difference in growth
-
         currentAssets.forEach(asset => {
-           // Simple gains calc
            const gains = asset.simulatedValue - asset.totalInvested;
            const tax = gains > 0 ? gains * (asset.taxRate / 100) : 0;
            totalNetValue += (asset.simulatedValue - tax);
@@ -100,17 +105,19 @@ export const Portfolio: React.FC<PortfolioProps> = ({ assets, setAssets }) => {
       }
 
       if (i < months) {
-        // Evolve assets
         currentAssets = currentAssets.map(asset => {
-          // Effective monthly rate = (Annual Return - TER) / 12
-          // Note: TER is usually on AUM. 
           const effectiveAnnualRate = asset.expectedReturn - asset.expenseRatio;
           const monthlyRate = effectiveAnnualRate / 100 / 12;
           
+          // Frequency Adjustment
+          let monthlyContribution = asset.monthlyInvestment;
+          if (asset.frequency === 'One-time') monthlyContribution = 0;
+          if (asset.frequency === 'Bi-monthly') monthlyContribution = asset.monthlyInvestment / 2;
+          
           return {
             ...asset,
-            simulatedValue: (asset.simulatedValue + asset.monthlyInvestment) * (1 + monthlyRate),
-            totalInvested: asset.totalInvested + asset.monthlyInvestment
+            simulatedValue: (asset.simulatedValue + monthlyContribution) * (1 + monthlyRate),
+            totalInvested: asset.totalInvested + monthlyContribution
           };
         });
       }
@@ -147,7 +154,7 @@ export const Portfolio: React.FC<PortfolioProps> = ({ assets, setAssets }) => {
                 placeholder="e.g. Nifty 50 Index Fund"
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:border-primary-500"
+                className="w-full px-3 py-2 bg-white text-black border border-slate-300 rounded-lg outline-none focus:border-primary-500"
               />
             </div>
             <div>
@@ -155,7 +162,7 @@ export const Portfolio: React.FC<PortfolioProps> = ({ assets, setAssets }) => {
               <select 
                 value={newType}
                 onChange={(e) => handleTypeChange(e.target.value as AssetType)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:border-primary-500 bg-white"
+                className="w-full px-3 py-2 bg-white text-black border border-slate-300 rounded-lg outline-none focus:border-primary-500"
               >
                 <option value="MUTUAL_FUND_INDIA">Mutual Fund (India)</option>
                 <option value="ETF_GLOBAL">ETF (Global)</option>
@@ -168,16 +175,31 @@ export const Portfolio: React.FC<PortfolioProps> = ({ assets, setAssets }) => {
                 type="number"
                 value={newCurrentValue}
                 onChange={(e) => setNewCurrentValue(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:border-primary-500"
+                className="w-full px-3 py-2 bg-white text-black border border-slate-300 rounded-lg outline-none focus:border-primary-500"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Monthly Inv. (€)</label>
+              <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Frequency</label>
+              <div className="relative">
+                <Calendar className="absolute left-3 top-2.5 text-slate-400" size={14} />
+                <select 
+                  value={newFrequency}
+                  onChange={(e) => setNewFrequency(e.target.value as InvestmentFrequency)}
+                  className="w-full pl-8 pr-3 py-2 bg-white text-black border border-slate-300 rounded-lg outline-none focus:border-primary-500 text-sm"
+                >
+                  <option value="One-time">One-time</option>
+                  <option value="Monthly">Monthly</option>
+                  <option value="Bi-monthly">Bi-monthly</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Investment (€)</label>
               <input
                 type="number"
                 value={newMonthly}
                 onChange={(e) => setNewMonthly(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:border-primary-500"
+                className="w-full px-3 py-2 bg-white text-black border border-slate-300 rounded-lg outline-none focus:border-primary-500"
               />
             </div>
             <div>
@@ -186,25 +208,16 @@ export const Portfolio: React.FC<PortfolioProps> = ({ assets, setAssets }) => {
                 type="number"
                 value={newReturn}
                 onChange={(e) => setNewReturn(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:border-primary-500"
+                className="w-full px-3 py-2 bg-white text-black border border-slate-300 rounded-lg outline-none focus:border-primary-500"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">TER (%) <span className="text-slate-400 font-normal">Fees</span></label>
+              <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">TER (%)</label>
               <input
                 type="number"
                 value={newTER}
                 onChange={(e) => setNewTER(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:border-primary-500"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Tax on Gains (%)</label>
-              <input
-                type="number"
-                value={newTax}
-                onChange={(e) => setNewTax(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg outline-none focus:border-primary-500"
+                className="w-full px-3 py-2 bg-white text-black border border-slate-300 rounded-lg outline-none focus:border-primary-500"
               />
             </div>
           </div>
@@ -217,7 +230,6 @@ export const Portfolio: React.FC<PortfolioProps> = ({ assets, setAssets }) => {
 
       {assets.length > 0 ? (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Asset List */}
           <div className="lg:col-span-1 space-y-4">
             <h3 className="font-semibold text-slate-800 flex items-center gap-2">
               <Briefcase size={18} /> Your Holdings
@@ -228,27 +240,19 @@ export const Portfolio: React.FC<PortfolioProps> = ({ assets, setAssets }) => {
                   <div className="flex justify-between items-start mb-2">
                     <div className="flex items-center gap-2">
                       {asset.type === 'ETF_GLOBAL' ? <Globe size={16} className="text-blue-500" /> : <Building2 size={16} className="text-orange-500" />}
-                      <span className="text-xs font-bold uppercase text-slate-500">{asset.type === 'MUTUAL_FUND_INDIA' ? 'India Fund' : asset.type === 'ETF_GLOBAL' ? 'Global ETF' : 'Asset'}</span>
+                      <span className="text-xs font-bold uppercase text-slate-500">{asset.frequency}</span>
                     </div>
                     <button onClick={() => handleDelete(asset.id)} className="text-slate-300 hover:text-red-500 transition-colors"><Trash2 size={16} /></button>
                   </div>
                   <h4 className="font-bold text-slate-900 mb-3">{asset.name}</h4>
                   <div className="grid grid-cols-2 gap-y-2 text-sm">
                     <div>
-                      <p className="text-slate-500 text-xs">Current Value</p>
+                      <p className="text-slate-500 text-xs">Value</p>
                       <p className="font-medium">€{asset.currentValue.toLocaleString()}</p>
                     </div>
                     <div>
-                      <p className="text-slate-500 text-xs">Monthly Inv.</p>
+                      <p className="text-slate-500 text-xs">{asset.frequency === 'One-time' ? 'One-time' : 'Recurring'}</p>
                       <p className="font-medium">€{asset.monthlyInvestment.toLocaleString()}</p>
-                    </div>
-                    <div>
-                      <p className="text-slate-500 text-xs">Return / TER</p>
-                      <p className="font-medium text-emerald-600">{asset.expectedReturn}% <span className="text-slate-400">/</span> <span className="text-red-500">{asset.expenseRatio}%</span></p>
-                    </div>
-                    <div>
-                      <p className="text-slate-500 text-xs">Tax Rate</p>
-                      <p className="font-medium text-orange-600">{asset.taxRate}%</p>
                     </div>
                   </div>
                 </div>
@@ -256,7 +260,6 @@ export const Portfolio: React.FC<PortfolioProps> = ({ assets, setAssets }) => {
             </div>
           </div>
 
-          {/* Simulation Chart */}
           <div className="lg:col-span-2 space-y-6">
              <Card title="Net Wealth Projection (Post-Tax & Fees)">
                 <div className="mb-4 flex items-center gap-4">
@@ -267,7 +270,7 @@ export const Portfolio: React.FC<PortfolioProps> = ({ assets, setAssets }) => {
                     max="40" 
                     value={projectionYears} 
                     onChange={(e) => setProjectionYears(parseInt(e.target.value))}
-                    className="accent-primary-600 flex-1"
+                    className="accent-primary-600 flex-1 bg-white"
                   />
                   <span className="font-bold text-slate-900 w-8">{projectionYears}</span>
                 </div>
@@ -280,46 +283,24 @@ export const Portfolio: React.FC<PortfolioProps> = ({ assets, setAssets }) => {
                           <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
                           <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
                         </linearGradient>
-                        <linearGradient id="colorGross" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#94a3b8" stopOpacity={0.3}/>
-                          <stop offset="95%" stopColor="#94a3b8" stopOpacity={0}/>
-                        </linearGradient>
                       </defs>
-                      <XAxis dataKey="year" label={{ value: 'Years', position: 'insideBottomRight', offset: -5 }} />
+                      <XAxis dataKey="year" />
                       <YAxis tickFormatter={(value) => `€${(value / 1000).toFixed(0)}k`} />
                       <CartesianGrid strokeDasharray="3 3" vertical={false} />
                       <Tooltip formatter={(value: number) => `€${value.toLocaleString()}`} />
                       <Legend />
-                      <Area type="monotone" dataKey="grossValue" stroke="#94a3b8" strokeDasharray="5 5" fill="url(#colorGross)" name="Gross (Pre-Tax)" />
+                      <Area type="monotone" dataKey="grossValue" stroke="#94a3b8" strokeDasharray="5 5" fillOpacity={0} name="Gross (Pre-Tax)" />
                       <Area type="monotone" dataKey="netValue" stroke="#10b981" fillOpacity={1} fill="url(#colorNet)" name="Net Wealth (Post-Tax)" />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
              </Card>
-
-             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-               <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100">
-                 <p className="text-emerald-700 text-sm font-medium">Projected Net Wealth</p>
-                 <p className="text-2xl font-bold text-emerald-900 mt-1">€{finalMetrics.netValue.toLocaleString()}</p>
-               </div>
-               <div className="bg-orange-50 p-4 rounded-xl border border-orange-100">
-                 <p className="text-orange-700 text-sm font-medium">Estimated Tax Liability</p>
-                 <p className="text-2xl font-bold text-orange-900 mt-1">€{totalTaxLiability.toLocaleString()}</p>
-                 <p className="text-xs text-orange-600 mt-1">Payable on redemption</p>
-               </div>
-               <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
-                 <p className="text-blue-700 text-sm font-medium">Real Net Gains</p>
-                 <p className="text-2xl font-bold text-blue-900 mt-1">€{totalGains.toLocaleString()}</p>
-                 <p className="text-xs text-blue-600 mt-1">After principal, fees & tax</p>
-               </div>
-             </div>
           </div>
         </div>
       ) : (
         <div className="text-center py-12 bg-slate-50 rounded-xl border-2 border-dashed border-slate-200">
            <Briefcase className="mx-auto text-slate-300 mb-4" size={48} />
            <p className="text-slate-500 font-medium">No assets added yet.</p>
-           <p className="text-slate-400 text-sm mt-1">Add Mutual Funds or ETFs to simulate your portfolio.</p>
            <button 
             onClick={() => setIsAdding(true)}
             className="mt-4 text-primary-600 hover:text-primary-800 font-medium"

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Expense, InvestmentState, SavingsGoal, FIREState, PortfolioAsset, IncomeState, Stock } from '../types';
+import { Expense, InvestmentState, SavingsGoal, FIREState, PortfolioAsset, IncomeState, Stock, NetWorthState } from '../types';
 import { getFinancialAdvice } from '../services/geminiService';
 import { Card } from './ui/Card';
 import { Sparkles, Bot, AlertCircle } from 'lucide-react';
@@ -13,9 +13,10 @@ interface AIAdvisorProps {
   portfolio: PortfolioAsset[];
   stocks: Stock[];
   income: IncomeState;
+  netWorthData: NetWorthState;
 }
 
-export const AIAdvisor: React.FC<AIAdvisorProps> = ({ expenses, investment, goal, fire, portfolio, stocks, income }) => {
+export const AIAdvisor: React.FC<AIAdvisorProps> = ({ expenses, investment, goal, fire, portfolio, stocks, income, netWorthData }) => {
   const [advice, setAdvice] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
@@ -24,7 +25,7 @@ export const AIAdvisor: React.FC<AIAdvisorProps> = ({ expenses, investment, goal
     setLoading(true);
     setError(false);
     try {
-      const result = await getFinancialAdvice(expenses, investment, goal, fire, portfolio, stocks, income);
+      const result = await getFinancialAdvice(expenses, investment, goal, fire, portfolio, stocks, income, netWorthData);
       setAdvice(result);
     } catch (e) {
       setError(true);
@@ -59,7 +60,7 @@ export const AIAdvisor: React.FC<AIAdvisorProps> = ({ expenses, investment, goal
           </div>
           <h3 className="text-lg font-semibold text-slate-900 mb-2">Ready to Analyze</h3>
           <p className="text-slate-500 max-w-md mb-6">
-            Review your expenses, investment plan, and savings goal, then let our AI provide actionable tips to optimize your finances.
+            Review your expenses, investments, gold holdings, and loans, then let our AI provide actionable tips to optimize your finances.
           </p>
           <button
             onClick={handleAnalyze}

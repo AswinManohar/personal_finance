@@ -3,6 +3,8 @@ export interface Expense {
   name: string;
   amount: number;
   category: ExpenseCategory;
+  isRecurring: boolean;
+  date: string; // ISO date string
 }
 
 export enum ExpenseCategory {
@@ -32,6 +34,25 @@ export interface SavingsGoal {
   currentSavings: number;
 }
 
+export interface NetWorthState {
+  goldInvestment: number;
+  remainingLoan: number;
+  monthlyRecurringSavings: number;
+  accumulatedSavings: number;
+}
+
+export interface SavingsHistoryRecord {
+  id: string;
+  created_at: string;
+  total_assets: number;
+  total_liabilities: number;
+  net_worth: number;
+  savings_amount: number;
+  investment_amount: number;
+  gold_amount: number;
+  stock_amount: number;
+}
+
 export interface FIREState {
   currentAge: number;
   annualExpenses: number;
@@ -42,6 +63,7 @@ export interface FIREState {
 }
 
 export type AssetType = 'MUTUAL_FUND_INDIA' | 'ETF_GLOBAL' | 'OTHER';
+export type InvestmentFrequency = 'One-time' | 'Monthly' | 'Bi-monthly';
 
 export interface PortfolioAsset {
   id: string;
@@ -52,6 +74,7 @@ export interface PortfolioAsset {
   expectedReturn: number; // %
   expenseRatio: number; // % TER
   taxRate: number; // % on gains
+  frequency: InvestmentFrequency;
 }
 
 export interface Stock {
@@ -60,6 +83,7 @@ export interface Stock {
   quantity: number;
   buyPrice: number;
   currentPrice?: number;
+  frequency: InvestmentFrequency;
 }
 
 export interface CalculationResult {
@@ -68,9 +92,9 @@ export interface CalculationResult {
   value: number;
 }
 
-export interface GoogleSheetsState {
-  spreadsheetId: string;
+export interface SupabaseSyncState {
+  syncKey: string;
   lastSynced?: string;
 }
 
-export type ActiveTab = 'expenses' | 'investment' | 'savings' | 'fire' | 'portfolio' | 'stocks' | 'advisor' | 'data';
+export type ActiveTab = 'expenses' | 'savings' | 'investment' | 'networth' | 'fire' | 'portfolio' | 'stocks' | 'advisor' | 'data';

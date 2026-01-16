@@ -7,15 +7,20 @@ import { Flame, TrendingUp, Calculator } from 'lucide-react';
 interface FIRECalculatorProps {
   state: FIREState;
   setState: React.Dispatch<React.SetStateAction<FIREState>>;
+  onSync?: (overrides?: any) => Promise<void>;
 }
 
-export const FIRECalculator: React.FC<FIRECalculatorProps> = ({ state, setState }) => {
+export const FIRECalculator: React.FC<FIRECalculatorProps> = ({ state, setState, onSync }) => {
   const handleChange = (field: keyof FIREState, value: string) => {
     const numValue = parseFloat(value);
-    setState(prev => ({
-      ...prev,
+    const newState = {
+      ...state,
       [field]: isNaN(numValue) ? 0 : numValue
-    }));
+    };
+    setState(newState);
+    if (onSync) {
+      onSync({ fire: newState });
+    }
   };
 
   const { fireNumber, projection, yearsToFire, ageAtFire } = useMemo(() => {
@@ -28,7 +33,6 @@ export const FIRECalculator: React.FC<FIRECalculatorProps> = ({ state, setState 
     let yearsPassed = 0;
     let reached = false;
 
-    // Project for up to 60 years or until reasonable cap
     while (yearsPassed < 60) {
       projection.push({
         year,
@@ -59,7 +63,6 @@ export const FIRECalculator: React.FC<FIRECalculatorProps> = ({ state, setState 
 
   return (
     <div className="space-y-6">
-      {/* Top Section: Metrics */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="bg-gradient-to-br from-indigo-900 to-slate-900 text-white lg:col-span-1">
           <div className="flex items-center gap-2 mb-6">
@@ -99,7 +102,7 @@ export const FIRECalculator: React.FC<FIRECalculatorProps> = ({ state, setState 
                 type="number"
                 value={state.currentAge}
                 onChange={(e) => handleChange('currentAge', e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                className="w-full px-3 py-2 bg-white text-black border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
               />
             </div>
             <div>
@@ -108,7 +111,7 @@ export const FIRECalculator: React.FC<FIRECalculatorProps> = ({ state, setState 
                 type="number"
                 value={state.annualExpenses}
                 onChange={(e) => handleChange('annualExpenses', e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                className="w-full px-3 py-2 bg-white text-black border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
               />
             </div>
             <div>
@@ -117,7 +120,7 @@ export const FIRECalculator: React.FC<FIRECalculatorProps> = ({ state, setState 
                 type="number"
                 value={state.currentNetWorth}
                 onChange={(e) => handleChange('currentNetWorth', e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                className="w-full px-3 py-2 bg-white text-black border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
               />
             </div>
             <div>
@@ -126,7 +129,7 @@ export const FIRECalculator: React.FC<FIRECalculatorProps> = ({ state, setState 
                 type="number"
                 value={state.annualSavings}
                 onChange={(e) => handleChange('annualSavings', e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                className="w-full px-3 py-2 bg-white text-black border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
               />
             </div>
             <div>
@@ -135,7 +138,7 @@ export const FIRECalculator: React.FC<FIRECalculatorProps> = ({ state, setState 
                 type="number"
                 value={state.annualReturn}
                 onChange={(e) => handleChange('annualReturn', e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                className="w-full px-3 py-2 bg-white text-black border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
               />
             </div>
             <div>
@@ -145,14 +148,13 @@ export const FIRECalculator: React.FC<FIRECalculatorProps> = ({ state, setState 
                 value={state.withdrawalRate}
                 step="0.1"
                 onChange={(e) => handleChange('withdrawalRate', e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                className="w-full px-3 py-2 bg-white text-black border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
               />
             </div>
           </div>
         </Card>
       </div>
 
-      {/* Charts Section */}
       <Card title="Net Worth Projection">
         <div className="h-[300px] w-full">
           <ResponsiveContainer width="100%" height="100%">
@@ -177,7 +179,6 @@ export const FIRECalculator: React.FC<FIRECalculatorProps> = ({ state, setState 
         </div>
       </Card>
 
-      {/* Spreadsheet View */}
       <Card title="Detailed Projection (Spreadsheet View)">
         <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
           <table className="min-w-full text-sm text-left">
@@ -192,7 +193,6 @@ export const FIRECalculator: React.FC<FIRECalculatorProps> = ({ state, setState 
             </thead>
             <tbody className="divide-y divide-slate-100">
               {projection.map((row) => {
-                const growth = Math.round((row.balance - state.annualSavings) - (row.balance / (1 + state.annualReturn/100))); // Rough estimate for display
                 return (
                   <tr key={row.year} className={`hover:bg-slate-50 transition-colors ${row.isReached ? 'bg-emerald-50/50' : ''}`}>
                     <td className="px-6 py-3 text-slate-600">{row.year}</td>
