@@ -13,9 +13,9 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
-    persistSession: false,
-    autoRefreshToken: false,
-    detectSessionInUrl: false
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true
   }
 });
 
@@ -23,7 +23,7 @@ export const isNetworkError = (error: any): boolean => {
   if (!error) return false;
   const msg = (error.message || String(error)).toLowerCase();
   return (
-    msg.includes('failed to fetch') || 
+    msg.includes('failed to fetch') ||
     msg.includes('networkerror') ||
     msg.includes('connection') ||
     msg.includes('load failed') ||
@@ -128,7 +128,7 @@ export const pushToCloud = async (userKey: string, payload: any) => {
     try {
       // Step A: Remove existing expenses for this user to ensure clean state
       await supabase.from('user_expenses').delete().eq('user_key', userKey);
-      
+
       // Step B: Insert new expenses if any exist
       if (expenses.length > 0) {
         // MATCHING SCHEMA: user_key, name, amount, category, is_recurring
@@ -206,5 +206,32 @@ export const pullFromCloud = async (userKey: string) => {
   } catch (err) {
     logError("pullFromCloud", err);
     throw err;
+  }
+};
+
+export const signInWithGoogle = async () => {
+  try {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin
+      }
+    });
+    if (error) throw error;
+    return { error: null };
+  } catch (err) {
+    logError("signInWithGoogle", err);
+    return { error: err };
+  }
+};
+
+export const signOut = async () => {
+  try {
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
+    return { error: null };
+  } catch (err) {
+    logError("signOut", err);
+    return { error: err };
   }
 };

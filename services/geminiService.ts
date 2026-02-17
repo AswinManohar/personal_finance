@@ -63,7 +63,7 @@ export const getFinancialAdvice = async (
   try {
     const totalExpenses = expenses.reduce((sum, item) => sum + item.amount, 0);
     const fireNumber = fire.annualExpenses / (fire.withdrawalRate / 100);
-    
+
     const portfolioTotalValue = portfolio.reduce((sum, p) => sum + p.currentValue, 0);
     const stocksTotalValue = stocks.reduce((sum, s) => sum + (s.quantity * (s.currentPrice || s.buyPrice)), 0);
 

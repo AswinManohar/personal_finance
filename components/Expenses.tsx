@@ -40,7 +40,7 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
 
     const updatedExpenses = [...expenses, newExpense].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     setExpenses(updatedExpenses);
-    
+
     // Immediate Cloud Sync
     if (onSync) {
       await onSync({ expenses: updatedExpenses });
@@ -75,7 +75,7 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
   const filteredExpenses = useMemo(() => {
     const now = new Date();
     const cutoff = new Date();
-    
+
     if (timeSpan === '7d') cutoff.setDate(now.getDate() - 7);
     else if (timeSpan === '30d') cutoff.setDate(now.getDate() - 30);
     else if (timeSpan === '90d') cutoff.setDate(now.getDate() - 90);
@@ -87,7 +87,7 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
   // 2. Daily Aggregation for Chart
   const dailyChartData = useMemo(() => {
     const dailyMap: Record<string, number> = {};
-    
+
     filteredExpenses.forEach(e => {
       const dateKey = e.date || new Date().toISOString().split('T')[0];
       dailyMap[dateKey] = (dailyMap[dateKey] || 0) + e.amount;
@@ -114,13 +114,13 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
   const totalExpenses = expenses.reduce((sum, item) => sum + item.amount, 0);
   const totalIncome = income.salaryMe + income.salaryPartner;
   const periodTotal = filteredExpenses.reduce((sum, item) => sum + item.amount, 0);
-  
+
   const today = new Date();
   const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
   const currentDay = today.getDate();
   const timeProgress = (currentDay / daysInMonth) * 100;
   const budgetProgress = totalIncome > 0 ? (totalExpenses / totalIncome) * 100 : 0;
-  
+
   const dailyAverage = totalExpenses / currentDay;
   const projectedMonthly = dailyAverage * daysInMonth;
 
@@ -147,21 +147,21 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
             <p className="text-xs text-slate-500">Visualization of spending vs. time elapsed this month.</p>
           </div>
           <div className="flex gap-4">
-             <div className="text-right">
-                <p className="text-[10px] font-bold text-slate-400 uppercase">Daily Burn</p>
-                <p className="text-sm font-bold text-slate-900">€{dailyAverage.toFixed(2)}</p>
-             </div>
-             <div className="text-right">
-                <p className="text-[10px] font-bold text-slate-400 uppercase">Projected</p>
-                <p className={`text-sm font-bold ${projectedMonthly > totalIncome ? 'text-red-600' : 'text-emerald-600'}`}>
-                  €{projectedMonthly.toFixed(0)}
-                </p>
-             </div>
+            <div className="text-right">
+              <p className="text-[10px] font-bold text-slate-400 uppercase">Daily Burn</p>
+              <p className="text-sm font-bold text-slate-900">€{dailyAverage.toFixed(2)}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-[10px] font-bold text-slate-400 uppercase">Projected</p>
+              <p className={`text-sm font-bold ${projectedMonthly > totalIncome ? 'text-red-600' : 'text-emerald-600'}`}>
+                €{projectedMonthly.toFixed(0)}
+              </p>
+            </div>
           </div>
         </div>
 
         <div className="relative h-12 bg-slate-100 rounded-2xl mb-8 overflow-hidden border border-slate-200 shadow-inner">
-          <div 
+          <div
             className={`h-full transition-all duration-1000 ease-out flex items-center justify-end pr-4 ${budgetProgress > timeProgress ? 'bg-amber-500' : 'bg-primary-500'}`}
             style={{ width: `${Math.min(100, budgetProgress)}%` }}
           >
@@ -170,13 +170,13 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
             )}
           </div>
 
-          <div 
+          <div
             className="absolute top-0 bottom-0 w-1 bg-slate-900/20 z-10 pointer-events-none"
             style={{ left: `${timeProgress}%` }}
           >
             <div className="absolute top-full mt-1 left-1/2 -translate-x-1/2 flex flex-col items-center">
-               <div className="w-0.5 h-2 bg-slate-400"></div>
-               <span className="text-[9px] font-bold text-slate-500 uppercase whitespace-nowrap">Today (Day {currentDay})</span>
+              <div className="w-0.5 h-2 bg-slate-400"></div>
+              <span className="text-[9px] font-bold text-slate-500 uppercase whitespace-nowrap">Today (Day {currentDay})</span>
             </div>
           </div>
         </div>
@@ -206,9 +206,8 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
               <button
                 key={span}
                 onClick={() => setTimeSpan(span)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
-                  timeSpan === span ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-                }`}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${timeSpan === span ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                  }`}
               >
                 {span === 'all' ? 'All' : `${span.slice(0, -1)} Days`}
               </button>
@@ -224,8 +223,8 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
               <p className="text-[10px] text-slate-400 mt-2 italic">*Reflects only visible filtered items</p>
             </div>
             <div className="p-4 bg-primary-50 rounded-2xl border border-primary-100">
-               <p className="text-[10px] font-bold text-primary-400 uppercase tracking-widest mb-1">Items in View</p>
-               <p className="text-xl font-black text-primary-700">{filteredExpenses.length} Transactions</p>
+              <p className="text-[10px] font-bold text-primary-400 uppercase tracking-widest mb-1">Items in View</p>
+              <p className="text-xl font-black text-primary-700">{filteredExpenses.length} Transactions</p>
             </div>
           </div>
 
@@ -235,11 +234,11 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={dailyChartData}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                    <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10}} />
-                    <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10}} tickFormatter={(val) => `€${val}`} />
-                    <RechartsTooltip 
-                      cursor={{fill: '#f8fafc'}}
-                      contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'}} 
+                    <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10 }} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10 }} tickFormatter={(val) => `€${val}`} />
+                    <RechartsTooltip
+                      cursor={{ fill: '#f8fafc' }}
+                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                       formatter={(val: number) => [`€${val.toFixed(2)}`, 'Spent']}
                     />
                     <Bar dataKey="amount" fill="#0ea5e9" radius={[4, 4, 0, 0]} />
@@ -266,7 +265,7 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
               </h3>
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-slate-100 px-2 py-1 rounded">Persistent</span>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4 mb-6">
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5 ml-1">My Salary (€)</label>
@@ -295,7 +294,7 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
                 </div>
               </div>
             </div>
-            
+
             <div className="flex items-center justify-between p-4 bg-primary-600 rounded-2xl text-white shadow-md shadow-primary-100">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-white/20 rounded-lg">
@@ -323,8 +322,8 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
                 <div className="col-span-2 md:col-span-1">
                   <label className="block text-sm font-medium text-slate-700 mb-1">Date</label>
                   <div className="relative">
-                     <Calendar className="absolute left-3 top-2.5 text-slate-400" size={16} />
-                     <input
+                    <Calendar className="absolute left-3 top-2.5 text-slate-400" size={16} />
+                    <input
                       type="date"
                       value={newDate}
                       onChange={(e) => setNewDate(e.target.value)}
@@ -358,7 +357,7 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
                   </select>
                 </div>
               </div>
-              
+
               <div className="flex items-center gap-2 py-2">
                 <input
                   type="checkbox"
@@ -392,18 +391,18 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
                   <p className="text-center italic">No transactions found for the selected period.</p>
                 </div>
               )}
-              
+
               {groupedExpenses.map(([date, items]) => (
                 <div key={date} className="space-y-2">
-                   <div className="flex items-center gap-4 py-1">
-                      <div className="h-px bg-slate-100 flex-1"></div>
-                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                         {new Date(date).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}
-                      </span>
-                      <div className="h-px bg-slate-100 flex-1"></div>
-                   </div>
-                   
-                   {items.map((expense) => (
+                  <div className="flex items-center gap-4 py-1">
+                    <div className="h-px bg-slate-100 flex-1"></div>
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                      {new Date(date).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}
+                    </span>
+                    <div className="h-px bg-slate-100 flex-1"></div>
+                  </div>
+
+                  {items.map((expense) => (
                     <div key={expense.id} className={`flex items-center justify-between p-3 rounded-xl group border transition-all ${expense.isRecurring ? 'bg-indigo-50/30 border-indigo-100' : 'bg-white border-slate-100 shadow-sm'}`}>
                       <div className="flex items-center gap-3">
                         <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${expense.isRecurring ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-500'}`}>

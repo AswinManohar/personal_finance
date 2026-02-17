@@ -12,11 +12,11 @@ import { DataManagement } from './components/DataManagement';
 import { SavingsDashboard } from './components/SavingsDashboard';
 import { Login } from './components/Login';
 import { LayoutDashboard, PieChart, TrendingUp, Sparkles, Flame, Briefcase, BarChart4, Cloud, RefreshCw, Wallet, Settings, Menu, X, Coins, LogOut, Key, CloudOff, AlertTriangle, WifiOff } from 'lucide-react';
-import { pullFromCloud, pushToCloud, isNetworkError } from './services/supabaseService';
+import { pullFromCloud, pushToCloud, isNetworkError, supabase, signOut } from './services/supabaseService';
 
 // Global Error Boundary
-class ErrorBoundary extends Component<{children: ReactNode}, {hasError: boolean, error: Error | null}> {
-  constructor(props: {children: ReactNode}) {
+class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean, error: Error | null }> {
+  constructor(props: { children: ReactNode }) {
     super(props);
     this.state = { hasError: false, error: null };
   }
@@ -35,8 +35,8 @@ class ErrorBoundary extends Component<{children: ReactNode}, {hasError: boolean,
           </div>
           <h1 className="text-2xl font-black text-slate-900 mb-2">Application Crash</h1>
           <p className="text-slate-500 max-w-md mb-8">FinanceFlow encountered a critical error.</p>
-          <button 
-            onClick={() => { window.localStorage.clear(); window.location.href = window.location.origin; }} 
+          <button
+            onClick={() => { window.localStorage.clear(); window.location.href = window.location.origin; }}
             className="bg-slate-900 text-white px-8 py-3 rounded-2xl font-bold hover:bg-slate-800 transition-all shadow-xl shadow-slate-200"
           >
             Reset App
@@ -62,7 +62,7 @@ function usePersistedState<T>(key: string, initialValue: T): [T, React.Dispatch<
   useEffect(() => {
     try {
       window.localStorage.setItem(key, JSON.stringify(state));
-    } catch (error) {}
+    } catch (error) { }
   }, [key, state]);
 
   return [state, setState];
@@ -74,6 +74,7 @@ const AppMain: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [uniqueSyncId, setUniqueSyncId] = usePersistedState<string | null>('unique_sync_id', null);
   const [isGuest, setIsGuest] = useState(() => window.localStorage.getItem('isGuest') === 'true');
+  const [userMetadata, setUserMetadata] = useState<any>(null);
 
   // Persisted State
   const [expenses, setExpenses] = usePersistedState<Expense[]>('expenses', []);
@@ -95,13 +96,13 @@ const AppMain: React.FC = () => {
 
   const performCloudPull = useCallback(async () => {
     if (!activeUserKey || pullInProgressRef.current) return;
-    
+
     pullInProgressRef.current = true;
     setSyncStatus('syncing');
-    
+
     try {
       const { data, updatedAt } = await pullFromCloud(activeUserKey);
-      
+
       if (data) {
         if (data.expenses) setExpenses(data.expenses);
         if (data.portfolio) setPortfolio(data.portfolio);
@@ -113,7 +114,7 @@ const AppMain: React.FC = () => {
         if (data.netWorthData) setNetWorthData(data.netWorthData);
         if (data.history) setHistory(data.history);
       }
-      
+
       setLastSyncedAt(updatedAt ? new Date(updatedAt).toLocaleString() : new Date().toLocaleString());
       setSyncStatus('success');
       setTimeout(() => setSyncStatus('idle'), 3000);
@@ -131,10 +132,10 @@ const AppMain: React.FC = () => {
 
   const triggerSync = useCallback(async (overrides?: any) => {
     if (!activeUserKey || syncInProgressRef.current) return;
-    
+
     syncInProgressRef.current = true;
     setSyncStatus('syncing');
-    
+
     try {
       const payload = {
         expenses, portfolio, stocks, income, investment, goal, fire, netWorthData,
@@ -160,12 +161,39 @@ const AppMain: React.FC = () => {
     if (activeUserKey) performCloudPull();
   }, [activeUserKey, performCloudPull]);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await signOut();
     setUniqueSyncId(null);
     setIsGuest(false);
     window.localStorage.clear();
     window.location.reload();
   };
+
+  useEffect(() => {
+    // Check active session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setUniqueSyncId(session.user.id);
+        setUserMetadata(session.user.user_metadata);
+        setIsGuest(false);
+      }
+    });
+
+    // Listen for changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setUniqueSyncId(session.user.id);
+        setUserMetadata(session.user.user_metadata);
+        setIsGuest(false);
+        window.localStorage.removeItem('isGuest');
+      } else if (_event === 'SIGNED_OUT') {
+        setUniqueSyncId(null);
+        setUserMetadata(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [setUniqueSyncId]);
 
   const handleEnterAsGuest = () => {
     setIsGuest(true);
@@ -187,7 +215,7 @@ const AppMain: React.FC = () => {
     const syncCallback = activeUserKey ? triggerSync : undefined;
     switch (activeTab) {
       case 'expenses': return <Expenses expenses={expenses} setExpenses={setExpenses} income={income} setIncome={setIncome} onSync={syncCallback} />;
-      case 'savings': return <SavingsDashboard portfolio={portfolio} stocks={stocks} netWorthData={netWorthData} setNetWorthData={setNetWorthData} onSync={syncCallback || (async () => {})} />;
+      case 'savings': return <SavingsDashboard portfolio={portfolio} stocks={stocks} netWorthData={netWorthData} setNetWorthData={setNetWorthData} onSync={syncCallback || (async () => { })} />;
       case 'investment': return <InvestmentCalculator investment={investment} setInvestment={setInvestment} onSync={syncCallback} />;
       case 'networth': return <NetWorth netWorthData={netWorthData} setNetWorthData={setNetWorthData} currentSavings={goal.currentSavings} stocks={stocks} portfolio={portfolio} syncKey={activeUserKey || undefined} history={history} setHistory={setHistory} onSync={syncCallback} />;
       case 'fire': return <FIRECalculator state={fire} setState={setFire} onSync={syncCallback} />;
@@ -195,16 +223,15 @@ const AppMain: React.FC = () => {
       case 'stocks': return <Stocks stocks={stocks} setStocks={setStocks} onSync={syncCallback} />;
       case 'advisor': return <AIAdvisor expenses={expenses} investment={investment} goal={goal} fire={fire} portfolio={portfolio} stocks={stocks} income={income} netWorthData={netWorthData} />;
       case 'data': return <DataManagement expenses={expenses} portfolio={portfolio} stocks={stocks} income={income} investment={investment} goal={goal} fire={fire} netWorthData={netWorthData} uniqueSyncId={uniqueSyncId} lastSyncedAt={lastSyncedAt} setExpenses={setExpenses} setPortfolio={setPortfolio} setStocks={setStocks} setIncome={setIncome} setInvestment={setInvestment} setGoal={setGoal} setFire={setFire} setNetWorthData={setNetWorthData} onLogout={handleLogout} onRetryPull={performCloudPull} />;
-      default: return <SavingsDashboard portfolio={portfolio} stocks={stocks} netWorthData={netWorthData} setNetWorthData={setNetWorthData} onSync={syncCallback || (async () => {})} />;
+      default: return <SavingsDashboard portfolio={portfolio} stocks={stocks} netWorthData={netWorthData} setNetWorthData={setNetWorthData} onSync={syncCallback || (async () => { })} />;
     }
   };
 
   const NavItem = ({ id, label, icon: Icon }: { id: ActiveTab; label: string; icon: any }) => (
     <button
       onClick={() => { setActiveTab(id); setIsMobileMenuOpen(false); }}
-      className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all w-full ${
-        activeTab === id ? 'bg-primary-50 text-primary-700 shadow-sm border border-primary-100' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
-      }`}
+      className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all w-full ${activeTab === id ? 'bg-primary-50 text-primary-700 shadow-sm border border-primary-100' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
+        }`}
     >
       <Icon size={20} />
       <span>{label}</span>
@@ -248,11 +275,17 @@ const AppMain: React.FC = () => {
         <div className="p-4 border-t border-slate-100 bg-slate-50/50 space-y-3">
           {activeUserKey ? (
             <div className="bg-white p-3 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 overflow-hidden shrink-0">
-                <Key size={18} className="text-indigo-600" />
-              </div>
+              {userMetadata?.avatar_url ? (
+                <img src={userMetadata.avatar_url} alt="User" className="w-10 h-10 rounded-full object-cover border border-slate-200" />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 overflow-hidden shrink-0">
+                  <Key size={18} className="text-indigo-600" />
+                </div>
+              )}
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-black text-slate-900 truncate">Sync ID User</p>
+                <p className="text-xs font-black text-slate-900 truncate" title={userMetadata?.full_name || userMetadata?.email || 'Sync ID User'}>
+                  {userMetadata?.full_name || userMetadata?.email || 'Sync ID User'}
+                </p>
                 <button onClick={handleLogout} className="text-[10px] font-bold text-primary-600 hover:text-primary-800 flex items-center gap-1 mt-0.5"><LogOut size={10} /> Exit</button>
               </div>
             </div>
