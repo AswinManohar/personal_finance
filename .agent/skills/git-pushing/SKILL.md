@@ -10,7 +10,8 @@ Stage all changes, create a conventional commit, and push to the remote branch.
 ## When to Use
 
 Automatically activate when the user:
-
+- Check thoroughly through the codebase for any API keys or sensitive data before pushing
+- if any API keys are found, ask the user to remove them or add .gitignore
 - Explicitly asks to push changes ("push this", "commit and push")
 - Mentions saving work to remote ("save to github", "push to remote")
 - Completes a feature and wants to share it
