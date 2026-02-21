@@ -28,7 +28,7 @@ RUN pip install --no-cache-dir uv
 COPY pyproject.toml .
 
 # Install dependencies using uv into the system python (since we are in a container)
-RUN uv pip install --system fastapi uvicorn python-dotenv fastapi-mcp fastmcp pypdf supabase
+RUN uv pip install --system fastapi uvicorn gunicorn python-dotenv fastapi-mcp fastmcp pypdf supabase
 
 # Copy the python application code
 COPY api/ ./api/
@@ -39,5 +39,7 @@ COPY --from=frontend-build /app/frontend/dist ./dist
 # Support running Python modules directly by explicitly including the working directory in the PYTHONPATH
 ENV PYTHONPATH=/app
 
-# Run the FastAPI server directly via Python to natively handle Cloud Run signals and ports
-CMD ["python", "api/main.py"]
+# Run the FastAPI server using Gunicorn as a process manager with Uvicorn workers
+# This is Google Cloud Run's official recommended architecture for Python deployments
+# We use `exec` here to ensure Gunicorn replaces the shell process and natively catches OS signals
+CMD ["sh", "-c", "exec gunicorn api.main:app --workers 1 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:${PORT:-8080}"]

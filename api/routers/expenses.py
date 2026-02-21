@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List
-from api.dependencies import supabase, get_current_user_id
+from api.dependencies import get_supabase_client, get_current_user_id
 from api.models import Expense, ExpenseCreate, ExpenseUpdate
 
 router = APIRouter(
@@ -15,6 +15,9 @@ async def read_expenses(user_id: str = Depends(get_current_user_id)):
     Get all expenses for the current user.
     """
     try:
+        supabase = get_supabase_client()
+        if not supabase:
+            raise HTTPException(status_code=500, detail="Supabase client is not configured")
         response = supabase.table("user_expenses").select("*").eq("user_key", user_id).execute()
         return response.data
     except Exception as e:
@@ -26,6 +29,9 @@ async def create_expense(expense: ExpenseCreate, user_id: str = Depends(get_curr
     Create a new expense for the current user.
     """
     try:
+        supabase = get_supabase_client()
+        if not supabase:
+            raise HTTPException(status_code=500, detail="Supabase client is not configured")
         # Prepare data matching the table schema
         data = expense.model_dump()
         data["user_key"] = user_id
@@ -52,6 +58,9 @@ async def update_expense(
     Update an existing expense for the current user.
     """
     try:
+        supabase = get_supabase_client()
+        if not supabase:
+            raise HTTPException(status_code=500, detail="Supabase client is not configured")
         updates = expense.model_dump(exclude_unset=True)
         if not updates:
             raise HTTPException(status_code=400, detail="No fields provided for update")
@@ -79,6 +88,9 @@ async def delete_expense(expense_id: str, user_id: str = Depends(get_current_use
     Delete an expense for the current user.
     """
     try:
+        supabase = get_supabase_client()
+        if not supabase:
+            raise HTTPException(status_code=500, detail="Supabase client is not configured")
         existing = (
             supabase.table("user_expenses")
             .select("id")

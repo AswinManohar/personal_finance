@@ -87,6 +87,16 @@ You must explicitly configure Uvicorn to trust forwarded traffic from the Cloud 
 uvicorn.run("api.main:app", host="0.0.0.0", port=port, proxy_headers=True, forwarded_allow_ips="*")
 ```
 
+### Cause D: Single-Process Deadlocks
+Uvicorn is an ultra-fast event loop, but it is **not** a process manager. When you run Uvicorn directly (either via `CMD uvicorn...` or `uvicorn.run(...)`), it runs as a single thread. 
+Google Cloud Run expects to send automated health checks the exact millisecond it assigns a port. If Uvicorn is busy initializing heavy imports or handling its own startup sequences, it blocks the main thread. Google's Load Balancer drops the health-check packet, assumes the container deadlocked on boot, and shuts it down entirely.
+
+**The Fix:**
+Google's official documentation for deploying Python to Cloud Run strictly mandates wrapping Uvicorn with **Gunicorn**. Gunicorn acts as a master process that instantly binds to the `$PORT` and responds to health checks, while it spins up separate Uvicorn "worker" processes in the background to safely boot your application logic.
+```dockerfile
+CMD ["sh", "-c", "exec gunicorn api.main:app --workers 1 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:${PORT:-8080}"]
+```
+
 ---
 
 ## 4. History of our Cloud Run Port Debugging
