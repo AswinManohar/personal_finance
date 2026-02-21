@@ -40,5 +40,5 @@ COPY --from=frontend-build /app/frontend/dist ./dist
 # Expose the port Cloud Run uses
 EXPOSE 8080
 
-# Run the FastAPI server using Uvicorn with the dynamically injected $PORT
-CMD uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-8080}
+# Run the FastAPI server natively using sh -c to allow $PORT evaluation while preserving OS signals
+CMD ["sh", "-c", "uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-8080}"]
