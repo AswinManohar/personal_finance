@@ -8,17 +8,16 @@ from typing import Optional
 # Load environment variables
 load_dotenv()
 
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+SUPABASE_URL = os.getenv("SUPABASE_URL", "")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
 PERSONAL_API_TOKEN = os.getenv("PERSONAL_API_TOKEN")
 PERSONAL_USER_ID = os.getenv("PERSONAL_USER_ID")
 
-if not SUPABASE_URL or not SUPABASE_KEY:
-    raise RuntimeError("SUPABASE_URL and SUPABASE_KEY must be set in .env")
-
-# Initialize Supabase client
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-
+# Initialize Supabase client lazily or handle missing keys
+if SUPABASE_URL and SUPABASE_KEY:
+    supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+else:
+    supabase = None
 # Security scheme
 security = HTTPBearer(auto_error=False)
 personal_token_header = APIKeyHeader(name="X-Personal-Token", auto_error=False)
@@ -33,6 +32,8 @@ def get_current_user_id(
     2) X-Personal-Token + PERSONAL_USER_ID (automation auth).
     """
     if credentials and credentials.credentials:
+        if not supabase:
+            raise HTTPException(status_code=500, detail="Supabase credentials are not configured on the server")
         token = credentials.credentials
         try:
             # Verify the token using Supabase Auth
