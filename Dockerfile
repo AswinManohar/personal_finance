@@ -16,8 +16,7 @@ FROM python:3.13-slim AS backend
 
 # Set environment variables for Python
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    PORT=8080
+    PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
@@ -37,8 +36,8 @@ COPY api/ ./api/
 # Copy the built React artifacts from Stage 1 into the backend container
 COPY --from=frontend-build /app/frontend/dist ./dist
 
-# Expose the port Cloud Run uses
-EXPOSE 8080
+# Support running Python modules directly by explicitly including the working directory in the PYTHONPATH
+ENV PYTHONPATH=/app
 
-# Run the FastAPI server natively using sh -c to allow $PORT evaluation while preserving OS signals
-CMD ["sh", "-c", "uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-8080}"]
+# Run the FastAPI server directly via Python to natively handle Cloud Run signals and ports
+CMD ["python", "api/main.py"]
