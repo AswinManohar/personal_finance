@@ -1,0 +1,13 @@
+node_modules/
+.venv*/
+.env
+dist/
+__pycache__/
+*.pyc
+logs/
+.git/
+.gitignore
+.dockerignore
+notebooks/
+.VSCode*/
+.vscode/

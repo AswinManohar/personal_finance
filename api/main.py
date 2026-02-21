@@ -23,8 +23,25 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(expenses.router)
+app.include_router(expenses.router, prefix="/api")
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+import os
 
-@app.get("/")
-async def root():
-    return {"message": "Welcome to FinanceFlow API"}
+# Serve static files from the React dist folder if it exists
+if os.path.isdir("dist"):
+    # Mount everything else to the static files directory
+    app.mount("/assets", StaticFiles(directory="dist/assets"), name="assets")
+
+    @app.get("/{full_path:path}")
+    async def serve_react_app(full_path: str):
+        # Allow serving standard files from dist if they exist
+        file_path = os.path.join("dist", full_path)
+        if os.path.isfile(file_path):
+            return FileResponse(file_path)
+        # Otherwise fallback to index.html for React Router
+        return FileResponse("dist/index.html")
+else:
+    @app.get("/")
+    async def root():
+        return {"message": "Welcome to FinanceFlow API. React dist not found."}
