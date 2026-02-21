@@ -24,7 +24,6 @@ WORKDIR /app
 # Install uv for fast python dependency management
 RUN pip install --no-cache-dir uv
 
-COPY .env .
 
 # Copy the dependency definitions
 COPY pyproject.toml .
