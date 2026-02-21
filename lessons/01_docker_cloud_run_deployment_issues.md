@@ -75,6 +75,18 @@ During the initial staging phase of a deployment, Cloud Run sometimes boots the 
 **The Fix:**
 Use "Lazy Initialization". Instead of crashing the whole server on boot, let the server start successfully, but raise HTTP 500 errors *only* when an incoming API request attempts to use the missing credentials. This allows the container to pass Google's startup health checks.
 
+### Cause C: Cloud Run Reverse Proxy / Load Balancer blocking health checks
+Even if your port is correctly bound natively, if you are running Uvicorn, Google Cloud Run places a reverse proxy load balancer in front of your container. This load balancer terminates SSL and forwards the HTTP traffic natively. 
+
+**The Trap:**
+When the Google Load Balancer sends its automated health checks, the headers identify it as forwarded traffic from a proxy. By default, **Uvicorn ignores forwarded proxy traffic for security reasons**. Since Uvicorn ignores the health checks, Google assumes the server is dead and shuts it down.
+
+**The Fix:**
+You must explicitly configure Uvicorn to trust forwarded traffic from the Cloud Run proxy network by adding `proxy_headers=True` and `forwarded_allow_ips="*"`.
+```python
+uvicorn.run("api.main:app", host="0.0.0.0", port=port, proxy_headers=True, forwarded_allow_ips="*")
+```
+
 ---
 
 ## 4. History of our Cloud Run Port Debugging
