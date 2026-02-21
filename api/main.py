@@ -50,5 +50,5 @@ if __name__ == "__main__":
     import uvicorn
     # Natively read the $PORT environment variable injected by Google Cloud Run
     port = int(os.environ.get("PORT", 8080))
-    # Run the Uvicorn server directly from Python
-    uvicorn.run("api.main:app", host="0.0.0.0", port=port)
+    # Run the Uvicorn server directly from Python with proxy headers enabled for Cloud Run
+    uvicorn.run("api.main:app", host="0.0.0.0", port=port, proxy_headers=True, forwarded_allow_ips="*")
