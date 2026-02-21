@@ -3,7 +3,7 @@ trigger: always_on
 ---
 
 ## System Skills
-**Path:** `../personal_finance/.agent/skills`
+**Path:** `/home/aswinmanohar/personal_finance/.agent/skills`
 
 > [!IMPORTANT]
 > **You have a specific set of skills** located in the directory above. 
