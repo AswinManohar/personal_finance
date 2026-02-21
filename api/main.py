@@ -28,6 +28,12 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import os
 
+# Health check route for Google Cloud Run Load Balancers
+@app.get("/health")
+async def health_check():
+    """Zero-dependency health check for Google Cloud Run Load Balancer"""
+    return {"status": "healthy"}
+
 # Serve static files from the React dist folder if it exists
 if os.path.isdir("dist"):
     # Mount everything else to the static files directory

@@ -97,6 +97,19 @@ Google's official documentation for deploying Python to Cloud Run strictly manda
 CMD ["sh", "-c", "exec gunicorn api.main:app --workers 1 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:${PORT:-8080}"]
 ```
 
+### Cause E: Greedy Catch-All Disk I/O Blocking
+If you are serving React static files from FastAPI using a greedy catch-all regex router (`@app.get("/{full_path:path}")`), Google's initial cold-start root ping (`/`) will fall into that regex.
+FastAPI will attempt to perform physical `os.path` directory checks on the disk to find a matching file (like `/dist/index.html`) to stream back. Fast disk I/O is notoriously slow during the first microsecond of a gVisor Sandbox cold start. If opening that HTML file from the container's disk takes too long, Google assumes the server is dead and violently shuts it down.
+
+**The Fix:**
+You must provide an explicit, in-memory, zero-dependency route that is evaluated *before* any greedy disk-bound regex catches the traffic:
+```python
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy"}
+```
+Additionally, ensure you explicitly configure Google Cloud Run's health-check path to explicitly hit `/health` instead of the default `/` so it bypasses the React router entirely during boot.
+
 ---
 
 ## 4. History of our Cloud Run Port Debugging
