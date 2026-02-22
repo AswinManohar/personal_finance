@@ -110,6 +110,22 @@ async def health_check():
 ```
 Additionally, ensure you explicitly configure Google Cloud Run's health-check path to explicitly hit `/health` instead of the default `/` so it bypasses the React router entirely during boot.
 
+### Cause F: Strict Dependency Managers Pruning Installations (The Final Culprit)
+Even if your reverse proxy, gunicorn, and port bindings are perfectly configured, **a silent crash during boot will result in the generic "failed to start and listen" timeout.**
+If you are using a modern, ultra-fast Python package manager like `uv` inside your Dockerfile, it is extremely strict about the project definition state.
+
+If your Dockerfile runs `RUN uv pip install fastapi uvicorn ...`, but those packages are *not* explicitly listed inside the `dependencies` array of your `pyproject.toml` file, `uv` will often silently execute the installation, but then aggressively prune or cache them out of the final container environment because they contradict the lockfile state.
+
+When Google Cloud Run attempts to execute the `CMD` python script, Python instantly fails with a `ModuleNotFoundError` because the frameworks are missing from the container, causing a silent crash before the port ever turns on.
+
+**The Fix:**
+You must codify *all* runtime dependencies (like `fastapi`, `uvicorn[standard]`, `gunicorn`, `supabase`) explicitly into the `dependencies = [...]` array of your `pyproject.toml` file. Your Dockerfile should then simply run an export and system-wide installation of the locked requirements, guaranteeing the C-extensions are permanently baked into the final image:
+```dockerfile
+# Export requirements cleanly from pyproject.toml's lock file
+RUN uv export --frozen --no-dev --format requirements-txt -o requirements.txt \
+    && uv pip install --system -r requirements.txt
+```
+
 ---
 
 ## 4. History of our Cloud Run Port Debugging
