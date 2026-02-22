@@ -46,8 +46,12 @@ if os.path.isdir(DIST_DIR):
         # Serve static files directly when they exist; otherwise hand off to SPA router.
         file_path = os.path.join(DIST_DIR, full_path)
         if os.path.isfile(file_path):
-            return FileResponse(file_path)
-        return FileResponse(os.path.join(DIST_DIR, "index.html"))
+            return FileResponse(file_path, headers={"Cache-Control": "public, max-age=31536000"})
+        # Never cache index.html so the browser always fetches the latest JS bundle hashes
+        return FileResponse(
+            os.path.join(DIST_DIR, "index.html"), 
+            headers={"Cache-Control": "no-cache, no-store, must-revalidate"}
+        )
 else:
     @app.get("/")
     async def root():
