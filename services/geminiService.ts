@@ -1,7 +1,23 @@
 import { GoogleGenAI } from "@google/genai";
 import { Expense, InvestmentState, SavingsGoal, FIREState, PortfolioAsset, IncomeState, Stock, NetWorthState } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Initialize lazily so the entire React app doesn't crash on boot if the API key is missing during Cloud Build
+let aiClient: GoogleGenAI | null = null;
+const getAIClient = () => {
+  if (aiClient) return aiClient;
+  try {
+    const apiKey = process.env.API_KEY;
+    if (!apiKey || apiKey === "undefined") {
+      console.warn("Gemini API key is missing. AI features will be disabled.");
+      return null;
+    }
+    aiClient = new GoogleGenAI({ apiKey: apiKey as string });
+    return aiClient;
+  } catch (e) {
+    console.error("Failed to initialize Gemini Client:", e);
+    return null;
+  }
+};
 
 export interface StockPriceResult {
   prices: Record<string, number>;
@@ -20,6 +36,9 @@ export const getStockPrices = async (symbols: string[]): Promise<StockPriceResul
   `;
 
   try {
+    const ai = getAIClient();
+    if (!ai) return { prices: {} };
+
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: prompt,
@@ -99,6 +118,9 @@ export const getFinancialAdvice = async (
       If my net worth is negative due to loans, suggest a debt payoff strategy. 
       Check for diversification and suggest improvements. Format the response in Markdown.
     `;
+
+    const ai = getAIClient();
+    if (!ai) return "AI services are currently offline because the API key is not configured.";
 
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
