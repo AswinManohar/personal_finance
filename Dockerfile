@@ -24,11 +24,13 @@ WORKDIR /app
 RUN pip install --no-cache-dir uv
 
 
-# Copy the dependency definitions
-COPY pyproject.toml .
+# Copy dependency definitions/lockfile for reproducible installs
+COPY pyproject.toml uv.lock ./
 
-# Install dependencies using uv into the system python (since we are in a container)
-RUN uv pip install --system fastapi uvicorn gunicorn python-dotenv fastapi-mcp fastmcp pypdf supabase
+# Install dependencies using uv and the lockfile
+RUN uv export --frozen --no-dev --format requirements-txt -o requirements.txt \
+    && uv pip install --system -r requirements.txt \
+    && python -c "import fastapi, uvicorn, gunicorn, dotenv, supabase"
 
 # Copy the python application code
 COPY api/ ./api/
