@@ -7,7 +7,6 @@ import { NetWorth } from './components/NetWorth';
 import { FIRECalculator } from './components/FIRECalculator';
 import { Portfolio } from './components/Portfolio';
 import { Stocks } from './components/Stocks';
-import { AIAdvisor } from './components/AIAdvisor';
 import { DataManagement } from './components/DataManagement';
 import { SavingsDashboard } from './components/SavingsDashboard';
 import { Login } from './components/Login';
@@ -221,7 +220,6 @@ const AppMain: React.FC = () => {
       case 'fire': return <FIRECalculator state={fire} setState={setFire} onSync={syncCallback} />;
       case 'portfolio': return <Portfolio assets={portfolio} setAssets={setPortfolio} onSync={syncCallback} />;
       case 'stocks': return <Stocks stocks={stocks} setStocks={setStocks} onSync={syncCallback} />;
-      case 'advisor': return <AIAdvisor expenses={expenses} investment={investment} goal={goal} fire={fire} portfolio={portfolio} stocks={stocks} income={income} netWorthData={netWorthData} />;
       case 'data': return <DataManagement expenses={expenses} portfolio={portfolio} stocks={stocks} income={income} investment={investment} goal={goal} fire={fire} netWorthData={netWorthData} uniqueSyncId={uniqueSyncId} lastSyncedAt={lastSyncedAt} setExpenses={setExpenses} setPortfolio={setPortfolio} setStocks={setStocks} setIncome={setIncome} setInvestment={setInvestment} setGoal={setGoal} setFire={setFire} setNetWorthData={setNetWorthData} onLogout={handleLogout} onRetryPull={performCloudPull} />;
       default: return <SavingsDashboard portfolio={portfolio} stocks={stocks} netWorthData={netWorthData} setNetWorthData={setNetWorthData} onSync={syncCallback || (async () => { })} />;
     }
@@ -266,9 +264,8 @@ const AppMain: React.FC = () => {
           <NavItem id="stocks" label="Stocks" icon={BarChart4} />
           <NavItem id="portfolio" label="Funds & ETFs" icon={Briefcase} />
           <NavItem id="investment" label="Growth Sim" icon={TrendingUp} />
-          <p className="px-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-8 mb-2">Planning & AI</p>
+          <p className="px-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-8 mb-2">Planning & Settings</p>
           <NavItem id="fire" label="FIRE Analysis" icon={Flame} />
-          <NavItem id="advisor" label="AI Advisor" icon={Sparkles} />
           <NavItem id="data" label="Settings" icon={Settings} />
         </nav>
 

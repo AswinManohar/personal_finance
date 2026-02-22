@@ -97,4 +97,4 @@ export interface SupabaseSyncState {
   lastSynced?: string;
 }
 
-export type ActiveTab = 'expenses' | 'savings' | 'investment' | 'networth' | 'fire' | 'portfolio' | 'stocks' | 'advisor' | 'data';
+export type ActiveTab = 'expenses' | 'savings' | 'investment' | 'networth' | 'fire' | 'portfolio' | 'stocks' | 'data';
