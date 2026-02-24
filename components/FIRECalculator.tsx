@@ -26,7 +26,7 @@ export const FIRECalculator: React.FC<FIRECalculatorProps> = ({ state, setState,
   const { fireNumber, projection, yearsToFire, ageAtFire } = useMemo(() => {
     const fireNumber = state.annualExpenses / (state.withdrawalRate / 100);
     const projection = [];
-    
+
     let currentBalance = state.currentNetWorth;
     let age = state.currentAge;
     let year = new Date().getFullYear();
@@ -48,7 +48,7 @@ export const FIRECalculator: React.FC<FIRECalculatorProps> = ({ state, setState,
 
       const growth = currentBalance * (state.annualReturn / 100);
       currentBalance = currentBalance + growth + state.annualSavings;
-      
+
       age++;
       year++;
       yearsPassed++;
@@ -64,150 +64,153 @@ export const FIRECalculator: React.FC<FIRECalculatorProps> = ({ state, setState,
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="bg-gradient-to-br from-indigo-900 to-slate-900 text-white lg:col-span-1">
-          <div className="flex items-center gap-2 mb-6">
-            <div className="p-2 bg-indigo-500/20 rounded-lg">
-              <Flame className="text-orange-400" size={24} />
-            </div>
-            <h3 className="font-semibold text-lg">FIRE Summary</h3>
+        <Card className="border border-zinc-200 dark:border-zinc-900 bg-metric-gradient p-6 lg:col-span-1">
+          <div className="flex items-center gap-2 mb-8 border-b border-zinc-200 dark:border-zinc-900 pb-4">
+            <Flame className="text-black dark:text-white" size={16} />
+            <h3 className="font-bold text-[10px] text-zinc-500 uppercase tracking-widest">FIRE Summary</h3>
           </div>
-          
-          <div className="space-y-6">
+
+          <div className="space-y-8">
             <div>
-              <p className="text-indigo-200 text-sm font-medium uppercase tracking-wide">Target FIRE Number</p>
-              <p className="text-3xl font-bold text-white mt-1">€{fireNumber.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
-              <p className="text-xs text-indigo-300 mt-1">
-                Based on {(state.withdrawalRate).toFixed(1)}% withdrawal rate
+              <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">Target FIRE Number</p>
+              <p className="text-4xl font-bold text-black dark:text-white tracking-tighter">€{fireNumber.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+              <p className="text-[9px] font-bold text-zinc-600 uppercase tracking-widest mt-2 border border-zinc-200 dark:border-zinc-900 inline-block px-2 py-1">
+                {(state.withdrawalRate).toFixed(1)}% withdrawal rate
               </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 border-t border-indigo-500/30 pt-4">
+            <div className="grid grid-cols-2 gap-6 border-t border-zinc-200 dark:border-zinc-900 pt-6">
               <div>
-                <p className="text-indigo-200 text-sm">Years to FI</p>
-                <p className="text-2xl font-bold text-white">{yearsToFire}</p>
+                <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">Years to FI</p>
+                <p className="text-2xl font-bold text-black dark:text-white tracking-tighter">{yearsToFire}</p>
               </div>
               <div>
-                <p className="text-indigo-200 text-sm">Age at FI</p>
-                <p className="text-2xl font-bold text-emerald-400">{ageAtFire}</p>
+                <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">Age at FI</p>
+                <p className="text-2xl font-bold text-zinc-700 dark:text-zinc-300 tracking-tighter">{ageAtFire}</p>
               </div>
             </div>
           </div>
         </Card>
 
-        <Card title="Input Parameters" className="lg:col-span-2">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Current Age</label>
+        <Card title="Input Parameters" className="lg:col-span-2 border border-zinc-200 dark:border-zinc-900 bg-metric-gradient p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="border-b border-zinc-300 dark:border-zinc-800 focus-within:border-black dark:border-white transition-colors">
+              <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">Current Age</label>
               <input
                 type="number"
                 value={state.currentAge}
                 onChange={(e) => handleChange('currentAge', e.target.value)}
-                className="w-full px-3 py-2 bg-white text-black border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                className="w-full py-2 bg-transparent text-black dark:text-white font-bold outline-none uppercase tracking-widest text-sm"
               />
             </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Annual Expenses (€)</label>
-              <input
-                type="number"
-                value={state.annualExpenses}
-                onChange={(e) => handleChange('annualExpenses', e.target.value)}
-                className="w-full px-3 py-2 bg-white text-black border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-              />
+            <div className="border-b border-zinc-300 dark:border-zinc-800 focus-within:border-black dark:border-white transition-colors">
+              <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">Annual Expenses (€)</label>
+              <div className="relative">
+                <span className="absolute left-0 top-2 text-zinc-600">€</span>
+                <input
+                  type="number"
+                  value={state.annualExpenses}
+                  onChange={(e) => handleChange('annualExpenses', e.target.value)}
+                  className="w-full pl-4 pr-0 py-2 bg-transparent text-black dark:text-white font-bold outline-none uppercase tracking-widest text-sm"
+                />
+              </div>
             </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Current Net Worth (€)</label>
-              <input
-                type="number"
-                value={state.currentNetWorth}
-                onChange={(e) => handleChange('currentNetWorth', e.target.value)}
-                className="w-full px-3 py-2 bg-white text-black border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-              />
+            <div className="border-b border-zinc-300 dark:border-zinc-800 focus-within:border-black dark:border-white transition-colors">
+              <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">Current Net Worth (€)</label>
+              <div className="relative">
+                <span className="absolute left-0 top-2 text-zinc-600">€</span>
+                <input
+                  type="number"
+                  value={state.currentNetWorth}
+                  onChange={(e) => handleChange('currentNetWorth', e.target.value)}
+                  className="w-full pl-4 pr-0 py-2 bg-transparent text-black dark:text-white font-bold outline-none uppercase tracking-widest text-sm"
+                />
+              </div>
             </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Annual Savings (€)</label>
-              <input
-                type="number"
-                value={state.annualSavings}
-                onChange={(e) => handleChange('annualSavings', e.target.value)}
-                className="w-full px-3 py-2 bg-white text-black border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-              />
+            <div className="border-b border-zinc-300 dark:border-zinc-800 focus-within:border-black dark:border-white transition-colors">
+              <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">Annual Savings (€)</label>
+              <div className="relative">
+                <span className="absolute left-0 top-2 text-zinc-600">€</span>
+                <input
+                  type="number"
+                  value={state.annualSavings}
+                  onChange={(e) => handleChange('annualSavings', e.target.value)}
+                  className="w-full pl-4 pr-0 py-2 bg-transparent text-black dark:text-white font-bold outline-none uppercase tracking-widest text-sm"
+                />
+              </div>
             </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Annual Return (%)</label>
+            <div className="border-b border-zinc-300 dark:border-zinc-800 focus-within:border-black dark:border-white transition-colors">
+              <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">Annual Return (%)</label>
               <input
                 type="number"
                 value={state.annualReturn}
                 onChange={(e) => handleChange('annualReturn', e.target.value)}
-                className="w-full px-3 py-2 bg-white text-black border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                className="w-full py-2 bg-transparent text-black dark:text-white font-bold outline-none uppercase tracking-widest text-sm"
               />
             </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Withdrawal Rate (%)</label>
+            <div className="border-b border-zinc-300 dark:border-zinc-800 focus-within:border-black dark:border-white transition-colors">
+              <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">Withdrawal Rate (%)</label>
               <input
                 type="number"
                 value={state.withdrawalRate}
                 step="0.1"
                 onChange={(e) => handleChange('withdrawalRate', e.target.value)}
-                className="w-full px-3 py-2 bg-white text-black border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                className="w-full py-2 bg-transparent text-black dark:text-white font-bold outline-none uppercase tracking-widest text-sm"
               />
             </div>
           </div>
         </Card>
       </div>
 
-      <Card title="Net Worth Projection">
-        <div className="h-[300px] w-full">
+      <Card title="Net Worth Projection" className="border border-zinc-200 dark:border-zinc-900 bg-metric-gradient p-6">
+        <div className="h-[400px] w-full mt-4">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={projection} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-              <defs>
-                <linearGradient id="colorBalance" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#6366f1" stopOpacity={0.8}/>
-                  <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <XAxis dataKey="age" label={{ value: 'Age', position: 'insideBottomRight', offset: -5 }} />
-              <YAxis tickFormatter={(value) => `€${(value / 1000000).toFixed(1)}M`} />
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <Tooltip 
+              <XAxis dataKey="age" axisLine={false} tickLine={false} tick={{ fill: '#71717a', fontSize: 10, fontFamily: 'monospace' }} label={{ value: 'Age', position: 'insideBottomRight', offset: -5, fill: '#71717a', fontSize: 10, textAnchor: 'middle' }} />
+              <YAxis axisLine={false} tickLine={false} tick={{ fill: '#71717a', fontSize: 10, fontFamily: 'monospace' }} tickFormatter={(value) => `€${(value / 1000000).toFixed(1)}M`} />
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--chart-grid)" />
+              <Tooltip
                 formatter={(value: number) => [`€${value.toLocaleString()}`, 'Net Worth']}
                 labelFormatter={(label) => `Age ${label}`}
+                contentStyle={{ backgroundColor: 'var(--chart-bg)', border: '1px solid var(--chart-grid)', borderRadius: '0', color: 'var(--chart-text)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}
+                cursor={{ stroke: '#52525b', strokeWidth: 1 }}
               />
-              <ReferenceLine y={fireNumber} label="FIRE Target" stroke="#ef4444" strokeDasharray="3 3" />
-              <Area type="monotone" dataKey="balance" stroke="#6366f1" fillOpacity={1} fill="url(#colorBalance)" name="Net Worth" />
+              <ReferenceLine y={fireNumber} stroke="#71717a" strokeDasharray="3 3" />
+              <Area type="monotone" dataKey="balance" stroke="var(--chart-line)" strokeWidth={2} fillOpacity={0.05} fill="var(--chart-line)" name="Net Worth" />
             </AreaChart>
           </ResponsiveContainer>
         </div>
       </Card>
 
-      <Card title="Detailed Projection (Spreadsheet View)">
-        <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
-          <table className="min-w-full text-sm text-left">
-            <thead className="bg-slate-50 sticky top-0 z-10">
-              <tr>
-                <th className="px-6 py-3 font-semibold text-slate-700">Year</th>
-                <th className="px-6 py-3 font-semibold text-slate-700">Age</th>
-                <th className="px-6 py-3 font-semibold text-slate-700">Net Worth</th>
-                <th className="px-6 py-3 font-semibold text-slate-700">Growth (approx)</th>
-                <th className="px-6 py-3 font-semibold text-slate-700">Status</th>
+      <Card title="Detailed Flow (Spreadsheet View)" className="border border-zinc-200 dark:border-zinc-900 bg-metric-gradient p-6">
+        <div className="overflow-x-auto max-h-[400px] overflow-y-auto no-scrollbar">
+          <table className="w-full text-left border-collapse">
+            <thead className="sticky top-0 z-10 bg-metric-gradient">
+              <tr className="border-b border-zinc-200 dark:border-zinc-900">
+                <th className="pb-3 text-[10px] font-bold text-zinc-500 uppercase tracking-widest bg-metric-gradient">Year</th>
+                <th className="pb-3 text-[10px] font-bold text-zinc-500 uppercase tracking-widest bg-metric-gradient">Age</th>
+                <th className="pb-3 text-[10px] font-bold text-zinc-500 uppercase tracking-widest bg-metric-gradient text-right">Net Worth</th>
+                <th className="pb-3 text-[10px] font-bold text-zinc-500 uppercase tracking-widest bg-metric-gradient text-right">Growth (approx)</th>
+                <th className="pb-3 text-[10px] font-bold text-zinc-500 uppercase tracking-widest bg-metric-gradient text-right">Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-zinc-900">
               {projection.map((row) => {
                 return (
-                  <tr key={row.year} className={`hover:bg-slate-50 transition-colors ${row.isReached ? 'bg-emerald-50/50' : ''}`}>
-                    <td className="px-6 py-3 text-slate-600">{row.year}</td>
-                    <td className="px-6 py-3 text-slate-900 font-medium">{row.age}</td>
-                    <td className="px-6 py-3 text-slate-900 font-medium">€{row.balance.toLocaleString()}</td>
-                    <td className="px-6 py-3 text-slate-500">
-                       {row.age === state.currentAge ? '-' : `+€${(row.balance - (row.balance - state.annualSavings) / (1 + state.annualReturn/100)).toLocaleString(undefined, {maximumFractionDigits: 0})}`}
+                  <tr key={row.year} className={`group hover:bg-zinc-100 dark:bg-zinc-900/30 transition-colors`}>
+                    <td className="py-4 text-zinc-500 text-sm font-bold tracking-tighter">{row.year}</td>
+                    <td className="py-4 text-black dark:text-white font-bold tracking-tighter text-sm">{row.age}</td>
+                    <td className="py-4 text-black dark:text-white font-bold tracking-tighter text-sm text-right">€{row.balance.toLocaleString()}</td>
+                    <td className="py-4 text-zinc-600 dark:text-zinc-400 font-bold tracking-tighter text-sm text-right">
+                      {row.age === state.currentAge ? '-' : `+€${(row.balance - (row.balance - state.annualSavings) / (1 + state.annualReturn / 100)).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
                     </td>
-                    <td className="px-6 py-3">
+                    <td className="py-4 text-right">
                       {row.isReached ? (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
-                          FIRE Achieved
+                        <span className="inline-block px-2 py-1 text-[9px] font-bold uppercase tracking-widest bg-black dark:bg-white text-white dark:text-black">
+                          Target Met
                         </span>
                       ) : (
-                        <span className="text-slate-400 text-xs">Accumulating</span>
+                        <span className="text-zinc-600 text-[9px] font-bold uppercase tracking-widest">Accumulating</span>
                       )}
                     </td>
                   </tr>

@@ -11,9 +11,7 @@ interface ExpensesProps {
   setIncome: React.Dispatch<React.SetStateAction<IncomeState>>;
   onSync?: (overrides?: any) => Promise<void>;
 }
-
-const COLORS = ['#0ea5e9', '#22c55e', '#eab308', '#f97316', '#ef4444', '#a855f7'];
-
+const COLORS = ['#ef4444', '#f97316', '#f59e0b', '#10b981', '#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899'];
 type TimeSpan = '7d' | '30d' | '90d' | 'all';
 
 export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, income, setIncome, onSync }) => {
@@ -137,79 +135,116 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
 
   return (
     <div className="space-y-6">
-      <Card className="bg-white border-primary-100 overflow-visible relative">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-          <div>
-            <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-              <Clock className="text-primary-600" size={20} />
-              Monthly Budget Timeline
-            </h3>
-            <p className="text-xs text-slate-500">Visualization of spending vs. time elapsed this month.</p>
-          </div>
-          <div className="flex gap-4">
-            <div className="text-right">
-              <p className="text-[10px] font-bold text-slate-400 uppercase">Daily Burn</p>
-              <p className="text-sm font-bold text-slate-900">€{dailyAverage.toFixed(2)}</p>
-            </div>
-            <div className="text-right">
-              <p className="text-[10px] font-bold text-slate-400 uppercase">Projected</p>
-              <p className={`text-sm font-bold ${projectedMonthly > totalIncome ? 'text-red-600' : 'text-emerald-600'}`}>
-                €{projectedMonthly.toFixed(0)}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="relative h-12 bg-slate-100 rounded-2xl mb-8 overflow-hidden border border-slate-200 shadow-inner">
-          <div
-            className={`h-full transition-all duration-1000 ease-out flex items-center justify-end pr-4 ${budgetProgress > timeProgress ? 'bg-amber-500' : 'bg-primary-500'}`}
-            style={{ width: `${Math.min(100, budgetProgress)}%` }}
-          >
-            {budgetProgress > 10 && (
-              <span className="text-[10px] font-black text-white uppercase tracking-tighter">Spent {budgetProgress.toFixed(0)}%</span>
-            )}
-          </div>
-
-          <div
-            className="absolute top-0 bottom-0 w-1 bg-slate-900/20 z-10 pointer-events-none"
-            style={{ left: `${timeProgress}%` }}
-          >
-            <div className="absolute top-full mt-1 left-1/2 -translate-x-1/2 flex flex-col items-center">
-              <div className="w-0.5 h-2 bg-slate-400"></div>
-              <span className="text-[9px] font-bold text-slate-500 uppercase whitespace-nowrap">Today (Day {currentDay})</span>
-            </div>
-          </div>
-        </div>
-
-        {budgetProgress > timeProgress && (
-          <div className="flex items-center gap-2 p-3 bg-amber-50 rounded-xl border border-amber-100 text-amber-800 text-xs font-medium">
-            <TrendingDown size={14} />
-            Alert: You've spent {budgetProgress.toFixed(0)}% of your budget, but only {timeProgress.toFixed(0)}% of the month has passed.
-          </div>
-        )}
-      </Card>
-
-      <Card className="border-slate-200 shadow-sm overflow-visible">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-          <div className="flex items-center gap-2">
-            <div className="p-2 bg-primary-50 text-primary-600 rounded-lg">
-              <BarChart3 size={20} />
-            </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card className="overflow-visible h-full">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 border-b border-zinc-200 dark:border-zinc-900 pb-6">
             <div>
-              <h3 className="text-lg font-bold text-slate-900">Spending Trends</h3>
-              <p className="text-xs text-slate-500">Analyze your spending over specific periods.</p>
+              <h3 className="text-sm font-bold uppercase tracking-widest text-black dark:text-white">Monthly Budget Timeline</h3>
+              <p className="text-[10px] text-zinc-500 uppercase tracking-widest mt-2 border border-zinc-200 dark:border-zinc-900 inline-block px-2 py-1">Spending vs. Time</p>
+            </div>
+            <div className="flex gap-8">
+              <div className="text-right">
+                <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Daily Burn</p>
+                <p className="text-sm font-bold text-black dark:text-white">€{dailyAverage.toFixed(2)}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Projected</p>
+                <p className={`text-sm font-bold ${projectedMonthly > totalIncome ? 'text-red-500' : 'text-zinc-700 dark:text-zinc-300'}`}>
+                  €{projectedMonthly.toFixed(0)}
+                </p>
+              </div>
             </div>
           </div>
 
-          <div className="flex items-center bg-slate-100 p-1 rounded-xl">
+          <div className="relative h-4 bg-metric-gradient mb-8 overflow-hidden border border-zinc-200 dark:border-zinc-900">
+            <div
+              className={`h-full transition-all duration-1000 ease-out flex items-center justify-end pr-4 ${budgetProgress > timeProgress ? 'bg-red-500' : 'bg-black dark:bg-white'}`}
+              style={{ width: `${Math.min(100, budgetProgress)}%` }}
+            >
+            </div>
+
+            <div
+              className="absolute top-0 bottom-0 w-1 bg-zinc-500 z-10 pointer-events-none"
+              style={{ left: `${timeProgress}%` }}
+            >
+              <div className="absolute top-full mt-1 left-1/2 -translate-x-1/2 flex flex-col items-center">
+                <div className="w-0.5 h-2 bg-zinc-500"></div>
+                <span className="text-[9px] font-bold text-zinc-500 uppercase whitespace-nowrap">Day {currentDay}</span>
+              </div>
+            </div>
+          </div>
+
+          {budgetProgress > timeProgress && (
+            <div className="flex items-center gap-2 p-3 bg-metric-gradient border border-red-500 text-red-500 text-xs font-bold uppercase tracking-widest">
+              <TrendingDown size={14} />
+              Alert: Spent {budgetProgress.toFixed(0)}% budget vs {timeProgress.toFixed(0)}% elapsed.
+            </div>
+          )}
+        </Card>
+
+        <Card className="h-full flex flex-col">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 border-b border-zinc-200 dark:border-zinc-900 pb-6">
+            <div>
+              <h3 className="text-sm font-bold uppercase tracking-widest text-black dark:text-white">Allocation</h3>
+              <p className="text-[10px] text-transparent uppercase tracking-widest mt-2 border border-transparent inline-block px-2 py-1 select-none pointer-events-none">_</p>
+            </div>
+            <div className="flex gap-8 opacity-0 pointer-events-none">
+              <div className="text-right">
+                <p className="text-[10px] font-bold text-transparent uppercase tracking-widest">_</p>
+                <p className="text-sm font-bold text-transparent">_</p>
+              </div>
+            </div>
+          </div>
+          {chartData.length > 0 ? (
+            <div className="flex-1 w-full min-h-[250px] flex pb-4 items-center justify-center">
+              <ResponsiveContainer width="100%" height={260}>
+                <PieChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+                  <Pie
+                    data={chartData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={65}
+                    outerRadius={100}
+                    paddingAngle={2}
+                    dataKey="value"
+                    stroke="none"
+                  >
+                    {chartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <RechartsTooltip
+                    formatter={(value: number) => `€${value.toFixed(2)}`}
+                    contentStyle={{ backgroundColor: 'var(--chart-bg)', border: '1px solid var(--chart-grid)', borderRadius: '0', color: 'var(--chart-text)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}
+                    itemStyle={{ color: 'var(--chart-text)' }}
+                  />
+                  <Legend wrapperStyle={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.05em', paddingTop: '20px' }} iconType="square" />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center text-zinc-700">
+              <p className="text-[10px] font-bold uppercase tracking-widest">No data mapped</p>
+            </div>
+          )}
+        </Card>
+      </div>
+
+      <Card className="overflow-visible">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 border-b border-zinc-200 dark:border-zinc-900 pb-6">
+          <div>
+            <h3 className="text-sm font-bold uppercase tracking-widest text-black dark:text-white">Spending Trends</h3>
+          </div>
+
+          <div className="flex items-center border border-zinc-200 dark:border-zinc-900 p-1">
             {(['7d', '30d', '90d', 'all'] as TimeSpan[]).map((span) => (
               <button
                 key={span}
                 onClick={() => setTimeSpan(span)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${timeSpan === span ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                className={`px-4 py-1 text-[10px] font-bold uppercase tracking-widest transition-all ${timeSpan === span ? 'bg-black dark:bg-white text-white dark:text-black' : 'text-zinc-500 hover:text-black dark:hover:text-white'
                   }`}
               >
-                {span === 'all' ? 'All' : `${span.slice(0, -1)} Days`}
+                {span === 'all' ? 'All' : `${span.slice(0, -1)}D`}
               </button>
             ))}
           </div>
@@ -217,14 +252,12 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           <div className="lg:col-span-1 space-y-4">
-            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Period Spending</p>
-              <p className="text-3xl font-black text-slate-900">€{periodTotal.toLocaleString()}</p>
-              <p className="text-[10px] text-slate-400 mt-2 italic">*Reflects only visible filtered items</p>
+            <div className="p-6 border border-zinc-200 dark:border-zinc-900 bg-metric-gradient">
+              <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">Period Spending</p>
+              <p className="text-2xl font-bold text-black dark:text-white">€{periodTotal.toLocaleString()}</p>
             </div>
-            <div className="p-4 bg-primary-50 rounded-2xl border border-primary-100">
-              <p className="text-[10px] font-bold text-primary-400 uppercase tracking-widest mb-1">Items in View</p>
-              <p className="text-xl font-black text-primary-700">{filteredExpenses.length} Transactions</p>
+            <div className="p-6 border border-zinc-200 dark:border-zinc-900 bg-metric-gradient">
+              <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">{filteredExpenses.length} Transactions</p>
             </div>
           </div>
 
@@ -233,21 +266,20 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
               {dailyChartData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={dailyChartData}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                    <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10 }} />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10 }} tickFormatter={(val) => `€${val}`} />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--chart-grid)" />
+                    <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: '#71717a', fontSize: 10, fontFamily: 'monospace' }} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#71717a', fontSize: 10, fontFamily: 'monospace' }} tickFormatter={(val) => `€${val}`} />
                     <RechartsTooltip
-                      cursor={{ fill: '#f8fafc' }}
-                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                      cursor={{ fill: '#18181b' }}
+                      contentStyle={{ backgroundColor: 'var(--chart-bg)', border: '1px solid var(--chart-grid)', borderRadius: '0', color: 'var(--chart-text)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}
                       formatter={(val: number) => [`€${val.toFixed(2)}`, 'Spent']}
                     />
-                    <Bar dataKey="amount" fill="#0ea5e9" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="amount" fill="var(--chart-line)" />
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="h-full flex flex-col items-center justify-center text-slate-400 border-2 border-dashed border-slate-100 rounded-2xl bg-slate-50/50">
-                  <Filter size={32} className="opacity-20 mb-2" />
-                  <p className="text-sm font-medium">No data for this period</p>
+                <div className="h-full flex flex-col items-center justify-center text-zinc-700 border border-dashed border-zinc-300 dark:border-zinc-800 bg-metric-gradient">
+                  <p className="text-[10px] font-bold uppercase tracking-widest">No data for this period</p>
                 </div>
               )}
             </div>
@@ -257,174 +289,146 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="space-y-6">
-          <Card>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
-                <ShieldCheck className="text-primary-600" size={20} />
-                Monthly Income
-              </h3>
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-slate-100 px-2 py-1 rounded">Persistent</span>
-            </div>
-
+          <Card title="Monthly Income">
             <div className="grid grid-cols-2 gap-4 mb-6">
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5 ml-1">My Salary (€)</label>
-                <div className="relative">
-                  <div className="absolute left-3 top-2.5 text-slate-400">€</div>
+                <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">My Salary</label>
+                <div className="relative border-b border-zinc-300 dark:border-zinc-800 focus-within:border-black dark:border-white transition-colors">
+                  <div className="absolute left-0 top-2.5 text-zinc-600">€</div>
                   <input
                     type="number"
                     value={income.salaryMe || ''}
                     onChange={(e) => handleIncomeChange('salaryMe', e.target.value)}
                     placeholder="0.00"
-                    className="w-full pl-8 pr-3 py-2 bg-slate-50 text-black border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none font-bold"
+                    className="w-full pl-4 pr-0 py-2 bg-transparent text-black dark:text-white outline-none font-bold placeholder:text-zinc-800"
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5 ml-1">Partner (€)</label>
-                <div className="relative">
-                  <div className="absolute left-3 top-2.5 text-slate-400">€</div>
+                <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">Partner</label>
+                <div className="relative border-b border-zinc-300 dark:border-zinc-800 focus-within:border-black dark:border-white transition-colors">
+                  <div className="absolute left-0 top-2.5 text-zinc-600">€</div>
                   <input
                     type="number"
                     value={income.salaryPartner || ''}
                     onChange={(e) => handleIncomeChange('salaryPartner', e.target.value)}
                     placeholder="0.00"
-                    className="w-full pl-8 pr-3 py-2 bg-slate-50 text-black border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none font-bold"
+                    className="w-full pl-4 pr-0 py-2 bg-transparent text-black dark:text-white outline-none font-bold placeholder:text-zinc-800"
                   />
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center justify-between p-4 bg-primary-600 rounded-2xl text-white shadow-md shadow-primary-100">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-white/20 rounded-lg">
-                  <Wallet size={20} />
-                </div>
-                <span className="font-bold text-sm uppercase tracking-wide">Total Income</span>
-              </div>
-              <span className="font-black text-2xl">€{totalIncome.toLocaleString()}</span>
+            <div className="flex items-center justify-between p-6 border border-zinc-200 dark:border-zinc-900 bg-zinc-50 dark:bg-zinc-950">
+              <span className="font-bold text-[10px] text-zinc-500 uppercase tracking-widest">Total Income</span>
+              <span className="font-bold text-xl text-black dark:text-white">€{totalIncome.toLocaleString()}</span>
             </div>
           </Card>
 
           <Card title="Add Expense">
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2 md:col-span-1">
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Expense Name</label>
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 gap-6">
+                <div className="col-span-2 md:col-span-1 border-b border-zinc-300 dark:border-zinc-800 focus-within:border-black dark:border-white transition-colors">
                   <input
                     type="text"
                     value={newName}
                     onChange={(e) => setNewName(e.target.value)}
-                    placeholder="e.g., Grocery Run"
-                    className="w-full px-3 py-2 bg-white text-black border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                    placeholder="NAME"
+                    className="w-full py-2 bg-transparent text-black dark:text-white font-bold outline-none placeholder:text-zinc-600 uppercase tracking-widest text-xs"
                   />
                 </div>
-                <div className="col-span-2 md:col-span-1">
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Date</label>
-                  <div className="relative">
-                    <Calendar className="absolute left-3 top-2.5 text-slate-400" size={16} />
-                    <input
-                      type="date"
-                      value={newDate}
-                      onChange={(e) => setNewDate(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2 bg-white text-black border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
-                    />
-                  </div>
+                <div className="col-span-2 md:col-span-1 border-b border-zinc-300 dark:border-zinc-800 focus-within:border-black dark:border-white transition-colors relative">
+                  <input
+                    type="date"
+                    value={newDate}
+                    onChange={(e) => setNewDate(e.target.value)}
+                    className="w-full py-2 bg-transparent text-zinc-600 dark:text-zinc-400 font-bold outline-none uppercase tracking-widest text-xs"
+                  />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Amount (€)</label>
+              <div className="grid grid-cols-2 gap-6">
+                <div className="border-b border-zinc-300 dark:border-zinc-800 focus-within:border-black dark:border-white transition-colors flex items-center">
+                  <span className="text-zinc-600 mr-2">€</span>
                   <input
                     type="number"
                     value={newAmount}
                     onChange={(e) => setNewAmount(e.target.value)}
                     placeholder="0.00"
-                    className="w-full px-3 py-2 bg-white text-black border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                    className="w-full py-2 bg-transparent text-black dark:text-white font-bold outline-none placeholder:text-zinc-600 text-xs"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Category</label>
+                <div className="border-b border-zinc-300 dark:border-zinc-800 focus-within:border-black dark:border-white transition-colors">
                   <select
                     value={newCategory}
                     onChange={(e) => setNewCategory(e.target.value as ExpenseCategory)}
-                    className="w-full px-3 py-2 bg-white text-black border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                    className="w-full py-2 bg-transparent text-zinc-700 dark:text-zinc-300 outline-none uppercase tracking-widest text-xs appearance-none"
                   >
                     {Object.values(ExpenseCategory).map(cat => (
-                      <option key={cat} value={cat}>{cat}</option>
+                      <option key={cat} value={cat} className="bg-white dark:bg-black text-black dark:text-white">{cat}</option>
                     ))}
                   </select>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 py-2">
+              <div className="flex items-center gap-3 pt-2">
                 <input
                   type="checkbox"
                   id="recurring"
                   checked={newIsRecurring}
                   onChange={(e) => setNewIsRecurring(e.target.checked)}
-                  className="w-4 h-4 text-primary-600 border-slate-300 rounded focus:ring-primary-500"
+                  className="w-4 h-4 accent-white bg-transparent border-zinc-300 dark:border-zinc-800"
                 />
-                <label htmlFor="recurring" className="text-sm font-medium text-slate-700 flex items-center gap-1.5 cursor-pointer">
-                  <Repeat size={14} className={newIsRecurring ? 'text-primary-500' : 'text-slate-400'} />
-                  Mark as Recurring Expense
+                <label htmlFor="recurring" className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest cursor-pointer">
+                  Recurring Expense
                 </label>
               </div>
 
               <button
                 onClick={handleAdd}
-                className="w-full flex items-center justify-center gap-2 bg-primary-600 hover:bg-primary-700 text-white py-2.5 rounded-lg transition-colors font-bold shadow-sm"
+                className="w-full btn-pulse bg-black dark:bg-white text-white dark:text-black text-xs font-bold uppercase tracking-widest py-4 hover:bg-zinc-200 transition-colors"
               >
-                <Plus size={18} /> Add Expense
+                Add Transaction
               </button>
             </div>
           </Card>
         </div>
 
         <div className="space-y-6">
-          <Card title="Transaction History" className="min-h-[500px]">
-            <div className="space-y-6 max-h-[600px] overflow-y-auto pr-2 no-scrollbar">
+          <Card title="History" className="h-full min-h-[500px]">
+            <div className="space-y-6 h-full max-h-[600px] overflow-y-auto pr-2 no-scrollbar">
               {filteredExpenses.length === 0 && (
-                <div className="py-12 flex flex-col items-center justify-center text-slate-300">
-                  <Filter size={48} className="opacity-10 mb-2" />
-                  <p className="text-center italic">No transactions found for the selected period.</p>
+                <div className="py-12 flex flex-col items-center justify-center text-zinc-700">
+                  <p className="text-[10px] font-bold uppercase tracking-widest">No transactions found</p>
                 </div>
               )}
 
               {groupedExpenses.map(([date, items]) => (
-                <div key={date} className="space-y-2">
-                  <div className="flex items-center gap-4 py-1">
-                    <div className="h-px bg-slate-100 flex-1"></div>
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                <div key={date} className="space-y-3">
+                  <div className="border-b border-zinc-200 dark:border-zinc-900 pb-2">
+                    <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest">
                       {new Date(date).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}
                     </span>
-                    <div className="h-px bg-slate-100 flex-1"></div>
                   </div>
 
                   {items.map((expense) => (
-                    <div key={expense.id} className={`flex items-center justify-between p-3 rounded-xl group border transition-all ${expense.isRecurring ? 'bg-indigo-50/30 border-indigo-100' : 'bg-white border-slate-100 shadow-sm'}`}>
-                      <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${expense.isRecurring ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-500'}`}>
-                          {expense.isRecurring ? <Repeat size={18} /> : <Euro size={18} />}
+                    <div key={expense.id} className="flex flex-col md:flex-row md:items-center justify-between p-4 border border-zinc-200 dark:border-zinc-900 bg-zinc-50 dark:bg-zinc-950 gap-4 group hover:border-zinc-700 transition-colors">
+                      <div>
+                        <div className="flex items-center gap-3 mb-1">
+                          <p className="font-bold text-black dark:text-white uppercase tracking-widest text-xs">{expense.name}</p>
+                          {expense.isRecurring && (
+                            <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-100 dark:text-zinc-900 bg-black dark:bg-white px-1.5 py-0.5">Sub</span>
+                          )}
                         </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p className="font-bold text-slate-900 leading-none">{expense.name}</p>
-                            {expense.isRecurring && (
-                              <span className="text-[9px] font-bold uppercase text-indigo-600 bg-indigo-100 px-1.5 py-0.5 rounded leading-none">Recurring</span>
-                            )}
-                          </div>
-                          <p className="text-[10px] text-slate-400 uppercase tracking-wide mt-1">{expense.category}</p>
-                        </div>
+                        <p className="text-[10px] text-zinc-500 uppercase tracking-widest">{expense.category}</p>
                       </div>
-                      <div className="flex items-center gap-4">
-                        <span className="font-black text-slate-900">€{expense.amount.toFixed(2)}</span>
+                      <div className="flex items-center justify-between md:justify-end gap-6 w-full md:w-auto">
+                        <span className="font-bold text-black dark:text-white text-sm">€{expense.amount.toFixed(2)}</span>
                         <button
                           onClick={() => handleDelete(expense.id)}
-                          className="p-1.5 text-slate-300 hover:text-red-500 transition-colors"
+                          className="text-zinc-600 hover:text-black dark:hover:text-white transition-colors"
                         >
-                          <Trash2 size={16} />
+                          <Trash2 size={14} />
                         </button>
                       </div>
                     </div>
@@ -432,37 +436,6 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
                 </div>
               ))}
             </div>
-          </Card>
-
-          <Card title="Category Allocation">
-            {chartData.length > 0 ? (
-              <div className="h-[250px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={chartData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={90}
-                      paddingAngle={5}
-                      dataKey="value"
-                    >
-                      {chartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <RechartsTooltip formatter={(value: number) => `€${value.toFixed(2)}`} />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            ) : (
-              <div className="h-[250px] flex flex-col items-center justify-center text-slate-300">
-                <BarChart3 size={48} className="opacity-20 mb-2" />
-                <p className="text-sm">Enter data to see breakdown</p>
-              </div>
-            )}
           </Card>
         </div>
       </div>

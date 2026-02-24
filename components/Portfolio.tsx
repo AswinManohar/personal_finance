@@ -13,7 +13,7 @@ interface PortfolioProps {
 export const Portfolio: React.FC<PortfolioProps> = ({ assets, setAssets, onSync }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [projectionYears, setProjectionYears] = useState(10);
-  
+
   // Form State
   const [newName, setNewName] = useState('');
   const [newType, setNewType] = useState<AssetType>('MUTUAL_FUND_INDIA');
@@ -39,7 +39,7 @@ export const Portfolio: React.FC<PortfolioProps> = ({ assets, setAssets, onSync 
 
   const handleAdd = async () => {
     if (!newName) return;
-    
+
     const asset: PortfolioAsset = {
       id: crypto.randomUUID(),
       name: newName,
@@ -54,7 +54,7 @@ export const Portfolio: React.FC<PortfolioProps> = ({ assets, setAssets, onSync 
 
     const updatedAssets = [...assets, asset];
     setAssets(updatedAssets);
-    
+
     if (onSync) {
       await onSync({ portfolio: updatedAssets });
     }
@@ -88,12 +88,12 @@ export const Portfolio: React.FC<PortfolioProps> = ({ assets, setAssets, onSync 
       if (i % 12 === 0) {
         const grossValue = currentAssets.reduce((sum, a) => sum + a.simulatedValue, 0);
         const invested = currentAssets.reduce((sum, a) => sum + a.totalInvested, 0);
-        
+
         let totalNetValue = 0;
         currentAssets.forEach(asset => {
-           const gains = asset.simulatedValue - asset.totalInvested;
-           const tax = gains > 0 ? gains * (asset.taxRate / 100) : 0;
-           totalNetValue += (asset.simulatedValue - tax);
+          const gains = asset.simulatedValue - asset.totalInvested;
+          const tax = gains > 0 ? gains * (asset.taxRate / 100) : 0;
+          totalNetValue += (asset.simulatedValue - tax);
         });
 
         data.push({
@@ -108,12 +108,12 @@ export const Portfolio: React.FC<PortfolioProps> = ({ assets, setAssets, onSync 
         currentAssets = currentAssets.map(asset => {
           const effectiveAnnualRate = asset.expectedReturn - asset.expenseRatio;
           const monthlyRate = effectiveAnnualRate / 100 / 12;
-          
+
           // Frequency Adjustment
           let monthlyContribution = asset.monthlyInvestment;
           if (asset.frequency === 'One-time') monthlyContribution = 0;
           if (asset.frequency === 'Bi-monthly') monthlyContribution = asset.monthlyInvestment / 2;
-          
+
           return {
             ...asset,
             simulatedValue: (asset.simulatedValue + monthlyContribution) * (1 + monthlyRate),
@@ -131,99 +131,105 @@ export const Portfolio: React.FC<PortfolioProps> = ({ assets, setAssets, onSync 
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-200 dark:border-zinc-900 pb-6">
         <div>
-           <h2 className="text-2xl font-bold text-slate-900">Portfolio & Tax Simulator</h2>
-           <p className="text-slate-500">Track Funds (India) & ETFs (Global) to see real net returns after fees & taxes.</p>
+          <h2 className="text-xl font-bold text-black dark:text-white uppercase tracking-widest">Portfolio & Tax Simulator</h2>
+          <p className="text-[10px] text-zinc-500 uppercase tracking-widest mt-2">Track Funds & ETFs (net returns after fees & taxes).</p>
         </div>
-        <button 
+        <button
           onClick={() => setIsAdding(!isAdding)}
-          className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors flex items-center gap-2 font-medium"
+          className="bg-black dark:bg-white text-white dark:text-black px-6 py-3 text-[10px] font-bold uppercase tracking-widest hover:bg-zinc-200 transition-colors flex items-center gap-2"
         >
-          <Plus size={18} /> Add Asset
+          <Plus size={14} /> Add Asset
         </button>
       </div>
 
       {isAdding && (
-        <Card title="Add New Asset" className="border-primary-200 ring-4 ring-primary-50">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="lg:col-span-2">
-              <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Asset Name</label>
+        <Card title="Add New Asset" className="border border-zinc-200 dark:border-zinc-900 bg-metric-gradient/50 p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="lg:col-span-2 border-b border-zinc-300 dark:border-zinc-800 focus-within:border-black dark:border-white transition-colors">
+              <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">Asset Name</label>
               <input
                 type="text"
                 placeholder="e.g. Nifty 50 Index Fund"
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
-                className="w-full px-3 py-2 bg-white text-black border border-slate-300 rounded-lg outline-none focus:border-primary-500"
+                className="w-full py-2 bg-transparent text-black dark:text-white font-bold outline-none placeholder:text-zinc-800 text-sm"
               />
             </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Type</label>
-              <select 
+            <div className="border-b border-zinc-300 dark:border-zinc-800 focus-within:border-black dark:border-white transition-colors">
+              <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">Type</label>
+              <select
                 value={newType}
                 onChange={(e) => handleTypeChange(e.target.value as AssetType)}
-                className="w-full px-3 py-2 bg-white text-black border border-slate-300 rounded-lg outline-none focus:border-primary-500"
+                className="w-full py-2 bg-transparent text-black dark:text-white font-bold outline-none uppercase tracking-widest text-[10px] appearance-none"
               >
-                <option value="MUTUAL_FUND_INDIA">Mutual Fund (India)</option>
-                <option value="ETF_GLOBAL">ETF (Global)</option>
-                <option value="OTHER">Other</option>
+                <option value="MUTUAL_FUND_INDIA" className="bg-white dark:bg-black text-black dark:text-white">Mutual Fund (India)</option>
+                <option value="ETF_GLOBAL" className="bg-white dark:bg-black text-black dark:text-white">ETF (Global)</option>
+                <option value="OTHER" className="bg-white dark:bg-black text-black dark:text-white">Other</option>
               </select>
             </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Current Value (€)</label>
-              <input
-                type="number"
-                value={newCurrentValue}
-                onChange={(e) => setNewCurrentValue(e.target.value)}
-                className="w-full px-3 py-2 bg-white text-black border border-slate-300 rounded-lg outline-none focus:border-primary-500"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Frequency</label>
+            <div className="border-b border-zinc-300 dark:border-zinc-800 focus-within:border-black dark:border-white transition-colors">
+              <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">Current Value (€)</label>
               <div className="relative">
-                <Calendar className="absolute left-3 top-2.5 text-slate-400" size={14} />
-                <select 
+                <span className="absolute left-0 top-2 text-zinc-600">€</span>
+                <input
+                  type="number"
+                  value={newCurrentValue}
+                  onChange={(e) => setNewCurrentValue(e.target.value)}
+                  className="w-full pl-4 pr-0 py-2 bg-transparent text-black dark:text-white font-bold outline-none placeholder:text-zinc-800 text-sm"
+                />
+              </div>
+            </div>
+            <div className="border-b border-zinc-300 dark:border-zinc-800 focus-within:border-black dark:border-white transition-colors">
+              <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">Frequency</label>
+              <div className="relative">
+                <Calendar className="absolute left-0 top-2.5 text-zinc-600" size={14} />
+                <select
                   value={newFrequency}
                   onChange={(e) => setNewFrequency(e.target.value as InvestmentFrequency)}
-                  className="w-full pl-8 pr-3 py-2 bg-white text-black border border-slate-300 rounded-lg outline-none focus:border-primary-500 text-sm"
+                  className="w-full pl-6 pr-0 py-2 bg-transparent text-black dark:text-white font-bold outline-none uppercase tracking-widest text-[10px] appearance-none"
                 >
-                  <option value="One-time">One-time</option>
-                  <option value="Monthly">Monthly</option>
-                  <option value="Bi-monthly">Bi-monthly</option>
+                  <option value="One-time" className="bg-white dark:bg-black">One-time</option>
+                  <option value="Monthly" className="bg-white dark:bg-black">Monthly</option>
+                  <option value="Bi-monthly" className="bg-white dark:bg-black">Bi-monthly</option>
                 </select>
               </div>
             </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Investment (€)</label>
-              <input
-                type="number"
-                value={newMonthly}
-                onChange={(e) => setNewMonthly(e.target.value)}
-                className="w-full px-3 py-2 bg-white text-black border border-slate-300 rounded-lg outline-none focus:border-primary-500"
-              />
+            <div className="border-b border-zinc-300 dark:border-zinc-800 focus-within:border-black dark:border-white transition-colors">
+              <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">Investment (€)</label>
+              <div className="relative">
+                <span className="absolute left-0 top-2 text-zinc-600">€</span>
+                <input
+                  type="number"
+                  value={newMonthly}
+                  onChange={(e) => setNewMonthly(e.target.value)}
+                  className="w-full pl-4 pr-0 py-2 bg-transparent text-black dark:text-white font-bold outline-none placeholder:text-zinc-800 text-sm"
+                />
+              </div>
             </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Return (%)</label>
+            <div className="border-b border-zinc-300 dark:border-zinc-800 focus-within:border-black dark:border-white transition-colors">
+              <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">Return (%)</label>
               <input
                 type="number"
                 value={newReturn}
                 onChange={(e) => setNewReturn(e.target.value)}
-                className="w-full px-3 py-2 bg-white text-black border border-slate-300 rounded-lg outline-none focus:border-primary-500"
+                className="w-full py-2 bg-transparent text-black dark:text-white font-bold outline-none placeholder:text-zinc-800 text-sm"
               />
             </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">TER (%)</label>
+            <div className="border-b border-zinc-300 dark:border-zinc-800 focus-within:border-black dark:border-white transition-colors">
+              <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">TER (%)</label>
               <input
                 type="number"
                 value={newTER}
                 onChange={(e) => setNewTER(e.target.value)}
-                className="w-full px-3 py-2 bg-white text-black border border-slate-300 rounded-lg outline-none focus:border-primary-500"
+                className="w-full py-2 bg-transparent text-black dark:text-white font-bold outline-none placeholder:text-zinc-800 text-sm"
               />
             </div>
           </div>
-          <div className="mt-4 flex justify-end gap-2">
-            <button onClick={() => setIsAdding(false)} className="px-4 py-2 text-slate-600 hover:text-slate-800">Cancel</button>
-            <button onClick={handleAdd} className="bg-primary-600 text-white px-6 py-2 rounded-lg hover:bg-primary-700">Add to Portfolio</button>
+          <div className="mt-8 flex justify-end gap-4">
+            <button onClick={() => setIsAdding(false)} className="px-6 py-2 text-[10px] font-bold text-zinc-500 uppercase tracking-widest hover:text-black dark:hover:text-black dark:text-white transition-colors">Cancel</button>
+            <button onClick={handleAdd} className="bg-black dark:bg-white text-white dark:text-black text-[10px] font-bold uppercase tracking-widest px-8 py-3 hover:bg-zinc-200 transition-colors">Add Position</button>
           </div>
         </Card>
       )}
@@ -231,28 +237,28 @@ export const Portfolio: React.FC<PortfolioProps> = ({ assets, setAssets, onSync 
       {assets.length > 0 ? (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-1 space-y-4">
-            <h3 className="font-semibold text-slate-800 flex items-center gap-2">
-              <Briefcase size={18} /> Your Holdings
+            <h3 className="font-bold text-[10px] text-zinc-500 uppercase tracking-widest flex items-center gap-2 mb-4">
+              <Briefcase size={14} /> Active Positions
             </h3>
-            <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
+            <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 no-scrollbar">
               {assets.map(asset => (
-                <div key={asset.id} className="bg-white p-4 rounded-lg shadow-sm border border-slate-200 group relative hover:border-primary-300 transition-all">
-                  <div className="flex justify-between items-start mb-2">
+                <div key={asset.id} className="border border-zinc-200 dark:border-zinc-900 bg-metric-gradient p-6 group hover:border-zinc-700 transition-colors">
+                  <div className="flex justify-between items-start mb-4 border-b border-zinc-200 dark:border-zinc-900 pb-4">
                     <div className="flex items-center gap-2">
-                      {asset.type === 'ETF_GLOBAL' ? <Globe size={16} className="text-blue-500" /> : <Building2 size={16} className="text-orange-500" />}
-                      <span className="text-xs font-bold uppercase text-slate-500">{asset.frequency}</span>
+                      <div className={`w-1.5 h-1.5 ${asset.type === 'ETF_GLOBAL' ? 'bg-black dark:bg-white' : 'bg-zinc-500'}`}></div>
+                      <span className="text-[9px] font-bold uppercase text-zinc-500 tracking-widest">{asset.frequency}</span>
                     </div>
-                    <button onClick={() => handleDelete(asset.id)} className="text-slate-300 hover:text-red-500 transition-colors"><Trash2 size={16} /></button>
+                    <button onClick={() => handleDelete(asset.id)} className="text-zinc-700 hover:text-black dark:hover:text-black dark:text-white transition-colors"><Trash2 size={14} /></button>
                   </div>
-                  <h4 className="font-bold text-slate-900 mb-3">{asset.name}</h4>
-                  <div className="grid grid-cols-2 gap-y-2 text-sm">
+                  <h4 className="font-bold text-black dark:text-white uppercase tracking-widest text-sm mb-4 leading-relaxed">{asset.name}</h4>
+                  <div className="grid grid-cols-2 gap-y-4 text-xs font-bold tracking-tighter">
                     <div>
-                      <p className="text-slate-500 text-xs">Value</p>
-                      <p className="font-medium">€{asset.currentValue.toLocaleString()}</p>
+                      <p className="text-zinc-500 uppercase tracking-widest text-[9px] mb-1">Value</p>
+                      <p className="text-black dark:text-white">€{asset.currentValue.toLocaleString()}</p>
                     </div>
                     <div>
-                      <p className="text-slate-500 text-xs">{asset.frequency === 'One-time' ? 'One-time' : 'Recurring'}</p>
-                      <p className="font-medium">€{asset.monthlyInvestment.toLocaleString()}</p>
+                      <p className="text-zinc-500 uppercase tracking-widest text-[9px] mb-1">{asset.frequency === 'One-time' ? 'Bulk' : 'Recurring'}</p>
+                      <p className="text-black dark:text-white">€{asset.monthlyInvestment.toLocaleString()}</p>
                     </div>
                   </div>
                 </div>
@@ -261,51 +267,51 @@ export const Portfolio: React.FC<PortfolioProps> = ({ assets, setAssets, onSync 
           </div>
 
           <div className="lg:col-span-2 space-y-6">
-             <Card title="Net Wealth Projection (Post-Tax & Fees)">
-                <div className="mb-4 flex items-center gap-4">
-                  <label className="text-sm font-medium text-slate-600">Project for (Years):</label>
-                  <input 
-                    type="range" 
-                    min="5" 
-                    max="40" 
-                    value={projectionYears} 
+            <Card title="Net Wealth Projection (Post-Tax & Fees)" className="h-full border border-zinc-200 dark:border-zinc-900 bg-metric-gradient">
+              <div className="mb-8 flex items-center justify-between gap-4 border-b border-zinc-200 dark:border-zinc-900 pb-6">
+                <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Projection Timeline</span>
+                <div className="flex items-center gap-4 flex-1 max-w-sm">
+                  <input
+                    type="range"
+                    min="5"
+                    max="40"
+                    value={projectionYears}
                     onChange={(e) => setProjectionYears(parseInt(e.target.value))}
-                    className="accent-primary-600 flex-1 bg-white"
+                    className="accent-white flex-1 h-1 bg-zinc-800 appearance-none"
                   />
-                  <span className="font-bold text-slate-900 w-8">{projectionYears}</span>
+                  <span className="font-bold text-black dark:text-white text-sm w-8 tracking-tighter">{projectionYears}Y</span>
                 </div>
-                
-                <div className="h-[300px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={simulationData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                      <defs>
-                        <linearGradient id="colorNet" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
-                          <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                        </linearGradient>
-                      </defs>
-                      <XAxis dataKey="year" />
-                      <YAxis tickFormatter={(value) => `€${(value / 1000).toFixed(0)}k`} />
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                      <Tooltip formatter={(value: number) => `€${value.toLocaleString()}`} />
-                      <Legend />
-                      <Area type="monotone" dataKey="grossValue" stroke="#94a3b8" strokeDasharray="5 5" fillOpacity={0} name="Gross (Pre-Tax)" />
-                      <Area type="monotone" dataKey="netValue" stroke="#10b981" fillOpacity={1} fill="url(#colorNet)" name="Net Wealth (Post-Tax)" />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-             </Card>
+              </div>
+
+              <div className="h-[400px] w-full mt-4">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={simulationData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                    <XAxis dataKey="year" axisLine={false} tickLine={false} tick={{ fill: '#71717a', fontSize: 10, fontFamily: 'monospace' }} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#71717a', fontSize: 10, fontFamily: 'monospace' }} tickFormatter={(value) => `€${(value / 1000).toFixed(0)}k`} />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--chart-grid)" />
+                    <Tooltip
+                      formatter={(value: number) => `€${value.toLocaleString()}`}
+                      contentStyle={{ backgroundColor: 'var(--chart-bg)', border: '1px solid var(--chart-grid)', borderRadius: '0', color: 'var(--chart-text)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}
+                      cursor={{ stroke: '#52525b', strokeWidth: 1 }}
+                    />
+                    <Legend wrapperStyle={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#71717a' }} iconType="square" />
+                    <Area type="monotone" dataKey="grossValue" stroke="#52525b" strokeWidth={1} strokeDasharray="3 3" fillOpacity={0} name="Gross (Pre-Tax)" />
+                    <Area type="monotone" dataKey="netValue" stroke="var(--chart-line)" strokeWidth={2} fillOpacity={0.05} fill="var(--chart-line)" name="Net Wealth (Post-Tax)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
           </div>
         </div>
       ) : (
-        <div className="text-center py-12 bg-slate-50 rounded-xl border-2 border-dashed border-slate-200">
-           <Briefcase className="mx-auto text-slate-300 mb-4" size={48} />
-           <p className="text-slate-500 font-medium">No assets added yet.</p>
-           <button 
+        <div className="text-center py-24 border border-dashed border-zinc-200 dark:border-zinc-900 bg-metric-gradient flex flex-col items-center">
+          <Briefcase className="text-zinc-800 mb-6" size={32} />
+          <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">No positions mapped.</p>
+          <button
             onClick={() => setIsAdding(true)}
-            className="mt-4 text-primary-600 hover:text-primary-800 font-medium"
+            className="mt-6 text-[10px] font-bold uppercase tracking-widest text-black dark:text-white hover:text-zinc-600 dark:text-zinc-400 transition-colors border-b border-black dark:border-white pb-1"
           >
-            Start Building Portfolio
+            Initiate Position
           </button>
         </div>
       )}

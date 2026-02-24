@@ -56,32 +56,31 @@ export const Stocks: React.FC<StocksProps> = ({ stocks, setStocks, onSync }) => 
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-zinc-200 dark:border-zinc-900 pb-6">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">Stock Investments</h2>
-          <p className="text-slate-500">Track your real-time stock portfolio performance.</p>
+          <h2 className="text-xl font-bold text-black dark:text-white uppercase tracking-widest">Stock Investments</h2>
+          <p className="text-[10px] text-zinc-500 uppercase tracking-widest mt-2">Track real-time portfolio performance.</p>
         </div>
-
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="bg-white border-slate-200">
-          <p className="text-sm font-medium text-slate-500">Total Invested</p>
-          <p className="text-2xl font-bold text-slate-900 mt-1">€{totalInvested.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card className="p-6">
+          <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Total Invested</p>
+          <p className="text-2xl font-bold text-black dark:text-white mt-2 tracking-tighter">€{totalInvested.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
         </Card>
-        <Card className="bg-white border-slate-200">
-          <p className="text-sm font-medium text-slate-500">Current Value</p>
-          <div className="flex items-center gap-2 mt-1">
-            <p className="text-2xl font-bold text-slate-900">€{totalCurrentValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+        <Card className="p-6">
+          <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Current Value</p>
+          <div className="flex items-center gap-2 mt-2">
+            <p className="text-2xl font-bold text-black dark:text-white tracking-tighter">€{totalCurrentValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
           </div>
         </Card>
-        <Card className={`${totalPL >= 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
-          <p className={`text-sm font-medium ${totalPL >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>Total P&L</p>
-          <div className="flex items-center gap-2 mt-1">
-            <p className={`text-2xl font-bold ${totalPL >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
+        <Card className={`p-6 border ${totalPL >= 0 ? 'border-zinc-700 bg-black dark:bg-white/5' : 'border-red-900 bg-red-950/20'}`}>
+          <p className={`text-[10px] font-bold uppercase tracking-widest ${totalPL >= 0 ? 'text-zinc-600 dark:text-zinc-400' : 'text-red-500'}`}>Total P&L</p>
+          <div className="flex items-center justify-between mt-2">
+            <p className={`text-2xl font-bold tracking-tighter ${totalPL >= 0 ? 'text-black dark:text-white' : 'text-red-500'}`}>
               {totalPL >= 0 ? '+' : ''}€{totalPL.toLocaleString(undefined, { minimumFractionDigits: 2 })}
             </p>
-            <span className={`text-sm font-medium px-2 py-0.5 rounded-full ${totalPL >= 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>
+            <span className={`text-[10px] font-bold px-2 py-1 uppercase tracking-widest ${totalPL >= 0 ? 'bg-black dark:bg-white text-white dark:text-black' : 'bg-red-500 text-black dark:text-white'}`}>
               {totalPLPercent.toFixed(2)}%
             </span>
           </div>
@@ -91,81 +90,86 @@ export const Stocks: React.FC<StocksProps> = ({ stocks, setStocks, onSync }) => 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-1">
           <Card title="Add Holding">
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Ticker Symbol</label>
+            <div className="space-y-6">
+              <div className="border-b border-zinc-300 dark:border-zinc-800 focus-within:border-black dark:border-white transition-colors">
+                <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">Ticker Symbol</label>
                 <input
                   type="text"
                   value={newSymbol}
                   onChange={(e) => setNewSymbol(e.target.value)}
-                  placeholder="e.g. AAPL, MSFT"
-                  className="w-full px-3 py-2 bg-white text-black border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none uppercase"
+                  placeholder="AAPL, MSFT"
+                  className="w-full py-2 bg-transparent text-black dark:text-white font-bold outline-none uppercase tracking-widest text-sm placeholder:text-zinc-800"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Frequency</label>
+              <div className="border-b border-zinc-300 dark:border-zinc-800 focus-within:border-black dark:border-white transition-colors">
+                <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">Frequency</label>
                 <div className="relative">
-                  <Calendar className="absolute left-3 top-2.5 text-slate-400" size={14} />
+                  <Calendar className="absolute left-0 top-2.5 text-zinc-600" size={14} />
                   <select
                     value={newFrequency}
                     onChange={(e) => setNewFrequency(e.target.value as InvestmentFrequency)}
-                    className="w-full pl-8 pr-3 py-2 bg-white text-black border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                    className="w-full pl-6 pr-0 py-2 bg-transparent text-black dark:text-white font-bold outline-none uppercase tracking-widest text-xs appearance-none"
                   >
-                    <option value="One-time">One-time (Bulk)</option>
-                    <option value="Monthly">Monthly SIP</option>
-                    <option value="Bi-monthly">Bi-monthly</option>
+                    <option value="One-time" className="bg-white dark:bg-black">One-time (Bulk)</option>
+                    <option value="Monthly" className="bg-white dark:bg-black">Monthly SIP</option>
+                    <option value="Bi-monthly" className="bg-white dark:bg-black">Bi-monthly</option>
                   </select>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Quantity</label>
+              <div className="grid grid-cols-2 gap-6">
+                <div className="border-b border-zinc-300 dark:border-zinc-800 focus-within:border-black dark:border-white transition-colors">
+                  <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">Quantity</label>
                   <input
                     type="number"
                     value={newQuantity}
                     onChange={(e) => setNewQuantity(e.target.value)}
                     placeholder="0"
-                    className="w-full px-3 py-2 bg-white text-black border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                    className="w-full py-2 bg-transparent text-black dark:text-white font-bold outline-none placeholder:text-zinc-800 text-sm"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Avg Buy Price</label>
-                  <input
-                    type="number"
-                    value={newBuyPrice}
-                    onChange={(e) => setNewBuyPrice(e.target.value)}
-                    placeholder="0.00"
-                    className="w-full px-3 py-2 bg-white text-black border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-                  />
+                <div className="border-b border-zinc-300 dark:border-zinc-800 focus-within:border-black dark:border-white transition-colors">
+                  <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">Avg Buy Price</label>
+                  <div className="relative">
+                    <span className="absolute left-0 top-2 text-zinc-600">€</span>
+                    <input
+                      type="number"
+                      value={newBuyPrice}
+                      onChange={(e) => setNewBuyPrice(e.target.value)}
+                      placeholder="0.00"
+                      className="w-full pl-4 pr-0 py-2 bg-transparent text-black dark:text-white font-bold outline-none placeholder:text-zinc-800 text-sm"
+                    />
+                  </div>
                 </div>
               </div>
               <button
                 onClick={handleAdd}
-                className="w-full flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white py-2 rounded-lg transition-colors font-medium"
+                className="w-full flex items-center justify-center gap-2 bg-black dark:bg-white text-white dark:text-black text-xs font-bold uppercase tracking-widest py-4 hover:bg-zinc-200 transition-colors mt-4"
               >
-                <Plus size={18} /> Add Stock
+                <Plus size={16} /> Add Position
               </button>
             </div>
           </Card>
         </div>
 
-        <div className="lg:col-span-2 space-y-6">
-          <Card title="Portfolio Holdings">
+        <div className="lg:col-span-2">
+          <Card title="Portfolio Holdings" className="h-full">
             {stocks.length === 0 ? (
-              <div className="text-center py-8 text-slate-400">No stocks added yet.</div>
+              <div className="py-12 flex flex-col items-center justify-center text-zinc-700 h-full border border-dashed border-zinc-200 dark:border-zinc-900">
+                <p className="text-[10px] font-bold uppercase tracking-widest">No positions initiated</p>
+              </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="min-w-full text-sm">
-                  <thead className="bg-slate-50 text-slate-500">
-                    <tr>
-                      <th className="px-4 py-3 text-left font-semibold">Symbol</th>
-                      <th className="px-4 py-3 text-right font-semibold">Qty</th>
-                      <th className="px-4 py-3 text-right font-semibold">LTP</th>
-                      <th className="px-4 py-3 text-right font-semibold">P&L</th>
-                      <th className="px-4 py-3 text-center font-semibold">Action</th>
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-zinc-200 dark:border-zinc-900">
+                      <th className="pb-3 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Symbol</th>
+                      <th className="pb-3 text-[10px] font-bold text-zinc-500 uppercase tracking-widest text-right">Qty</th>
+                      <th className="pb-3 text-[10px] font-bold text-zinc-500 uppercase tracking-widest text-right">LTP</th>
+                      <th className="pb-3 text-[10px] font-bold text-zinc-500 uppercase tracking-widest text-right">P&L</th>
+                      <th className="pb-3 text-[10px] font-bold text-zinc-500 uppercase tracking-widest text-center">Action</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-zinc-900">
                     {stocks.map((stock) => {
                       const currentPrice = stock.currentPrice || stock.buyPrice;
                       const currentVal = stock.quantity * currentPrice;
@@ -173,19 +177,22 @@ export const Stocks: React.FC<StocksProps> = ({ stocks, setStocks, onSync }) => 
                       const gainPercent = (gain / (stock.quantity * stock.buyPrice)) * 100;
 
                       return (
-                        <tr key={stock.id} className="hover:bg-slate-50">
-                          <td className="px-4 py-3">
-                            <span className="font-bold text-slate-900">{stock.symbol}</span>
-                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{stock.frequency}</p>
+                        <tr key={stock.id} className="group hover:bg-metric-gradient/50 transition-colors">
+                          <td className="py-4">
+                            <span className="font-bold text-black dark:text-white uppercase tracking-widest text-sm">{stock.symbol}</span>
+                            <p className="text-[9px] text-zinc-600 font-bold uppercase tracking-widest mt-1">{stock.frequency}</p>
                           </td>
-                          <td className="px-4 py-3 text-right text-slate-600">{stock.quantity}</td>
-                          <td className="px-4 py-3 text-right font-medium text-slate-900">€{currentPrice.toFixed(2)}</td>
-                          <td className={`px-4 py-3 text-right font-medium ${gain >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                          <td className="py-4 text-right text-zinc-700 dark:text-zinc-300 font-bold text-sm tracking-tighter">{stock.quantity}</td>
+                          <td className="py-4 text-right font-bold text-black dark:text-white text-sm tracking-tighter">€{currentPrice.toFixed(2)}</td>
+                          <td className={`py-4 text-right font-bold tracking-tighter text-sm ${gain >= 0 ? 'text-zinc-700 dark:text-zinc-300' : 'text-red-500'}`}>
                             {gain >= 0 ? '+' : ''}€{gain.toFixed(2)}
+                            <p className={`text-[9px] uppercase tracking-widest mt-1 ${gain >= 0 ? 'text-zinc-500' : 'text-red-500/70'}`}>
+                              {gainPercent.toFixed(2)}%
+                            </p>
                           </td>
-                          <td className="px-4 py-3 text-center">
-                            <button onClick={() => handleDelete(stock.id)} className="text-slate-300 hover:text-red-500 transition-colors">
-                              <Trash2 size={16} />
+                          <td className="py-4 text-center">
+                            <button onClick={() => handleDelete(stock.id)} className="text-zinc-700 hover:text-black dark:hover:text-black dark:text-white transition-colors">
+                              <Trash2 size={14} className="mx-auto" />
                             </button>
                           </td>
                         </tr>

@@ -19,7 +19,7 @@ interface NetWorthProps {
 
 const COLORS = ['#0ea5e9', '#6366f1', '#f59e0b', '#10b981', '#ef4444'];
 
-export const NetWorth: React.FC<NetWorthProps> = ({ 
+export const NetWorth: React.FC<NetWorthProps> = ({
   netWorthData, setNetWorthData, currentSavings, stocks, portfolio, syncKey, history, setHistory, onSync
 }) => {
   const [isRecording, setIsRecording] = useState(false);
@@ -27,7 +27,7 @@ export const NetWorth: React.FC<NetWorthProps> = ({
 
   const stockValue = stocks.reduce((sum, s) => sum + (s.quantity * (s.currentPrice || s.buyPrice)), 0);
   const portfolioValue = portfolio.reduce((sum, p) => sum + p.currentValue, 0);
-  
+
   const totalAssets = currentSavings + stockValue + portfolioValue + netWorthData.goldInvestment;
   const netWorth = totalAssets - netWorthData.remainingLoan;
 
@@ -86,71 +86,73 @@ export const NetWorth: React.FC<NetWorthProps> = ({
   }));
 
   return (
-    <div className="space-y-8 max-w-6xl mx-auto">
-      <div className="bg-gradient-to-r from-slate-900 via-primary-900 to-indigo-900 rounded-3xl p-8 text-white shadow-xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 p-8 opacity-10"><Landmark size={150} /></div>
-        <div className="relative z-10">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
-            <div className="max-w-xl">
-              <p className="text-primary-200 text-xs font-bold uppercase tracking-widest mb-3 flex items-center gap-2"><ShieldCheck size={16} /> Wealth Dashboard</p>
-              <h2 className="text-5xl md:text-7xl font-black mb-4 tracking-tight">€{netWorth.toLocaleString()}</h2>
-              <div className="flex flex-wrap gap-3">
-                <div className="bg-white/10 backdrop-blur-md px-4 py-2 rounded-xl border border-white/10 flex items-center gap-3">
-                   <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
-                   <div><p className="text-[10px] text-primary-200 font-bold uppercase">Total Assets</p><p className="text-lg font-bold leading-none">€{totalAssets.toLocaleString()}</p></div>
-                </div>
-                <div className="bg-white/10 backdrop-blur-md px-4 py-2 rounded-xl border border-white/10 flex items-center gap-3">
-                   <div className="w-2 h-2 rounded-full bg-red-400"></div>
-                   <div><p className="text-[10px] text-red-200 font-bold uppercase">Liabilities</p><p className="text-lg font-bold leading-none">€{netWorthData.remainingLoan.toLocaleString()}</p></div>
-                </div>
+    <div className="space-y-6 max-w-6xl mx-auto">
+      <div className="border border-zinc-200 dark:border-zinc-900 bg-metric-gradient p-8 relative overflow-hidden">
+        <div className="absolute top-0 right-0 p-8 opacity-5"><Landmark size={150} /></div>
+        <div className="relative z-10 w-full flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
+          <div className="max-w-xl">
+            <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest mb-3 flex items-center gap-2"><ShieldCheck size={14} /> Wealth Dashboard</p>
+            <h2 className="text-5xl md:text-7xl font-bold mb-6 tracking-tighter text-black dark:text-white">€{netWorth.toLocaleString()}</h2>
+            <div className="flex flex-wrap gap-4">
+              <div className="border border-zinc-200 dark:border-zinc-900 px-4 py-3 flex items-center gap-3 bg-white dark:bg-black">
+                <div className="w-1.5 h-1.5 bg-black dark:bg-white"></div>
+                <div><p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Total Assets</p><p className="text-lg font-bold leading-none text-black dark:text-white">€{totalAssets.toLocaleString()}</p></div>
+              </div>
+              <div className="border border-zinc-200 dark:border-zinc-900 px-4 py-3 flex items-center gap-3 bg-white dark:bg-black">
+                <div className="w-1.5 h-1.5 bg-red-500"></div>
+                <div><p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Liabilities</p><p className="text-lg font-bold leading-none text-black dark:text-white">€{netWorthData.remainingLoan.toLocaleString()}</p></div>
               </div>
             </div>
-            <div className="flex flex-col gap-3 w-full md:w-auto">
-               <button onClick={handleRecordSnapshot} disabled={isRecording} className={`flex items-center justify-center gap-2 px-6 py-4 rounded-2xl font-bold text-sm transition-all shadow-lg active:scale-95 ${showSuccess ? 'bg-emerald-500 text-white' : 'bg-white text-slate-900 hover:bg-primary-50'}`}>
-                  {isRecording ? <RefreshCw size={20} className="animate-spin" /> : showSuccess ? <Check size={20} /> : <Camera size={20} />}
-                  {showSuccess ? 'Progress Saved!' : 'Track Progress Now'}
-               </button>
-            </div>
+          </div>
+          <div className="flex flex-col gap-3 w-full md:w-auto mt-4 md:mt-0">
+            <button onClick={handleRecordSnapshot} disabled={isRecording} className={`flex items-center justify-center gap-3 px-8 py-4 text-[10px] uppercase tracking-widest font-bold transition-all ${showSuccess ? 'bg-black dark:bg-white text-white dark:text-black' : 'bg-transparent border border-black dark:border-white text-black dark:text-white hover:bg-black dark:bg-white hover:text-black dark:hover:text-white dark:text-black'}`}>
+              {isRecording ? <RefreshCw size={16} className="animate-spin" /> : showSuccess ? <Check size={16} /> : <Camera size={16} />}
+              {showSuccess ? 'Progress Saved!' : 'Track Progress Now'}
+            </button>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-1 space-y-6">
           <Card title="Wealth Inputs">
-            <div className="space-y-5">
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2"><Coins size={16} className="text-yellow-500" /> Physical Gold Value (€)</label>
-                <input type="number" value={netWorthData.goldInvestment || ''} onChange={(e) => handleValueChange('goldInvestment', e.target.value)} placeholder="e.g. 5000" className="w-full px-4 py-3 bg-white text-black border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none transition-all" />
+            <div className="space-y-6">
+              <div className="border-b border-zinc-300 dark:border-zinc-800 focus-within:border-black dark:border-white transition-colors">
+                <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2 flex items-center gap-2"><Coins size={14} /> Physical Gold (€)</label>
+                <input type="number" value={netWorthData.goldInvestment || ''} onChange={(e) => handleValueChange('goldInvestment', e.target.value)} placeholder="0.00" className="w-full py-2 bg-transparent text-black dark:text-white font-bold outline-none uppercase tracking-widest text-lg placeholder:text-zinc-800" />
               </div>
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2"><Landmark size={16} className="text-red-500" /> Remaining Loan Amount (€)</label>
-                <input type="number" value={netWorthData.remainingLoan || ''} onChange={(e) => handleValueChange('remainingLoan', e.target.value)} placeholder="e.g. 15000" className="w-full px-4 py-3 bg-white text-black border border-slate-300 rounded-xl focus:ring-2 focus:ring-red-500 outline-none transition-all" />
+              <div className="border-b border-zinc-300 dark:border-zinc-800 focus-within:border-black dark:border-white transition-colors">
+                <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2 flex items-center gap-2"><Landmark size={14} /> Loan Amount (€)</label>
+                <input type="number" value={netWorthData.remainingLoan || ''} onChange={(e) => handleValueChange('remainingLoan', e.target.value)} placeholder="0.00" className="w-full py-2 bg-transparent text-black dark:text-white font-bold outline-none uppercase tracking-widest text-lg placeholder:text-zinc-800" />
               </div>
-              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 mt-4">
-                <div className="flex justify-between items-center mb-2"><span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Debt-to-Asset Ratio</span><span className={`text-xs font-black ${debtRatio > 40 ? 'text-red-600' : 'text-emerald-600'}`}>{debtRatio.toFixed(1)}%</span></div>
-                <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden"><div className={`h-full transition-all duration-700 ${debtRatio > 40 ? 'bg-red-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(100, debtRatio)}%` }}></div></div>
+              <div className="p-4 border border-zinc-200 dark:border-zinc-900 bg-metric-gradient mt-8">
+                <div className="flex justify-between items-center mb-3"><span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Debt-to-Asset Ratio</span><span className={`text-[10px] font-bold tracking-widest ${debtRatio > 40 ? 'text-red-500' : 'text-black dark:text-white'}`}>{debtRatio.toFixed(1)}%</span></div>
+                <div className="w-full bg-zinc-100 dark:bg-zinc-900 h-1"><div className={`h-full transition-all duration-700 ${debtRatio > 40 ? 'bg-red-500' : 'bg-black dark:bg-white'}`} style={{ width: `${Math.min(100, debtRatio)}%` }}></div></div>
               </div>
             </div>
           </Card>
         </div>
-        <div className="lg:col-span-2 space-y-8">
+        <div className="lg:col-span-2">
           {timelineData.length > 1 ? (
-            <Card title="Growth History">
-               <div className="h-[300px] w-full mt-4">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={timelineData}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10}} />
-                      <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10}} tickFormatter={(val) => `€${(val/1000).toFixed(0)}k`} />
-                      <Tooltip contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'}} formatter={(val: number) => [`€${val.toLocaleString()}`, 'Value']} />
-                      <Area type="monotone" dataKey="netWorth" stroke="#0ea5e9" strokeWidth={4} fill="#0ea5e9" fillOpacity={0.1} name="Net Worth" />
-                    </AreaChart>
-                  </ResponsiveContainer>
-               </div>
+            <Card title="Growth History" className="h-full">
+              <div className="h-[300px] w-full mt-4">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={timelineData}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--chart-grid)" />
+                    <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: '#71717a', fontSize: 10, fontFamily: 'monospace' }} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#71717a', fontSize: 10, fontFamily: 'monospace' }} tickFormatter={(val) => `€${(val / 1000).toFixed(0)}k`} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: 'var(--chart-bg)', border: '1px solid var(--chart-grid)', borderRadius: '0', color: 'var(--chart-text)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.05em' }}
+                      formatter={(val: number) => [`€${val.toLocaleString()}`, 'Value']}
+                      cursor={{ stroke: '#52525b', strokeWidth: 1 }}
+                    />
+                    <Area type="monotone" dataKey="netWorth" stroke="var(--chart-line)" strokeWidth={2} fill="var(--chart-line)" fillOpacity={0.05} name="Net Worth" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
             </Card>
           ) : (
-            <Card title="Growth History"><div className="py-12 flex flex-col items-center justify-center text-center"><div className="p-4 bg-primary-50 text-primary-400 rounded-full mb-4"><History size={32} /></div><h4 className="font-bold text-slate-800">Start Your Timeline</h4><p className="text-slate-500 text-sm max-w-xs mt-2">Record your current status to see how your wealth grows.</p></div></Card>
+            <Card title="Growth History" className="h-full"><div className="py-12 h-full flex flex-col items-center justify-center text-center border border-dashed border-zinc-200 dark:border-zinc-900 bg-metric-gradient"><div className="p-3 bg-white dark:bg-black border border-zinc-300 dark:border-zinc-800 text-zinc-500 mb-4"><History size={24} /></div><p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest max-w-xs mt-2">Record current snapshot to visualize baseline.</p></div></Card>
           )}
         </div>
       </div>

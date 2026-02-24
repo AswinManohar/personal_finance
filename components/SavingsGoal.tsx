@@ -16,11 +16,11 @@ export const SavingsGoal: React.FC<SavingsGoalProps> = ({ goal, setGoal, onSync 
     const calculate = () => {
       const targetDateObj = new Date(goal.targetDate);
       const today = new Date();
-      
+
       let months = (targetDateObj.getFullYear() - today.getFullYear()) * 12;
       months -= today.getMonth();
       months += targetDateObj.getMonth();
-      
+
       if (months <= 0) {
         setResult({ monthly: 0, monthsLeft: 0 });
         return;
@@ -50,83 +50,84 @@ export const SavingsGoal: React.FC<SavingsGoalProps> = ({ goal, setGoal, onSync 
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
-      <div className="text-center mb-8">
-        <h2 className="text-2xl font-bold text-slate-900">Reach Your Goals</h2>
-        <p className="text-slate-500">Calculate exactly how much you need to save to achieve your dreams.</p>
+      <div className="text-center mb-8 border-b border-zinc-200 dark:border-zinc-900 pb-8">
+        <h2 className="text-xl font-bold text-black dark:text-white uppercase tracking-widest">Reach Your Goals</h2>
+        <p className="text-[10px] text-zinc-500 uppercase tracking-widest mt-2">Calculate savings required to achieve targets.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <Card title="Goal Details">
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Target Amount (€)</label>
+          <div className="space-y-6">
+            <div className="border-b border-zinc-300 dark:border-zinc-800 focus-within:border-black dark:border-white transition-colors">
+              <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2 flex items-center gap-2">Target Amount (€)</label>
               <div className="relative">
-                <Target className="absolute left-3 top-2.5 text-slate-400" size={18} />
+                <Target className="absolute left-0 top-2.5 text-zinc-600" size={14} />
                 <input
                   type="number"
                   value={goal.targetAmount}
                   onChange={(e) => handleChange('targetAmount', parseFloat(e.target.value) || 0)}
-                  className="w-full pl-10 pr-3 py-2 bg-white text-black border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
-                />
-              </div>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Already Saved (€)</label>
-              <div className="relative">
-                <TrendingUp className="absolute left-3 top-2.5 text-slate-400" size={18} />
-                <input
-                  type="number"
-                  value={goal.currentSavings}
-                  onChange={(e) => handleChange('currentSavings', parseFloat(e.target.value) || 0)}
-                  className="w-full pl-10 pr-3 py-2 bg-white text-black border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                  className="w-full pl-6 pr-0 py-2 bg-transparent text-black dark:text-white font-bold outline-none placeholder:text-zinc-800"
                 />
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Target Date</label>
+            <div className="border-b border-zinc-300 dark:border-zinc-800 focus-within:border-black dark:border-white transition-colors">
+              <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2 flex items-center gap-2">Already Saved (€)</label>
               <div className="relative">
-                <Calendar className="absolute left-3 top-2.5 text-slate-400" size={18} />
+                <TrendingUp className="absolute left-0 top-2.5 text-zinc-600" size={14} />
+                <input
+                  type="number"
+                  value={goal.currentSavings}
+                  onChange={(e) => handleChange('currentSavings', parseFloat(e.target.value) || 0)}
+                  className="w-full pl-6 pr-0 py-2 bg-transparent text-black dark:text-white font-bold outline-none placeholder:text-zinc-800"
+                />
+              </div>
+            </div>
+
+            <div className="border-b border-zinc-300 dark:border-zinc-800 focus-within:border-black dark:border-white transition-colors">
+              <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2 flex items-center gap-2">Target Date</label>
+              <div className="relative">
+                <Calendar className="absolute left-0 top-2.5 text-zinc-600" size={14} />
                 <input
                   type="date"
                   value={goal.targetDate}
                   onChange={(e) => handleChange('targetDate', e.target.value)}
-                  className="w-full pl-10 pr-3 py-2 bg-white text-black border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
+                  className="w-full pl-6 pr-0 py-2 bg-transparent text-zinc-700 dark:text-zinc-300 font-bold outline-none uppercase tracking-widest text-xs"
                 />
               </div>
             </div>
           </div>
         </Card>
 
-        <Card className="bg-primary-50 border-primary-100 flex flex-col justify-center items-center text-center p-8">
+        <Card className="flex flex-col justify-center items-center text-center p-8 min-h-[300px]">
           {result && result.monthsLeft > 0 ? (
             <>
-              <p className="text-slate-600 font-medium mb-2">To reach your goal in {result.monthsLeft} months</p>
-              <div className="text-5xl font-bold text-primary-600 mb-2">
+              <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-4">To reach your goal in {result.monthsLeft} months</p>
+              <div className="text-5xl font-bold text-black dark:text-white mb-2 tracking-tighter">
                 €{result.monthly.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
-              <p className="text-slate-500 text-sm">per month</p>
-              
-              <div className="mt-8 w-full bg-white rounded-lg p-4 shadow-sm border border-primary-100">
-                <div className="flex justify-between text-sm mb-1">
-                  <span className="text-slate-500">Progress</span>
-                  <span className="font-semibold text-primary-700">
+              <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest">per month</p>
+
+              <div className="mt-8 w-full border border-zinc-200 dark:border-zinc-900 bg-metric-gradient p-6">
+                <div className="flex justify-between items-center mb-3">
+                  <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Progress</span>
+                  <span className="text-[10px] font-bold text-black dark:text-white tracking-widest">
                     {Math.min(100, (goal.currentSavings / goal.targetAmount) * 100).toFixed(1)}%
                   </span>
                 </div>
-                <div className="w-full bg-slate-100 rounded-full h-2.5">
-                  <div 
-                    className="bg-primary-500 h-2.5 rounded-full transition-all duration-500" 
+                <div className="w-full bg-zinc-100 dark:bg-zinc-900 h-1">
+                  <div
+                    className="bg-black dark:bg-white h-1 transition-all duration-500"
                     style={{ width: `${Math.min(100, (goal.currentSavings / goal.targetAmount) * 100)}%` }}
                   ></div>
                 </div>
               </div>
             </>
           ) : (
-             <div className="text-slate-400">
-               <p>Enter your goal details to calculate your savings plan.</p>
-             </div>
+            <div className="text-zinc-600 flex flex-col items-center">
+              <Target size={32} className="opacity-20 mb-4" />
+              <p className="text-[10px] font-bold uppercase tracking-widest max-w-[200px]">Enter goal details to calculate savings plan.</p>
+            </div>
           )}
         </Card>
       </div>
