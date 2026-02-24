@@ -57,4 +57,4 @@ else:
     async def root():
         return {"message": "Welcome to FinanceFlow API. React dist not found."}
 
-# Dummy change to trigger Cloud Build deployment
+# Dummy change to trigger Cloud Build deployment (logging fix test)
