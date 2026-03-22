@@ -10,7 +10,7 @@ import { Stocks } from './components/Stocks';
 import { DataManagement } from './components/DataManagement';
 import { SavingsDashboard } from './components/SavingsDashboard';
 import { Login } from './components/Login';
-import { LayoutDashboard, PieChart, TrendingUp, Sparkles, Flame, Briefcase, BarChart4, Cloud, RefreshCw, Wallet, Settings, Menu, X, Coins, LogOut, Key, CloudOff, AlertTriangle, WifiOff } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import { pullFromCloud, pushToCloud, isNetworkError, supabase, signOut } from './services/supabaseService';
 
 // Global Error Boundary
@@ -23,20 +23,20 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
     return { hasError: true, error };
   }
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error("FinanceFlow Critical Crash:", error, errorInfo);
+    console.error("Cashflow Critical Crash:", error, errorInfo);
   }
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-center">
-          <div className="w-20 h-20 bg-red-100 text-red-600 rounded-3xl flex items-center justify-center mb-6">
+        <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center">
+          <div className="w-20 h-20 bg-surface-container-high text-negative rounded-3xl flex items-center justify-center mb-6">
             <AlertTriangle size={40} />
           </div>
-          <h1 className="text-2xl font-black text-slate-900 mb-2">Application Crash</h1>
-          <p className="text-slate-500 max-w-md mb-8">FinanceFlow encountered a critical error.</p>
+          <h1 className="text-2xl font-black text-on-surface mb-2">Application Crash</h1>
+          <p className="text-on-surface-variant max-w-md mb-8">Cashflow encountered a critical error.</p>
           <button
             onClick={() => { window.localStorage.clear(); window.location.href = window.location.origin; }}
-            className="bg-slate-900 text-white px-8 py-3 rounded-2xl font-bold hover:bg-slate-800 transition-all shadow-xl shadow-slate-200"
+            className="bg-primary text-background px-8 py-3 rounded-xl font-bold hover:opacity-90 transition-all"
           >
             Reset App
           </button>
@@ -67,10 +67,29 @@ function usePersistedState<T>(key: string, initialValue: T): [T, React.Dispatch<
   return [state, setState];
 }
 
+const tabs = [
+  { id: 'savings' as ActiveTab, label: 'Savings Hub' },
+  { id: 'expenses' as ActiveTab, label: 'Expenses' },
+  { id: 'goal' as ActiveTab, label: 'Goals' },
+  { id: 'investment' as ActiveTab, label: 'Calculator' },
+  { id: 'fire' as ActiveTab, label: 'FIRE' },
+  { id: 'networth' as ActiveTab, label: 'Net Worth' },
+  { id: 'portfolio' as ActiveTab, label: 'Portfolio' },
+  { id: 'stocks' as ActiveTab, label: 'Stocks' },
+  { id: 'data' as ActiveTab, label: 'Data' },
+];
+
+const mobileBottomTabs: { id: ActiveTab; label: string; icon: string }[] = [
+  { id: 'savings', label: 'Savings', icon: 'savings' },
+  { id: 'expenses', label: 'Expenses', icon: 'receipt_long' },
+  { id: 'fire', label: 'FIRE', icon: 'local_fire_department' },
+  { id: 'networth', label: 'Net Worth', icon: 'account_balance' },
+  { id: 'data', label: 'Data', icon: 'database' },
+];
+
 const AppMain: React.FC = () => {
   const [activeTab, setActiveTab] = useState<ActiveTab>('savings');
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'success' | 'error' | 'offline'>('idle');
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [uniqueSyncId, setUniqueSyncId] = usePersistedState<string | null>('unique_sync_id', null);
   const [isGuest, setIsGuest] = useState(() => window.localStorage.getItem('isGuest') === 'true');
   const [userMetadata, setUserMetadata] = useState<any>(null);
@@ -80,7 +99,7 @@ const AppMain: React.FC = () => {
   const [income, setIncome] = usePersistedState<IncomeState>('income', { salaryMe: 0, salaryPartner: 0 });
   const [investment, setInvestment] = usePersistedState<InvestmentState>('investment', { initialPrincipal: 5000, monthlyContribution: 500, annualInterestRate: 7, yearsToGrow: 10 });
   const [goal, setGoal] = usePersistedState<SavingsGoalType>('goal', { targetAmount: 10000, currentSavings: 1000, targetDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0] });
-  const [netWorthData, setNetWorthData] = usePersistedState<NetWorthState>('networth', { goldInvestment: 0, remainingLoan: 0, monthlyRecurringSavings: 0, accumulatedSavings: 0 });
+  const [netWorthData, setNetWorthData] = usePersistedState<NetWorthState>('networth', { goldInvestment: 0, otherAssets: 0, remainingLoan: 0, monthlyRecurringSavings: 0, accumulatedSavings: 0 });
   const [history, setHistory] = usePersistedState<SavingsHistoryRecord[]>('savings_history', []);
   const [fire, setFire] = usePersistedState<FIREState>('fire', { currentAge: 30, annualExpenses: 30000, currentNetWorth: 50000, annualSavings: 12000, annualReturn: 7, withdrawalRate: 4 });
   const [portfolio, setPortfolio] = usePersistedState<PortfolioAsset[]>('portfolio', []);
@@ -216,6 +235,7 @@ const AppMain: React.FC = () => {
       case 'expenses': return <Expenses expenses={expenses} setExpenses={setExpenses} income={income} setIncome={setIncome} onSync={syncCallback} />;
       case 'savings': return <SavingsDashboard portfolio={portfolio} stocks={stocks} netWorthData={netWorthData} setNetWorthData={setNetWorthData} onSync={syncCallback || (async () => { })} />;
       case 'investment': return <InvestmentCalculator investment={investment} setInvestment={setInvestment} onSync={syncCallback} />;
+      case 'goal': return <SavingsGoal goal={goal} setGoal={setGoal} onSync={syncCallback} />;
       case 'networth': return <NetWorth netWorthData={netWorthData} setNetWorthData={setNetWorthData} currentSavings={goal.currentSavings} stocks={stocks} portfolio={portfolio} syncKey={activeUserKey || undefined} history={history} setHistory={setHistory} onSync={syncCallback} />;
       case 'fire': return <FIRECalculator state={fire} setState={setFire} onSync={syncCallback} />;
       case 'portfolio': return <Portfolio assets={portfolio} setAssets={setPortfolio} onSync={syncCallback} />;
@@ -225,101 +245,72 @@ const AppMain: React.FC = () => {
     }
   };
 
-  const NavItem = ({ id, label, icon: Icon }: { id: ActiveTab; label: string; icon: any }) => (
-    <button
-      onClick={() => { setActiveTab(id); setIsMobileMenuOpen(false); }}
-      className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all w-full ${activeTab === id ? 'bg-primary-50 text-primary-700 shadow-sm border border-primary-100' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
-        }`}
-    >
-      <Icon size={20} />
-      <span>{label}</span>
-      {activeTab === id && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary-600"></div>}
-    </button>
-  );
-
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans flex flex-col md:flex-row overflow-hidden">
-      <header className="md:hidden bg-white border-b border-slate-200 h-16 px-4 flex items-center justify-between z-50 sticky top-0">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center text-white"><LayoutDashboard size={20} /></div>
-          <h1 className="text-lg font-bold">FinanceFlow</h1>
+    <div className="min-h-screen bg-background text-on-surface font-body">
+      {/* Fixed Top Nav - desktop */}
+      <header className="fixed top-0 w-full z-50 justify-between items-center px-8 h-14 bg-[#1a1b20] border-b border-[#464554]/15 hidden md:flex">
+        <div className="flex items-center gap-8">
+          <span className="text-xl font-bold text-[#e3e2e7] tracking-widest uppercase">Cashflow</span>
+          <nav className="flex gap-6 items-center">
+            {tabs.map(tab => (
+              <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                className={activeTab === tab.id
+                  ? "text-[#c1c1ff] border-b-2 border-[#c1c1ff] pb-1 font-semibold text-sm"
+                  : "text-[#ccc5c0] hover:text-[#e3e2e7] transition-colors text-sm"
+                }
+              >{tab.label}</button>
+            ))}
+          </nav>
         </div>
-        <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-slate-600">
-          {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+        <div className="flex items-center gap-4">
+          <button onClick={() => triggerSync()} className="p-2 rounded-full hover:bg-[#38393d] transition-all duration-200 text-[#c1c1ff]">
+            <span className="material-symbols-outlined">sync</span>
+          </button>
+          {userMetadata?.avatar_url ? (
+            <img src={userMetadata.avatar_url} alt="User" className="w-8 h-8 rounded-full object-cover" />
+          ) : (
+            <div className="w-8 h-8 rounded-full bg-[#292a2e] flex items-center justify-center text-[#ccc5c0] text-xs font-bold">
+              {isGuest ? 'G' : 'U'}
+            </div>
+          )}
+          <button onClick={handleLogout} className="text-[#ccc5c0] hover:text-[#e3e2e7] text-xs transition-colors">Exit</button>
+        </div>
+      </header>
+
+      {/* Mobile header - simple top bar */}
+      <header className="fixed top-0 w-full z-50 flex justify-between items-center px-4 h-14 bg-[#1a1b20] border-b border-[#464554]/15 md:hidden">
+        <span className="text-base font-bold text-[#e3e2e7] tracking-widest uppercase">Cashflow</span>
+        <button onClick={() => triggerSync()} className="p-2 rounded-full hover:bg-[#38393d] text-[#c1c1ff]">
+          <span className="material-symbols-outlined text-sm">sync</span>
         </button>
       </header>
 
-      <aside className={`fixed inset-0 z-40 bg-white border-r border-slate-200 w-64 flex flex-col transition-transform duration-300 transform md:relative md:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
-        <div className="p-6 hidden md:flex items-center gap-3">
-          <div className="w-10 h-10 bg-primary-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-primary-200"><LayoutDashboard size={24} /></div>
-          <div><h1 className="text-xl font-black tracking-tight text-slate-900">FinanceFlow</h1><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Smart Wealth</p></div>
-        </div>
-
-        <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto no-scrollbar mt-12 md:mt-0">
-          <p className="px-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Main Dashboard</p>
-          <NavItem id="savings" label="Savings Hub" icon={Coins} />
-          <NavItem id="expenses" label="Monthly Expenses" icon={PieChart} />
-          <NavItem id="networth" label="Net Worth Tracking" icon={Wallet} />
-          <p className="px-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-8 mb-2">Investment Hub</p>
-          <NavItem id="stocks" label="Stocks" icon={BarChart4} />
-          <NavItem id="portfolio" label="Funds & ETFs" icon={Briefcase} />
-          <NavItem id="investment" label="Growth Sim" icon={TrendingUp} />
-          <p className="px-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-8 mb-2">Planning & Settings</p>
-          <NavItem id="fire" label="FIRE Analysis" icon={Flame} />
-          <NavItem id="data" label="Settings" icon={Settings} />
-        </nav>
-
-        <div className="p-4 border-t border-slate-100 bg-slate-50/50 space-y-3">
-          {activeUserKey ? (
-            <div className="bg-white p-3 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-3">
-              {userMetadata?.avatar_url ? (
-                <img src={userMetadata.avatar_url} alt="User" className="w-10 h-10 rounded-full object-cover border border-slate-200" />
-              ) : (
-                <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 overflow-hidden shrink-0">
-                  <Key size={18} className="text-indigo-600" />
-                </div>
-              )}
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-black text-slate-900 truncate" title={userMetadata?.full_name || userMetadata?.email || 'Sync ID User'}>
-                  {userMetadata?.full_name || userMetadata?.email || 'Sync ID User'}
-                </p>
-                <button onClick={handleLogout} className="text-[10px] font-bold text-primary-600 hover:text-primary-800 flex items-center gap-1 mt-0.5"><LogOut size={10} /> Exit</button>
-              </div>
-            </div>
-          ) : (
-            <div className="bg-white p-3 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 shrink-0"><CloudOff size={20} /></div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-black text-slate-900">Guest Mode</p>
-                <p className="text-[10px] text-slate-400">Local Only</p>
-              </div>
-            </div>
-          )}
-
-          <div className="bg-white p-3 rounded-2xl border border-slate-100 shadow-sm">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Cloud Status</span>
-              {syncStatus === 'syncing' ? <RefreshCw size={12} className="animate-spin text-primary-500" /> : <div className={`w-2 h-2 rounded-full ${syncStatus === 'success' ? 'bg-emerald-500' : syncStatus === 'error' ? 'bg-red-500' : syncStatus === 'offline' ? 'bg-amber-500' : 'bg-slate-300'}`}></div>}
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="p-1.5 bg-slate-50 rounded-lg">
-                {syncStatus === 'offline' ? <WifiOff size={14} className="text-amber-500" /> : <Cloud size={14} className={syncStatus === 'success' ? 'text-emerald-500' : 'text-slate-400'} />}
-              </div>
-              <div>
-                <p className="text-xs font-bold text-slate-700">
-                  {syncStatus === 'success' ? 'Synced' : syncStatus === 'offline' ? 'Offline Mode' : syncStatus === 'error' ? 'Sync Error' : activeUserKey ? 'Connected' : 'Offline'}
-                </p>
-                <p className="text-[9px] text-slate-400 truncate max-w-[120px]">{syncStatus === 'offline' ? 'Cloud Unreachable' : lastSyncedAt || (activeUserKey ? 'Idle' : 'Not Linked')}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </aside>
-
-      <main className="flex-1 overflow-y-auto no-scrollbar p-4 md:p-8 relative">
-        <div className="max-w-6xl mx-auto pb-12">{renderContent()}</div>
+      {/* Main content - with top padding for fixed nav, bottom padding for mobile bottom nav */}
+      <main className="pt-14 pb-20 md:pb-8 min-h-screen">
+        <div className="max-w-[1600px] mx-auto">{renderContent()}</div>
       </main>
-      <div className="fixed top-0 right-0 -z-10 w-[500px] h-[500px] bg-primary-100/30 blur-[100px] rounded-full opacity-50 pointer-events-none"></div>
+
+      {/* Mobile bottom nav */}
+      <nav className="md:hidden fixed bottom-0 left-0 w-full bg-[#1a1b20] h-16 flex items-center justify-around z-50 px-4 border-t border-[#464554]/10">
+        {mobileBottomTabs.map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className="flex flex-col items-center justify-center gap-0.5"
+          >
+            <span
+              className={`material-symbols-outlined text-xl ${activeTab === tab.id ? 'text-[#c1c1ff]' : 'text-[#ccc5c0] opacity-70'}`}
+            >{tab.icon}</span>
+            <span
+              className={`text-[10px] font-bold uppercase tracking-tighter ${activeTab === tab.id ? 'text-[#c1c1ff]' : 'text-[#ccc5c0] opacity-70'}`}
+            >{tab.label}</span>
+          </button>
+        ))}
+      </nav>
+
+      {/* Ambient glows */}
+      <div className="fixed top-[-10%] right-[-10%] w-[40%] h-[40%] bg-[#c1c1ff]/5 blur-[120px] rounded-full pointer-events-none z-[-1]"></div>
+      <div className="fixed bottom-[-10%] left-[-10%] w-[30%] h-[30%] bg-[#eec060]/5 blur-[100px] rounded-full pointer-events-none z-[-1]"></div>
     </div>
   );
 };

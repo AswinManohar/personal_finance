@@ -1,9 +1,12 @@
+export type RecurringFrequency = 'weekly' | 'bi-weekly' | 'monthly' | 'quarterly' | 'yearly';
+
 export interface Expense {
   id: string;
   name: string;
   amount: number;
   category: ExpenseCategory;
   isRecurring: boolean;
+  recurringFrequency?: RecurringFrequency;
   date: string; // ISO date string
 }
 
@@ -36,6 +39,7 @@ export interface SavingsGoal {
 
 export interface NetWorthState {
   goldInvestment: number;
+  otherAssets: number;
   remainingLoan: number;
   monthlyRecurringSavings: number;
   accumulatedSavings: number;
@@ -97,4 +101,4 @@ export interface SupabaseSyncState {
   lastSynced?: string;
 }
 
-export type ActiveTab = 'expenses' | 'savings' | 'investment' | 'networth' | 'fire' | 'portfolio' | 'stocks' | 'data';
+export type ActiveTab = 'expenses' | 'savings' | 'investment' | 'networth' | 'fire' | 'portfolio' | 'stocks' | 'data' | 'goal';

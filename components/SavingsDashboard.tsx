@@ -1,9 +1,6 @@
 
 import React, { useMemo, useState } from 'react';
 import { NetWorthState, PortfolioAsset, Stock } from '../types';
-import { Card } from './ui/Card';
-import { Coins, TrendingUp, Briefcase, BarChart4, Wallet, ArrowUpRight, Calculator, PiggyBank, Plus, ArrowRight } from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
 interface SavingsDashboardProps {
   portfolio: PortfolioAsset[];
@@ -13,20 +10,36 @@ interface SavingsDashboardProps {
   onSync: (overrides?: any) => Promise<void>;
 }
 
-const COLORS = ['#0ea5e9', '#6366f1', '#f59e0b', '#10b981'];
-
-export const SavingsDashboard: React.FC<SavingsDashboardProps> = ({ 
-  portfolio, stocks, netWorthData, setNetWorthData, onSync 
+export const SavingsDashboard: React.FC<SavingsDashboardProps> = ({
+  portfolio,
+  stocks,
+  netWorthData,
+  setNetWorthData,
+  onSync,
 }) => {
   const [addAmount, setAddAmount] = useState('');
 
-  const stockValue = useMemo(() => stocks.reduce((sum, s) => sum + (s.quantity * (s.currentPrice || s.buyPrice)), 0), [stocks]);
-  const portfolioValue = useMemo(() => portfolio.reduce((sum, p) => sum + p.currentValue, 0), [portfolio]);
-  
-  // Total Money Saved = Mutual Funds + Stocks + Gold + Accumulated Monthly Savings
-  const totalMoneySaved = portfolioValue + stockValue + netWorthData.goldInvestment + netWorthData.accumulatedSavings;
+  const stockValue = useMemo(
+    () => stocks.reduce((sum, s) => sum + s.quantity * (s.currentPrice || s.buyPrice), 0),
+    [stocks]
+  );
+  const portfolioValue = useMemo(
+    () => portfolio.reduce((sum, p) => sum + p.currentValue, 0),
+    [portfolio]
+  );
 
-  const handleSavingsUpdate = (field: 'monthlyRecurringSavings' | 'accumulatedSavings', value: string) => {
+  // Total assets = Mutual Funds + Stocks + Gold + Cash + Other Assets
+  const totalAssets =
+    portfolioValue +
+    stockValue +
+    netWorthData.goldInvestment +
+    netWorthData.accumulatedSavings +
+    netWorthData.otherAssets;
+
+  const handleSavingsUpdate = (
+    field: 'monthlyRecurringSavings' | 'accumulatedSavings',
+    value: string
+  ) => {
     const numValue = parseFloat(value) || 0;
     const newData = { ...netWorthData, [field]: numValue };
     setNetWorthData(newData);
@@ -36,214 +49,463 @@ export const SavingsDashboard: React.FC<SavingsDashboardProps> = ({
   const handleQuickAdd = () => {
     const amount = parseFloat(addAmount);
     if (isNaN(amount) || amount <= 0) return;
-    
-    const newData = { 
-      ...netWorthData, 
-      accumulatedSavings: netWorthData.accumulatedSavings + amount 
+    const newData = {
+      ...netWorthData,
+      accumulatedSavings: netWorthData.accumulatedSavings + amount,
     };
     setNetWorthData(newData);
     onSync({ netWorthData: newData });
     setAddAmount('');
   };
 
-  const chartData = [
-    { name: 'Mutual Funds', value: portfolioValue },
-    { name: 'Stocks', value: stockValue },
-    { name: 'Gold Holdings', value: netWorthData.goldInvestment },
-    { name: 'Cash Savings', value: netWorthData.accumulatedSavings },
-  ].filter(d => d.value > 0);
+  // Asset categories for breakdown
+  const assetCategories = [
+    { label: 'Mutual Funds', value: portfolioValue, color: 'bg-primary-container', dotColor: 'bg-primary-container' },
+    { label: 'Stocks', value: stockValue, color: 'bg-primary', dotColor: 'bg-primary' },
+    { label: 'Gold', value: netWorthData.goldInvestment, color: 'bg-tertiary', dotColor: 'bg-tertiary' },
+    { label: 'Cash', value: netWorthData.accumulatedSavings, color: 'bg-outline-variant', dotColor: 'bg-outline-variant' },
+  ];
+
+  const totalForBar = assetCategories.reduce((s, c) => s + c.value, 0) || 1;
+
+  // Distribution mix percentages for donut chart
+  const distCategories = [
+    { label: 'Mutual Funds', value: portfolioValue, stroke: '#c1c1ff', dotColor: 'bg-primary' },
+    { label: 'Stocks', value: stockValue, stroke: '#8183ff', dotColor: 'bg-primary-container' },
+    { label: 'Gold & Other', value: netWorthData.goldInvestment + netWorthData.otherAssets, stroke: '#eec060', dotColor: 'bg-tertiary' },
+  ];
+  const totalDist = distCategories.reduce((s, c) => s + c.value, 0) || 1;
+
+  // SVG donut: r=80, circumference ~502
+  const circumference = 2 * Math.PI * 80; // ~502.65
+  const donutSegments = (() => {
+    let offset = 0;
+    return distCategories.map((cat) => {
+      const pct = cat.value / totalDist;
+      const dashLength = pct * circumference;
+      const dashOffset = circumference - offset;
+      offset += dashLength;
+      return { ...cat, dasharray: circumference, dashoffset: dashOffset - dashLength };
+    });
+  })();
+
+  // 12-month outlook projected values
+  const projected12m =
+    netWorthData.accumulatedSavings + netWorthData.monthlyRecurringSavings * 12;
+  const netGrowth12m = netWorthData.monthlyRecurringSavings * 12;
+
+  // Monthly savings bar heights (decorative ratios based on savings categories)
+  const autoRatio =
+    totalAssets > 0
+      ? Math.min(100, Math.round((netWorthData.accumulatedSavings / totalAssets) * 300))
+      : 40;
+  const divsRatio =
+    totalAssets > 0
+      ? Math.min(100, Math.round(((portfolioValue + stockValue) / totalAssets) * 100))
+      : 60;
+  const extraRatio =
+    totalAssets > 0
+      ? Math.min(100, Math.round((netWorthData.goldInvestment / totalAssets) * 300))
+      : 25;
+
+  const fmt = (n: number) =>
+    '€' +
+    n.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+
+  const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h2 className="text-3xl font-black text-slate-900 tracking-tight">Savings Hub</h2>
-          <p className="text-slate-500 font-medium">Holistic tracking of all capital and liquid assets.</p>
-        </div>
-      </div>
+    <div className="px-8 py-8 max-w-[1440px] mx-auto">
+      <div className="grid grid-cols-12 gap-6">
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Main Total Savings Card */}
-        <Card className="lg:col-span-2 bg-gradient-to-br from-indigo-600 to-blue-700 text-white p-8 relative overflow-hidden border-none shadow-2xl shadow-indigo-200">
-          <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none rotate-12">
-            <PiggyBank size={140} />
-          </div>
-          <div className="relative z-10">
-            <p className="text-indigo-100 text-sm font-bold uppercase tracking-widest mb-2">Total Money Saved</p>
-            <h3 className="text-5xl md:text-6xl font-black mb-6">€{totalMoneySaved.toLocaleString()}</h3>
-            
-            <div className="grid grid-cols-2 gap-6 pt-6 border-t border-white/10">
-              <div>
-                <p className="text-indigo-200 text-[10px] font-bold uppercase tracking-wider mb-1">Market Equity</p>
-                <p className="text-xl font-bold">€{(portfolioValue + stockValue).toLocaleString()}</p>
-              </div>
-              <div>
-                <p className="text-indigo-200 text-[10px] font-bold uppercase tracking-wider mb-1">Liquid Assets</p>
-                <p className="text-xl font-bold">€{(netWorthData.goldInvestment + netWorthData.accumulatedSavings).toLocaleString()}</p>
+        {/* ── Row 1: Hero Card ── */}
+        <section className="col-span-12">
+          <div className="bg-surface-container-low p-8 rounded-xl flex justify-between items-end relative overflow-hidden">
+            <div className="z-10">
+              <p className="text-[12px] uppercase tracking-[0.2em] text-secondary font-medium mb-2">
+                Total Tracked Assets
+              </p>
+              <h1
+                className="text-[3.5rem] font-bold text-[#F0EDE8] leading-none tracking-tighter tabular-nums mb-2"
+                style={{ fontVariantNumeric: 'tabular-nums' }}
+              >
+                {fmt(totalAssets)}
+              </h1>
+              <div className="flex items-center gap-2">
+                <span className="flex items-center text-[#3DD68C] text-sm font-semibold tabular-nums tracking-tight">
+                  <svg
+                    className="w-4 h-4 mr-1"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2.5}
+                  >
+                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+                    <polyline points="17 6 23 6 23 12" />
+                  </svg>
+                  +{totalAssets > 0 ? ((netWorthData.monthlyRecurringSavings * 12 / Math.max(totalAssets, 1)) * 100).toFixed(1) : '0.0'}%
+                </span>
+                <span className="text-secondary text-xs opacity-60">projected annual</span>
               </div>
             </div>
-          </div>
-        </Card>
 
-        {/* Wealth Distribution Chart */}
-        <Card title="Distribution Mix" className="lg:col-span-2">
-          <div className="h-[240px] w-full flex items-center">
-            <div className="flex-1 h-full">
-              {chartData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={chartData}
-                      innerRadius={60}
-                      outerRadius={80}
-                      paddingAngle={5}
-                      dataKey="value"
-                    >
-                      {chartData.map((_, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip 
-                      formatter={(val: number) => `€${val.toLocaleString()}`}
-                      contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="h-full flex items-center justify-center text-slate-300 italic text-sm">No data recorded</div>
-              )}
+            {/* Decorative sparkline */}
+            <div className="absolute right-0 bottom-0 w-1/3 h-32 opacity-20 pointer-events-none">
+              <svg className="w-full h-full" viewBox="0 0 400 100" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="hero-gradient" x1="0" x2="0" y1="0" y2="1">
+                    <stop offset="0%" stopColor="#c1c1ff" stopOpacity="0.5" />
+                    <stop offset="100%" stopColor="#c1c1ff" stopOpacity="0" />
+                  </linearGradient>
+                </defs>
+                <path
+                  d="M0,80 Q50,70 100,50 T200,60 T300,20 T400,10 V100 H0 Z"
+                  fill="url(#hero-gradient)"
+                />
+                <path
+                  d="M0,80 Q50,70 100,50 T200,60 T300,20 T400,10"
+                  fill="none"
+                  stroke="#c1c1ff"
+                  strokeWidth="3"
+                />
+              </svg>
             </div>
-            <div className="w-1/2 space-y-2">
-              {chartData.map((item, idx) => (
-                <div key={item.name} className="flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }}></div>
-                    <span className="font-bold text-slate-600">{item.name}</span>
+          </div>
+        </section>
+
+        {/* ── Row 2 Left: Asset Breakdown + 12-Month Outlook ── */}
+        <section className="col-span-12 lg:col-span-7 space-y-6">
+
+          {/* Asset Breakdown */}
+          <div className="bg-surface-container-low p-6 rounded-xl">
+            <h2 className="text-sm font-bold tracking-wider text-on-surface-variant uppercase mb-6">
+              Asset Breakdown
+            </h2>
+
+            {/* Horizontal stacked bar */}
+            <div className="h-10 w-full flex rounded-full overflow-hidden mb-8">
+              {assetCategories.map((cat) => (
+                <div
+                  key={cat.label}
+                  className={`h-full ${cat.color}`}
+                  style={{ width: `${(cat.value / totalForBar) * 100}%` }}
+                />
+              ))}
+            </div>
+
+            {/* Legend grid */}
+            <div className="grid grid-cols-2 gap-y-4 gap-x-8">
+              {assetCategories.map((cat) => (
+                <div
+                  key={cat.label}
+                  className="flex justify-between items-center py-2 border-b border-outline-variant/10"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-2 h-2 rounded-full ${cat.dotColor}`} />
+                    <span className="text-sm font-medium text-on-surface">{cat.label}</span>
                   </div>
-                  <span className="font-mono text-slate-900">€{item.value.toLocaleString()}</span>
+                  <span
+                    className="tabular-nums font-semibold text-on-surface tracking-tight"
+                    style={{ fontVariantNumeric: 'tabular-nums' }}
+                  >
+                    {fmt(cat.value)}
+                  </span>
                 </div>
               ))}
             </div>
           </div>
-        </Card>
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Cash Savings Management */}
-        <Card title="Manage Liquid Cash" className="lg:col-span-2">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="space-y-6">
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg"><TrendingUp size={18} /></div>
-                  <label className="text-sm font-bold text-slate-700 uppercase tracking-tight">Monthly Recurring Savings</label>
-                </div>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-slate-400">€</span>
-                  <input
-                    type="number"
-                    value={netWorthData.monthlyRecurringSavings || ''}
-                    onChange={(e) => handleSavingsUpdate('monthlyRecurringSavings', e.target.value)}
-                    placeholder="Set monthly target..."
-                    className="w-full pl-8 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none font-black text-2xl"
-                  />
-                </div>
-                <p className="mt-2 text-[10px] text-slate-400 font-medium tracking-tight">General cash savings target separate from investments.</p>
-              </div>
-
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg"><Coins size={18} /></div>
-                  <label className="text-sm font-bold text-slate-700 uppercase tracking-tight">Total Accumulated Cash</label>
-                </div>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-slate-400">€</span>
-                  <input
-                    type="number"
-                    value={netWorthData.accumulatedSavings || ''}
-                    onChange={(e) => handleSavingsUpdate('accumulatedSavings', e.target.value)}
-                    placeholder="0.00"
-                    className="w-full pl-8 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none font-black text-2xl"
-                  />
-                </div>
+          {/* 12-Month Outlook */}
+          <div className="bg-surface-container-low p-6 rounded-xl">
+            <div className="flex justify-between items-center mb-8">
+              <h2 className="text-sm font-bold tracking-wider text-on-surface-variant uppercase">
+                12-Month Outlook
+              </h2>
+              <div className="flex gap-2">
+                <span className="px-3 py-1 bg-surface-container-high rounded-full text-[10px] font-bold text-primary">
+                  PROJECTED
+                </span>
               </div>
             </div>
 
-            <div className="flex flex-col gap-4">
-              <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200 shadow-inner overflow-hidden">
-                <h4 className="font-bold text-slate-900 mb-4 flex items-center gap-2">
-                  <Plus size={18} className="text-indigo-600" /> Manual Savings Entry
-                </h4>
-                <div className="flex flex-col sm:flex-row gap-2">
+            <div className="h-64 relative flex items-end justify-between px-2">
+              {/* Grid lines */}
+              <div className="absolute inset-0 top-4 bottom-8 flex flex-col justify-between pointer-events-none opacity-10">
+                <div className="border-b border-on-surface w-full" />
+                <div className="border-b border-on-surface w-full" />
+                <div className="border-b border-on-surface w-full" />
+                <div className="border-b border-on-surface w-full" />
+              </div>
+
+              {/* Area chart SVG */}
+              <svg
+                className="absolute inset-0 h-48 w-full mt-4"
+                viewBox="0 0 100 100"
+                preserveAspectRatio="none"
+              >
+                <defs>
+                  <linearGradient id="chart-gradient" x1="0" x2="0" y1="0" y2="1">
+                    <stop offset="0%" stopColor="#c1c1ff" />
+                    <stop offset="100%" stopColor="#c1c1ff" stopOpacity="0" />
+                  </linearGradient>
+                </defs>
+                <path
+                  d="M0,80 L10,75 L20,78 L30,60 L40,55 L50,45 L60,40 L70,35 L80,25 L90,15 L100,10 V100 H0 Z"
+                  fill="url(#chart-gradient)"
+                  fillOpacity="0.15"
+                />
+                <path
+                  d="M0,80 L10,75 L20,78 L30,60 L40,55 L50,45 L60,40 L70,35 L80,25 L90,15 L100,10"
+                  fill="none"
+                  stroke="#c1c1ff"
+                  strokeWidth="1.5"
+                />
+              </svg>
+
+              {/* Month labels */}
+              <div className="w-full flex justify-between text-[10px] text-secondary font-semibold tracking-widest absolute bottom-0 tabular-nums">
+                {months.map((m) => (
+                  <span key={m}>{m}</span>
+                ))}
+              </div>
+            </div>
+
+            {/* Projected figures */}
+            <div className="mt-4 pt-4 border-t border-outline-variant/10 grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-[10px] uppercase tracking-widest text-on-surface-variant font-medium mb-1">
+                  Projected Balance
+                </p>
+                <p
+                  className="text-lg font-bold text-on-surface tabular-nums tracking-tight"
+                  style={{ fontVariantNumeric: 'tabular-nums' }}
+                >
+                  {fmt(projected12m)}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-widest text-on-surface-variant font-medium mb-1">
+                  Net Growth
+                </p>
+                <p
+                  className="text-lg font-bold text-[#3DD68C] tabular-nums tracking-tight"
+                  style={{ fontVariantNumeric: 'tabular-nums' }}
+                >
+                  +{fmt(netGrowth12m)}
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── Row 2 Right: Monthly Savings + Distribution Mix ── */}
+        <section className="col-span-12 lg:col-span-5 space-y-6">
+
+          {/* Monthly Savings */}
+          <div className="bg-surface-container-low p-6 rounded-xl">
+            <h2 className="text-sm font-bold tracking-wider text-on-surface-variant uppercase mb-4">
+              Monthly Savings
+            </h2>
+
+            {/* Input for monthly savings */}
+            <div className="mb-4">
+              <label className="text-[10px] uppercase tracking-widest text-on-surface-variant font-medium block mb-2">
+                Set Monthly Target
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary font-bold text-sm">
+                  €
+                </span>
+                <input
+                  type="number"
+                  value={netWorthData.monthlyRecurringSavings || ''}
+                  onChange={(e) => handleSavingsUpdate('monthlyRecurringSavings', e.target.value)}
+                  placeholder="0"
+                  className="w-full pl-7 pr-3 py-2 bg-surface-container rounded-lg border border-outline-variant/20 focus:border-primary/50 focus:outline-none text-on-surface font-semibold tabular-nums text-sm transition-colors"
+                  style={{ fontVariantNumeric: 'tabular-nums' }}
+                />
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <span
+                className="text-4xl font-bold text-on-surface tabular-nums leading-tight tracking-tighter"
+                style={{ fontVariantNumeric: 'tabular-nums' }}
+              >
+                {fmt(netWorthData.monthlyRecurringSavings)}
+              </span>
+              <p className="text-xs text-secondary mt-1">Monthly recurring savings target</p>
+            </div>
+
+            {/* Mini bar columns */}
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <div className="h-24 bg-surface-container-high rounded-lg flex flex-col justify-end overflow-hidden p-1">
+                  <div
+                    className="bg-primary-container w-full rounded-md transition-all duration-500"
+                    style={{ height: `${Math.max(10, Math.min(90, autoRatio))}%` }}
+                  />
+                </div>
+                <p className="text-[10px] font-bold text-center text-on-surface-variant">AUTO</p>
+              </div>
+              <div className="space-y-2">
+                <div className="h-24 bg-surface-container-high rounded-lg flex flex-col justify-end overflow-hidden p-1">
+                  <div
+                    className="bg-primary w-full rounded-md transition-all duration-500"
+                    style={{ height: `${Math.max(10, Math.min(90, divsRatio))}%` }}
+                  />
+                </div>
+                <p className="text-[10px] font-bold text-center text-on-surface-variant">DIVS</p>
+              </div>
+              <div className="space-y-2">
+                <div className="h-24 bg-surface-container-high rounded-lg flex flex-col justify-end overflow-hidden p-1">
+                  <div
+                    className="bg-tertiary w-full rounded-md transition-all duration-500"
+                    style={{ height: `${Math.max(10, Math.min(90, extraRatio))}%` }}
+                  />
+                </div>
+                <p className="text-[10px] font-bold text-center text-on-surface-variant">EXTRA</p>
+              </div>
+            </div>
+
+            {/* Quick add accumulated savings */}
+            <div className="mt-6 pt-4 border-t border-outline-variant/10">
+              <label className="text-[10px] uppercase tracking-widest text-on-surface-variant font-medium block mb-2">
+                Cash Savings Balance
+              </label>
+              <div className="relative mb-2">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary font-bold text-sm">
+                  €
+                </span>
+                <input
+                  type="number"
+                  value={netWorthData.accumulatedSavings || ''}
+                  onChange={(e) => handleSavingsUpdate('accumulatedSavings', e.target.value)}
+                  placeholder="0"
+                  className="w-full pl-7 pr-3 py-2 bg-surface-container rounded-lg border border-outline-variant/20 focus:border-primary/50 focus:outline-none text-on-surface font-semibold tabular-nums text-sm transition-colors"
+                  style={{ fontVariantNumeric: 'tabular-nums' }}
+                />
+              </div>
+
+              {/* Manual add entry */}
+              <div className="flex gap-2 mt-3">
+                <div className="relative flex-1">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary font-bold text-sm">
+                    +€
+                  </span>
                   <input
                     type="number"
                     value={addAmount}
                     onChange={(e) => setAddAmount(e.target.value)}
-                    placeholder="Amt"
-                    className="flex-1 min-w-0 px-3 py-2 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-bold"
+                    placeholder="Add amount"
+                    className="w-full pl-9 pr-3 py-2 bg-surface-container rounded-lg border border-outline-variant/20 focus:border-primary/50 focus:outline-none text-on-surface font-semibold tabular-nums text-sm transition-colors"
+                    onKeyDown={(e) => e.key === 'Enter' && handleQuickAdd()}
+                    style={{ fontVariantNumeric: 'tabular-nums' }}
                   />
-                  <button 
-                    onClick={handleQuickAdd}
-                    className="bg-indigo-600 text-white px-4 py-2 rounded-xl hover:bg-indigo-700 font-bold shadow-md transition-all active:scale-95 shrink-0"
-                  >
-                    Add
-                  </button>
                 </div>
-              </div>
-
-              <div className="bg-primary-50 rounded-2xl p-6 border border-primary-100 flex flex-col justify-center">
-                 <div className="flex items-center gap-3 mb-4">
-                    <div className="p-3 bg-white rounded-xl shadow-sm"><Calculator className="text-primary-600" /></div>
-                    <h4 className="font-bold text-slate-900">12-Month Outlook</h4>
-                 </div>
-                 <div className="space-y-4">
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-slate-500">Projected Balance</span>
-                      <span className="font-bold text-slate-900">€{(netWorthData.accumulatedSavings + (netWorthData.monthlyRecurringSavings * 12)).toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-slate-500">Net Growth</span>
-                      <span className="font-bold text-emerald-600">+€{(netWorthData.monthlyRecurringSavings * 12).toLocaleString()}</span>
-                    </div>
-                 </div>
+                <button
+                  onClick={handleQuickAdd}
+                  className="px-4 py-2 bg-primary text-on-primary rounded-lg text-xs font-bold hover:opacity-90 transition-opacity shrink-0"
+                >
+                  ADD
+                </button>
               </div>
             </div>
           </div>
-        </Card>
 
-        {/* Wealth Breakdown Quick List */}
-        <div className="space-y-4">
-           <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between group hover:border-indigo-300 transition-all">
-              <div className="flex items-center gap-4">
-                 <div className="p-3 bg-amber-50 text-amber-600 rounded-xl group-hover:bg-amber-100 transition-colors"><Briefcase size={20} /></div>
-                 <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-tight">Mutual Funds</p>
-                    <p className="text-xl font-black text-slate-900">€{portfolioValue.toLocaleString()}</p>
-                 </div>
+          {/* Distribution Mix Donut */}
+          <div className="bg-surface-container-low p-6 rounded-xl">
+            <h2 className="text-sm font-bold tracking-wider text-on-surface-variant uppercase mb-8">
+              Distribution Mix
+            </h2>
+
+            {/* SVG Donut */}
+            <div className="relative flex justify-center mb-8">
+              <svg className="w-48 h-48" style={{ transform: 'rotate(-90deg)' }}>
+                {/* Background track */}
+                <circle
+                  cx="96"
+                  cy="96"
+                  r="80"
+                  fill="transparent"
+                  stroke="#464554"
+                  strokeOpacity="0.2"
+                  strokeWidth="12"
+                />
+                {/* Segments */}
+                {donutSegments.map((seg, idx) => {
+                  const pct = seg.value / totalDist;
+                  if (pct <= 0) return null;
+                  const dashLen = pct * circumference;
+                  // cumulative offset
+                  const prevOffset = donutSegments
+                    .slice(0, idx)
+                    .reduce((s, c) => s + (c.value / totalDist) * circumference, 0);
+                  return (
+                    <circle
+                      key={seg.label}
+                      cx="96"
+                      cy="96"
+                      r="80"
+                      fill="transparent"
+                      stroke={seg.stroke}
+                      strokeWidth="12"
+                      strokeDasharray={`${dashLen} ${circumference - dashLen}`}
+                      strokeDashoffset={circumference - prevOffset}
+                    />
+                  );
+                })}
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-xs text-secondary font-bold tracking-widest uppercase">
+                  Total
+                </span>
+                <span
+                  className="text-xl font-bold text-on-surface tracking-tighter tabular-nums"
+                  style={{ fontVariantNumeric: 'tabular-nums' }}
+                >
+                  {fmt(totalAssets)}
+                </span>
               </div>
-              <ArrowUpRight className="text-slate-300 group-hover:text-indigo-500 transition-colors" />
-           </div>
-           <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between group hover:border-blue-300 transition-all">
-              <div className="flex items-center gap-4">
-                 <div className="p-3 bg-blue-50 text-blue-600 rounded-xl group-hover:bg-blue-100 transition-colors"><BarChart4 size={20} /></div>
-                 <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-tight">Stock Equity</p>
-                    <p className="text-xl font-black text-slate-900">€{stockValue.toLocaleString()}</p>
-                 </div>
-              </div>
-              <ArrowUpRight className="text-slate-300 group-hover:text-blue-500 transition-colors" />
-           </div>
-           <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between group hover:border-yellow-400 transition-all">
-              <div className="flex items-center gap-4">
-                 <div className="p-3 bg-yellow-50 text-yellow-600 rounded-xl group-hover:bg-yellow-100 transition-colors"><Coins size={20} /></div>
-                 <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-tight">Gold Holdings</p>
-                    <p className="text-xl font-black text-slate-900">€{netWorthData.goldInvestment.toLocaleString()}</p>
-                 </div>
-              </div>
-              <ArrowUpRight className="text-slate-300 group-hover:text-yellow-600 transition-colors" />
-           </div>
-        </div>
+            </div>
+
+            {/* Legend */}
+            <div className="space-y-3">
+              {distCategories.map((cat) => {
+                const pct = totalDist > 0 ? ((cat.value / totalDist) * 100).toFixed(0) : '0';
+                return (
+                  <div key={cat.label} className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-2 h-2 rounded-full ${cat.dotColor}`} />
+                      <span className="font-medium text-on-surface">{cat.label}</span>
+                    </div>
+                    <span
+                      className="tabular-nums font-semibold text-secondary tracking-tight"
+                      style={{ fontVariantNumeric: 'tabular-nums' }}
+                    >
+                      {pct}%
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Quick Action Callout */}
+          <div className="bg-primary/5 border border-primary/10 p-5 rounded-xl flex items-center justify-between">
+            <div>
+              <h4 className="text-sm font-bold text-primary">Optimize Savings</h4>
+              <p className="text-[11px] text-on-surface-variant">
+                Projected 12-month growth:{' '}
+                <span className="tabular-nums font-semibold">{fmt(netGrowth12m)}</span>
+              </p>
+            </div>
+            <button className="bg-primary text-on-primary px-4 py-2 rounded-lg text-xs font-bold hover:opacity-90 transition-opacity">
+              REVIEW
+            </button>
+          </div>
+        </section>
+
       </div>
     </div>
   );

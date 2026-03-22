@@ -1,46 +1,73 @@
 <!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>FinanceFlow - Smart Financial Planner</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            fontFamily: {
-              sans: ['Inter', 'sans-serif'],
-            },
-            colors: {
-              primary: {
-                50: '#f0f9ff',
-                100: '#e0f2fe',
-                500: '#0ea5e9',
-                600: '#0284c7',
-                700: '#0369a1',
-              }
-            }
-          }
+<html lang="en" class="dark">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cashflow — Private Ledger</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+    rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+    rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "tertiary": "#eec060",
+            "surface-container-lowest": "#0d0e12",
+            "surface-container": "#1f1f24",
+            "on-surface": "#e3e2e7",
+            "background": "#121317",
+            "surface-container-low": "#1a1b20",
+            "secondary-container": "#4c4844",
+            "surface-bright": "#38393d",
+            "surface-container-high": "#292a2e",
+            "surface": "#121317",
+            "surface-container-highest": "#343439",
+            "on-background": "#e3e2e7",
+            "outline": "#908fa0",
+            "on-surface-variant": "#c7c4d7",
+            "on-secondary": "#33302c",
+            "outline-variant": "#464554",
+            "secondary": "#ccc5c0",
+            "primary-container": "#8183ff",
+            "primary": "#c1c1ff",
+            "surface-dim": "#121317",
+            "surface-variant": "#343439",
+            "inverse-surface": "#e3e2e7",
+            "positive": "#3DD68C",
+            "negative": "#F26B6B",
+            "gold": "#D4A84B"
+          },
+          fontFamily: {
+            "headline": ["Inter"],
+            "body": ["Inter"],
+            "label": ["Inter"]
+          },
+          borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }
         }
       }
-    </script>
-    <style>
-      body {
-        background-color: #f8fafc;
-      }
-      .no-scrollbar::-webkit-scrollbar {
-        display: none;
-      }
-      .no-scrollbar {
-        -ms-overflow-style: none;
-        scrollbar-width: none;
-      }
-    </style>
+    }
+  </script>
+  <style>
+    * { font-family: 'Inter', system-ui, sans-serif; }
+    body { background-color: #121317; color: #e3e2e7; }
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      vertical-align: middle;
+    }
+    .tabular-nums { font-variant-numeric: tabular-nums; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
 </head>
-  <body>
-    <div id="root"></div>
+
+<body>
+  <div id="root"></div>
   <script type="module" src="/index.tsx"></script>
-  </body>
+</body>
+
 </html>
