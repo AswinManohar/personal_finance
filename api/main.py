@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from api.routers import expenses
+from api.routers import expenses, integrations
 from dotenv import load_dotenv
 import os
 
@@ -14,7 +14,8 @@ app = FastAPI(title="FinanceFlow API")
 origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
-    
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
 ]
 
 app.add_middleware(
@@ -26,6 +27,9 @@ app.add_middleware(
 )
 
 app.include_router(expenses.router, prefix="/api")
+# Read-only service-to-service feeds (e.g. Life OS). Registered before the SPA
+# catch-all below so /v1/* resolves to the API, not index.html.
+app.include_router(integrations.router)
 
 # Health check route for Google Cloud Run Load Balancers
 @app.get("/health")
