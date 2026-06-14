@@ -8,7 +8,10 @@ import {
   Expense, PortfolioAsset, Stock, ExpenseCategory, IncomeState, InvestmentState,
   SavingsGoal, FIREState, NetWorthState, InvestmentFrequency, AssetType
 } from '../types';
-import { pushToCloud, pullFromCloud, isNetworkError } from '../services/supabaseService';
+import { 
+  pushToCloud, pullFromCloud, isNetworkError, 
+  generateIntegrationToken, getIntegrationTokens, revokeIntegrationToken 
+} from '../services/supabaseService';
 
 interface DataManagementProps {
   expenses: Expense[];
@@ -42,8 +45,43 @@ export const DataManagement: React.FC<DataManagementProps> = ({
   const [isCloudSyncing, setIsCloudSyncing] = useState(false);
   const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error' | 'info' | 'offline'; text: string } | null>(null);
   const [copied, setCopied] = useState(false);
+  
+  const [tokens, setTokens] = useState<any[]>([]);
+  const [isGeneratingToken, setIsGeneratingToken] = useState(false);
+  const [newTokenText, setNewTokenText] = useState<string | null>(null);
 
   const activeSyncKey = uniqueSyncId;
+
+  React.useEffect(() => {
+    if (activeSyncKey) {
+      getIntegrationTokens(activeSyncKey).then(data => setTokens(data)).catch(console.error);
+    }
+  }, [activeSyncKey]);
+
+  const handleGenerateToken = async () => {
+    if (!activeSyncKey) return;
+    setIsGeneratingToken(true);
+    try {
+      const token = await generateIntegrationToken(activeSyncKey, "Life OS Integration");
+      setNewTokenText(token);
+      const updatedTokens = await getIntegrationTokens(activeSyncKey);
+      setTokens(updatedTokens);
+    } catch (e: any) {
+      setStatusMsg({ type: 'error', text: 'Failed to generate token: ' + e.message });
+    } finally {
+      setIsGeneratingToken(false);
+    }
+  };
+
+  const handleRevokeToken = async (id: string) => {
+    try {
+      await revokeIntegrationToken(id);
+      setTokens(tokens.filter(t => t.id !== id));
+      if (newTokenText) setNewTokenText(null);
+    } catch (e: any) {
+      setStatusMsg({ type: 'error', text: 'Failed to revoke token: ' + e.message });
+    }
+  };
 
   const handleCloudSyncPush = async () => {
     if (!activeSyncKey) return;
@@ -433,6 +471,70 @@ export const DataManagement: React.FC<DataManagementProps> = ({
             </button>
           </div>
         </div>
+
+        {/* Integrations Card */}
+        {uniqueSyncId && (
+          <div className="bg-surface-container-low rounded-xl border border-outline-variant/10">
+            <div className="px-6 pt-5 pb-3 border-b border-outline-variant/10">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-surface-container-high flex items-center justify-center text-secondary">
+                  <Key size={18} />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-on-surface">API Integrations</p>
+                  <p className="text-xs text-secondary">Manage service tokens for apps like Life OS</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="px-6 py-4">
+              <div className="flex justify-between items-center mb-4">
+                <p className="text-sm text-secondary">Active Tokens</p>
+                <button
+                  onClick={handleGenerateToken}
+                  disabled={isGeneratingToken}
+                  className="bg-primary/10 text-primary px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-primary/20 transition-colors"
+                >
+                  {isGeneratingToken ? 'Generating...' : '+ Generate New Token'}
+                </button>
+              </div>
+
+              {newTokenText && (
+                <div className="mb-4 p-4 bg-[#3DD68C]/10 border border-[#3DD68C]/20 rounded-xl">
+                  <p className="text-xs font-bold text-[#3DD68C] mb-1">New Token Generated! (Copy now, it won't be shown again)</p>
+                  <div className="flex items-center justify-between">
+                    <p className="font-mono text-sm text-on-surface select-all tracking-wider break-all">{newTokenText}</p>
+                    <button 
+                      onClick={() => { navigator.clipboard.writeText(newTokenText); }}
+                      className="ml-2 text-secondary hover:text-on-surface"
+                    ><Copy size={14} /></button>
+                  </div>
+                </div>
+              )}
+
+              {tokens.length === 0 ? (
+                <p className="text-xs text-secondary italic">No active tokens.</p>
+              ) : (
+                <div className="space-y-3">
+                  {tokens.map(token => (
+                    <div key={token.id} className="flex items-center justify-between bg-surface-container-high p-3 rounded-lg">
+                      <div>
+                        <p className="text-sm font-bold text-on-surface">{token.token_name}</p>
+                        <p className="text-[10px] text-secondary">Created: {new Date(token.created_at).toLocaleDateString()}</p>
+                      </div>
+                      <button
+                        onClick={() => handleRevokeToken(token.id)}
+                        className="text-xs text-[#F26B6B] hover:bg-[#F26B6B]/10 px-2 py-1 rounded transition-colors"
+                      >
+                        Revoke
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -33,7 +33,7 @@ async def create_expense(expense: ExpenseCreate, user_id: str = Depends(get_curr
         if not supabase:
             raise HTTPException(status_code=500, detail="Supabase client is not configured")
         # Prepare data matching the table schema
-        data = expense.model_dump()
+        data = expense.model_dump(mode="json", exclude_unset=True)
         data["user_key"] = user_id
         
         # Insert into Supabase
@@ -61,7 +61,7 @@ async def update_expense(
         supabase = get_supabase_client()
         if not supabase:
             raise HTTPException(status_code=500, detail="Supabase client is not configured")
-        updates = expense.model_dump(exclude_unset=True)
+        updates = expense.model_dump(mode="json", exclude_unset=True)
         if not updates:
             raise HTTPException(status_code=400, detail="No fields provided for update")
 

@@ -8,6 +8,7 @@ export interface Expense {
   isRecurring: boolean;
   recurringFrequency?: RecurringFrequency;
   date: string; // ISO date string
+  vendor?: string;
 }
 
 export enum ExpenseCategory {

@@ -25,6 +25,7 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
   const [newName, setNewName] = useState('');
   const [newAmount, setNewAmount] = useState('');
   const [newCategory, setNewCategory] = useState<ExpenseCategory>(ExpenseCategory.FOOD);
+  const [newVendor, setNewVendor] = useState('');
   const [newDate, setNewDate] = useState(new Date().toISOString().split('T')[0]);
   const [newIsRecurring, setNewIsRecurring] = useState(false);
   const [newRecurringFrequency, setNewRecurringFrequency] = useState<RecurringFrequency>('monthly');
@@ -49,6 +50,7 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
       name: newName,
       amount: amount,
       category: newCategory,
+      vendor: newVendor ? newVendor : undefined,
       date: newDate,
       isRecurring: newIsRecurring,
       recurringFrequency: newIsRecurring ? newRecurringFrequency : undefined
@@ -63,6 +65,7 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
 
     setNewName('');
     setNewAmount('');
+    setNewVendor('');
     setNewIsRecurring(false);
     setNewRecurringFrequency('monthly');
   };
@@ -214,6 +217,17 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
                 value={newName}
                 onChange={e => setNewName(e.target.value)}
                 placeholder="e.g. Weekly Groceries"
+                className="w-full bg-surface-container-lowest border border-outline-variant/20 rounded-lg p-3 text-on-surface focus:outline-none"
+              />
+            </div>
+            {/* Vendor */}
+            <div className="flex flex-col gap-2">
+              <label className="text-xs text-secondary ml-1">Vendor / Merchant (Optional)</label>
+              <input
+                type="text"
+                value={newVendor}
+                onChange={e => setNewVendor(e.target.value)}
+                placeholder="e.g. REWE, Amazon"
                 className="w-full bg-surface-container-lowest border border-outline-variant/20 rounded-lg p-3 text-on-surface focus:outline-none"
               />
             </div>
