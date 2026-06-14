@@ -18,6 +18,9 @@ Recurring-expense semantics (documented for consumers):
   double-counted in a daily rollup.
 """
 
+import base64
+import binascii
+import re
 from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import Optional
 
@@ -45,6 +48,35 @@ def _to_iso(value) -> Optional[str]:
     if value is None:
         return None
     return str(value)
+
+
+# --- Opaque cursor codec ------------------------------------------------------
+# The contract promises an *opaque* cursor (consumers must not parse it). We
+# base64url-encode the sort key (a timestamp) so the wire format can evolve
+# without breaking clients. `id` remains the dedup key, so re-pulling the
+# boundary row is idempotent.
+
+def _encode_cursor(value: Optional[str]) -> Optional[str]:
+    if value is None:
+        return None
+    return base64.urlsafe_b64encode(str(value).encode("utf-8")).decode("ascii")
+
+
+_CURSOR_RE = re.compile(r"^[A-Za-z0-9_=-]+$")
+
+
+def _decode_cursor(cursor: Optional[str]) -> Optional[str]:
+    if not cursor:
+        return None
+    # urlsafe_b64decode silently drops out-of-alphabet bytes, so validate first
+    # to reject obviously bogus cursors instead of querying on garbage.
+    if not _CURSOR_RE.match(cursor):
+        raise HTTPException(status_code=400, detail="Malformed `since` cursor")
+    try:
+        padded = cursor + "=" * (-len(cursor) % 4)
+        return base64.urlsafe_b64decode(padded.encode("ascii")).decode("utf-8")
+    except (binascii.Error, UnicodeDecodeError, ValueError):
+        raise HTTPException(status_code=400, detail="Malformed `since` cursor")
 
 
 def _shape_expense(row: dict) -> dict:
@@ -83,26 +115,32 @@ def expenses_feed(
     """Incremental change feed of expenses, including deletes (tombstones).
 
     Ordered by `updated_at` ascending so edited and deleted rows resurface.
-    `id` is the dedup key — re-pulls are idempotent.
+    `id` is the dedup key — re-pulls are idempotent. `next_cursor` is null once
+    the consumer is caught up (a short page), so steady-state polling stops
+    cleanly instead of re-fetching the boundary row forever.
     """
     supabase = _require_service_client()
+    since_value = _decode_cursor(since)
 
     query = (
         supabase.table("user_expenses")
         .select("id, name, amount, category, vendor, is_recurring, recurring_frequency, created_at, updated_at, deleted")
         .eq("user_key", user_key)
     )
-    if since:
-        query = query.gt("updated_at", since)
+    if since_value:
+        query = query.gt("updated_at", since_value)
 
     try:
-        response = query.order("updated_at", desc=False).limit(limit).execute()
+        # Secondary sort on id keeps paging deterministic for equal timestamps.
+        response = (
+            query.order("updated_at", desc=False).order("id", desc=False).limit(limit).execute()
+        )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
     rows = response.data or []
     data = [_shape_expense(r) for r in rows]
-    next_cursor = _to_iso(rows[-1]["updated_at"]) if rows else None
+    next_cursor = _encode_cursor(rows[-1]["updated_at"]) if len(rows) == limit else None
     return {"data": data, "next_cursor": next_cursor}
 
 
@@ -114,6 +152,7 @@ def savings_history_feed(
 ):
     """Net-worth / savings time-series, ordered by `created_at` ascending."""
     supabase = _require_service_client()
+    since_value = _decode_cursor(since)
 
     query = (
         supabase.table("user_savings_history")
@@ -123,16 +162,18 @@ def savings_history_feed(
         )
         .eq("user_key", user_key)
     )
-    if since:
-        query = query.gt("created_at", since)
+    if since_value:
+        query = query.gt("created_at", since_value)
 
     try:
-        response = query.order("created_at", desc=False).limit(limit).execute()
+        response = (
+            query.order("created_at", desc=False).order("id", desc=False).limit(limit).execute()
+        )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
     rows = response.data or []
-    next_cursor = _to_iso(rows[-1]["created_at"]) if rows else None
+    next_cursor = _encode_cursor(rows[-1]["created_at"]) if len(rows) == limit else None
     return {"data": rows, "next_cursor": next_cursor}
 
 

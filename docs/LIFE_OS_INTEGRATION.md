@@ -113,3 +113,25 @@ Monthly state, not transactional — no cursor.
    service can validate tokens and read across household users. Falls back to
    `SUPABASE_KEY` if that is already a service-role key. Never ship this key to
    the browser.
+
+## 6. Requirements traceability
+
+| Spec | Requirement | Implementation | Verified by |
+|------|-------------|----------------|-------------|
+| §1 | Non-interactive, revocable per-user token, read-only | `integration_tokens` (hashed) + `get_integration_user_key`; tokens never wired to write routes | `test_*_requires_token`, `test_hash_is_stable_and_hex` |
+| §2 | `since` cursor + `limit`, ordered by `updated_at` asc | `expenses_feed` | `test_expenses_feed_shapes_rows`, `test_expenses_feed_since_cursor` |
+| §2 | `updated_at` on records | column + trigger (migration); shaped in feed | `test_expenses_feed_shapes_rows` |
+| §2 | Delete tombstones `{id,deleted,updated_at}` | `_shape_expense` collapse | `test_expenses_feed_shapes_rows` |
+| §2 | Opaque `next_cursor`, idempotent re-pulls | base64 `_encode_cursor`; `id` dedup key; null when caught up | `test_expenses_feed_paging_emits_opaque_cursor`, `test_expenses_feed_rejects_malformed_cursor` |
+| §3a | Groceries vs dining split | **Decision: optional `vendor` field** (keeps category enum + data stable) | `test_expenses_feed_shapes_rows` (vendor present) |
+| §3b | Recurring expansion clarity | **Decision: one row of state** (`isRecurring`+`recurringFrequency`+`date` anchor); consumer expands | module docstring + this doc §2 |
+| §4 | savings-history `since` feed | `savings_history_feed` | (shares cursor codec; live-verified) |
+| §5 | Income read | `income_snapshot` | `test_income_snapshot` |
+| §6 | Versioned `/v1/` path | `APIRouter(prefix="/v1/integrations")` | route registration check |
+| §6 | Read-only scope | GET-only router; write endpoints reject integration tokens | design (separate auth deps) |
+| §7 | No writes / no GraphQL / plain REST | REST GET feeds only | — |
+
+**Decisions on the two ⚠️ CLARIFY items (§3a, §3b)** are recorded above and in
+`api/routers/integrations.py`. Both were chosen to avoid destabilising existing
+data: a `vendor` string instead of an enum migration, and recurring-as-state so
+daily rollups never double-count a monthly charge.

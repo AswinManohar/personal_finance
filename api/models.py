@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional, List, Union
 from enum import Enum
 from datetime import datetime
@@ -41,12 +41,11 @@ class ExpenseUpdate(BaseModel):
     created_at: Optional[datetime] = Field(default=None, description="Date of the expense")
 
 class Expense(ExpenseBase):
+    model_config = ConfigDict(from_attributes=True)
+
     id: Optional[str] = None
     user_key: str
     created_at: Optional[datetime] = None
-
-    class Config:
-        from_attributes = True
 
 
 # --- Integration (Life OS) response models -------------------------------------

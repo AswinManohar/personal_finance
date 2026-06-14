@@ -11,6 +11,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from fastapi.testclient import TestClient
 import api.routers.integrations as integrations
 import api.dependencies as deps
+from api.routers.integrations import _encode_cursor, _decode_cursor
 from api.main import app
 
 
@@ -119,16 +120,40 @@ def test_expenses_feed_shapes_rows(monkeypatch):
     ghost = next(d for d in data if d["id"] == "a3")
     assert ghost == {"id": "a3", "deleted": True, "updated_at": "2026-06-03T09:00:00+00:00"}
 
-    # Cursor is the last (max) updated_at.
-    assert body["next_cursor"] == "2026-06-03T09:00:00+00:00"
+    # Short page (3 < default limit) => caught up => null cursor.
+    assert body["next_cursor"] is None
 
 
 def test_expenses_feed_since_cursor(monkeypatch):
     _install_fake(monkeypatch, {"user_expenses": EXPENSE_ROWS})
     client = TestClient(app)
-    resp = client.get("/v1/integrations/expenses", params={"since": "2026-06-01T12:00:00+00:00"})
+    cursor = _encode_cursor("2026-06-01T12:00:00+00:00")
+    resp = client.get("/v1/integrations/expenses", params={"since": cursor})
     ids = [d["id"] for d in resp.json()["data"]]
     assert ids == ["a2", "a3"]  # a1 excluded; later updates resurface
+
+
+def test_expenses_feed_paging_emits_opaque_cursor(monkeypatch):
+    _install_fake(monkeypatch, {"user_expenses": EXPENSE_ROWS})
+    client = TestClient(app)
+    # Full page (limit == returned) => opaque cursor that resumes correctly.
+    page1 = client.get("/v1/integrations/expenses", params={"limit": 2}).json()
+    assert [d["id"] for d in page1["data"]] == ["a1", "a2"]
+    assert page1["next_cursor"] is not None
+    assert _decode_cursor(page1["next_cursor"]) == "2026-06-02T08:00:00+00:00"
+
+    page2 = client.get(
+        "/v1/integrations/expenses", params={"limit": 2, "since": page1["next_cursor"]}
+    ).json()
+    assert [d["id"] for d in page2["data"]] == ["a3"]
+    assert page2["next_cursor"] is None  # caught up
+
+
+def test_expenses_feed_rejects_malformed_cursor(monkeypatch):
+    _install_fake(monkeypatch, {"user_expenses": EXPENSE_ROWS})
+    client = TestClient(app)
+    resp = client.get("/v1/integrations/expenses", params={"since": "not a cursor!!"})
+    assert resp.status_code == 400
 
 
 def test_income_snapshot(monkeypatch):
