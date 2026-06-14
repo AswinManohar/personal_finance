@@ -19,22 +19,31 @@ export const SavingsDashboard: React.FC<SavingsDashboardProps> = ({
 }) => {
   const [addAmount, setAddAmount] = useState('');
 
+  // Coerce any value to a finite number; missing/invalid fields become 0 so a
+  // single undefined never poisons an aggregate into NaN ("€NaN").
+  const num = (v: any) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : 0;
+  };
+
   const stockValue = useMemo(
-    () => stocks.reduce((sum, s) => sum + s.quantity * (s.currentPrice || s.buyPrice), 0),
+    () => stocks.reduce((sum, s) => sum + num(s.quantity) * num(s.currentPrice || s.buyPrice), 0),
     [stocks]
   );
   const portfolioValue = useMemo(
-    () => portfolio.reduce((sum, p) => sum + p.currentValue, 0),
+    () => portfolio.reduce((sum, p) => sum + num(p.currentValue), 0),
     [portfolio]
   );
 
+  // Net-worth scalars, coerced once so every downstream calc is NaN-safe even
+  // when the synced state omits a key.
+  const gold = num(netWorthData.goldInvestment);
+  const cash = num(netWorthData.accumulatedSavings);
+  const otherAssets = num(netWorthData.otherAssets);
+  const monthlySavings = num(netWorthData.monthlyRecurringSavings);
+
   // Total assets = Mutual Funds + Stocks + Gold + Cash + Other Assets
-  const totalAssets =
-    portfolioValue +
-    stockValue +
-    netWorthData.goldInvestment +
-    netWorthData.accumulatedSavings +
-    netWorthData.otherAssets;
+  const totalAssets = portfolioValue + stockValue + gold + cash + otherAssets;
 
   const handleSavingsUpdate = (
     field: 'monthlyRecurringSavings' | 'accumulatedSavings',
@@ -51,7 +60,7 @@ export const SavingsDashboard: React.FC<SavingsDashboardProps> = ({
     if (isNaN(amount) || amount <= 0) return;
     const newData = {
       ...netWorthData,
-      accumulatedSavings: netWorthData.accumulatedSavings + amount,
+      accumulatedSavings: cash + amount,
     };
     setNetWorthData(newData);
     onSync({ netWorthData: newData });
@@ -62,8 +71,8 @@ export const SavingsDashboard: React.FC<SavingsDashboardProps> = ({
   const assetCategories = [
     { label: 'Mutual Funds', value: portfolioValue, color: 'bg-primary-container', dotColor: 'bg-primary-container' },
     { label: 'Stocks', value: stockValue, color: 'bg-primary', dotColor: 'bg-primary' },
-    { label: 'Gold', value: netWorthData.goldInvestment, color: 'bg-tertiary', dotColor: 'bg-tertiary' },
-    { label: 'Cash', value: netWorthData.accumulatedSavings, color: 'bg-outline-variant', dotColor: 'bg-outline-variant' },
+    { label: 'Gold', value: gold, color: 'bg-tertiary', dotColor: 'bg-tertiary' },
+    { label: 'Cash', value: cash, color: 'bg-outline-variant', dotColor: 'bg-outline-variant' },
   ];
 
   const totalForBar = assetCategories.reduce((s, c) => s + c.value, 0) || 1;
@@ -72,7 +81,7 @@ export const SavingsDashboard: React.FC<SavingsDashboardProps> = ({
   const distCategories = [
     { label: 'Mutual Funds', value: portfolioValue, stroke: '#c1c1ff', dotColor: 'bg-primary' },
     { label: 'Stocks', value: stockValue, stroke: '#8183ff', dotColor: 'bg-primary-container' },
-    { label: 'Gold & Other', value: netWorthData.goldInvestment + netWorthData.otherAssets, stroke: '#eec060', dotColor: 'bg-tertiary' },
+    { label: 'Gold & Other', value: gold + otherAssets, stroke: '#eec060', dotColor: 'bg-tertiary' },
   ];
   const totalDist = distCategories.reduce((s, c) => s + c.value, 0) || 1;
 
@@ -90,14 +99,13 @@ export const SavingsDashboard: React.FC<SavingsDashboardProps> = ({
   })();
 
   // 12-month outlook projected values
-  const projected12m =
-    netWorthData.accumulatedSavings + netWorthData.monthlyRecurringSavings * 12;
-  const netGrowth12m = netWorthData.monthlyRecurringSavings * 12;
+  const projected12m = cash + monthlySavings * 12;
+  const netGrowth12m = monthlySavings * 12;
 
   // Monthly savings bar heights (decorative ratios based on savings categories)
   const autoRatio =
     totalAssets > 0
-      ? Math.min(100, Math.round((netWorthData.accumulatedSavings / totalAssets) * 300))
+      ? Math.min(100, Math.round((cash / totalAssets) * 300))
       : 40;
   const divsRatio =
     totalAssets > 0
@@ -105,12 +113,12 @@ export const SavingsDashboard: React.FC<SavingsDashboardProps> = ({
       : 60;
   const extraRatio =
     totalAssets > 0
-      ? Math.min(100, Math.round((netWorthData.goldInvestment / totalAssets) * 300))
+      ? Math.min(100, Math.round((gold / totalAssets) * 300))
       : 25;
 
   const fmt = (n: number) =>
     '€' +
-    n.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    num(n).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
   const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
 
@@ -143,7 +151,7 @@ export const SavingsDashboard: React.FC<SavingsDashboardProps> = ({
                     <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
                     <polyline points="17 6 23 6 23 12" />
                   </svg>
-                  +{totalAssets > 0 ? ((netWorthData.monthlyRecurringSavings * 12 / Math.max(totalAssets, 1)) * 100).toFixed(1) : '0.0'}%
+                  +{totalAssets > 0 ? ((monthlySavings * 12 / Math.max(totalAssets, 1)) * 100).toFixed(1) : '0.0'}%
                 </span>
                 <span className="text-secondary text-xs opacity-60">projected annual</span>
               </div>
@@ -332,7 +340,7 @@ export const SavingsDashboard: React.FC<SavingsDashboardProps> = ({
                 className="text-4xl font-bold text-on-surface tabular-nums leading-tight tracking-tighter"
                 style={{ fontVariantNumeric: 'tabular-nums' }}
               >
-                {fmt(netWorthData.monthlyRecurringSavings)}
+                {fmt(monthlySavings)}
               </span>
               <p className="text-xs text-secondary mt-1">Monthly recurring savings target</p>
             </div>
