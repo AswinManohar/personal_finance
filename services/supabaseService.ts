@@ -169,6 +169,7 @@ export const pushToCloud = async (userKey: string, payload: any) => {
             vendor: e.vendor || null,
             is_recurring: !!e.isRecurring,
             recurring_frequency: e.isRecurring ? (e.recurringFrequency || 'monthly') : null,
+            is_essential: !!e.isEssential,
             created_at: isoDate,
             updated_at: now,
             deleted: false
@@ -196,7 +197,7 @@ export const pullFromCloud = async (userKey: string) => {
     const [financesRes, expensesRes, incomeRes, historyData] = await Promise.all([
       supabase.from('user_finances').select('data, updated_at').eq('user_key', userKey).limit(1),
       // MATCHING SCHEMA: id, name, amount, category, vendor, is_recurring, recurring_frequency, created_at
-      supabase.from('user_expenses').select('id, name, amount, category, vendor, is_recurring, recurring_frequency, created_at').eq('user_key', userKey).eq('deleted', false),
+      supabase.from('user_expenses').select('id, name, amount, category, vendor, is_recurring, recurring_frequency, is_essential, created_at').eq('user_key', userKey).eq('deleted', false),
       supabase.from('user_income').select('salary_me, salary_partner').eq('user_key', userKey).limit(1),
       getSavingsHistory(userKey)
     ]);
@@ -216,6 +217,7 @@ export const pullFromCloud = async (userKey: string) => {
       vendor: e.vendor || undefined,
       isRecurring: !!e.is_recurring,
       recurringFrequency: e.recurring_frequency || undefined,
+      isEssential: !!e.is_essential,
       date: e.created_at ? new Date(e.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
     }));
 

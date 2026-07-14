@@ -29,6 +29,7 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
   const [newDate, setNewDate] = useState(new Date().toISOString().split('T')[0]);
   const [newIsRecurring, setNewIsRecurring] = useState(false);
   const [newRecurringFrequency, setNewRecurringFrequency] = useState<RecurringFrequency>('monthly');
+  const [newIsEssential, setNewIsEssential] = useState(false);
   const [timeSpan, setTimeSpan] = useState<TimeSpan>('30d');
 
   const [localSalaryMe, setLocalSalaryMe] = useState(income.salaryMe?.toString() || '');
@@ -53,7 +54,8 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
       vendor: newVendor ? newVendor : undefined,
       date: newDate,
       isRecurring: newIsRecurring,
-      recurringFrequency: newIsRecurring ? newRecurringFrequency : undefined
+      recurringFrequency: newIsRecurring ? newRecurringFrequency : undefined,
+      isEssential: newIsEssential,
     };
 
     const updatedExpenses = [...expenses, newExpense].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -68,6 +70,7 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
     setNewVendor('');
     setNewIsRecurring(false);
     setNewRecurringFrequency('monthly');
+    setNewIsEssential(false);
   };
 
   const handleClearLocalHistory = () => {
@@ -272,6 +275,19 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
                 </select>
               </div>
             )}
+            {/* Essential toggle */}
+            <div className="flex flex-col gap-2">
+              <label className="text-xs text-secondary ml-1">Priority</label>
+              <div
+                className="flex items-center gap-2 bg-surface-container-lowest border border-outline-variant/20 rounded-lg p-3 cursor-pointer"
+                onClick={() => setNewIsEssential(!newIsEssential)}
+              >
+                <span className="text-xs text-on-surface">{newIsEssential ? 'Essential' : 'Non-essential'}</span>
+                <div className={`w-8 h-4 rounded-full relative transition-colors ${newIsEssential ? 'bg-[#3DD68C]/40' : 'bg-outline-variant/30'}`}>
+                  <div className={`absolute top-1 w-2 h-2 rounded-full transition-all ${newIsEssential ? 'left-5 bg-[#3DD68C]' : 'left-1 bg-secondary'}`}></div>
+                </div>
+              </div>
+            </div>
             <button
               onClick={handleAdd}
               className="w-full bg-gradient-to-br from-primary to-primary-container text-on-primary font-bold py-4 rounded-lg shadow-lg hover:opacity-90 transition-all active:scale-[0.98]"
@@ -526,9 +542,16 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
                 <div key={expense.id} className="flex justify-between items-center group">
                   <div className="flex flex-col gap-0.5">
                     <span className="text-sm font-medium text-on-surface">{expense.name}</span>
-                    <span className={`text-[10px] py-0.5 px-2 ${freqColor} rounded-full w-fit font-bold uppercase tracking-tighter`}>
-                      {expense.recurringFrequency || 'monthly'}
-                    </span>
+                    <div className="flex gap-1">
+                      <span className={`text-[10px] py-0.5 px-2 ${freqColor} rounded-full w-fit font-bold uppercase tracking-tighter`}>
+                        {expense.recurringFrequency || 'monthly'}
+                      </span>
+                      {expense.isEssential && (
+                        <span className="text-[10px] py-0.5 px-2 bg-[#3DD68C]/10 text-[#3DD68C] rounded-full w-fit font-bold uppercase tracking-tighter">
+                          Essential
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-bold tabular-nums text-on-surface">€{expense.amount.toFixed(2)}</span>
