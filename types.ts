@@ -9,6 +9,7 @@ export interface Expense {
   recurringFrequency?: RecurringFrequency;
   date: string; // ISO date string
   vendor?: string;
+  isEssential?: boolean; // counts toward runway / emergency-fund target
 }
 
 export enum ExpenseCategory {
@@ -102,4 +103,17 @@ export interface SupabaseSyncState {
   lastSynced?: string;
 }
 
-export type ActiveTab = 'expenses' | 'savings' | 'investment' | 'networth' | 'fire' | 'portfolio' | 'stocks' | 'data' | 'goal';
+export interface Loan {
+  id: string;
+  name: string;
+  balance: number;
+  interestRate: number; // annual nominal %, e.g. 7.5
+  monthlyPayment: number;
+  lender?: string;
+}
+
+export interface EmergencyFundState {
+  targetMonths: number; // 3–6 months of essential costs
+}
+
+export type ActiveTab = 'expenses' | 'savings' | 'investment' | 'networth' | 'fire' | 'portfolio' | 'stocks' | 'data' | 'goal' | 'debts';
