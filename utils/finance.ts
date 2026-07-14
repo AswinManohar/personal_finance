@@ -39,3 +39,41 @@ export const monthsToTarget = (current: number, target: number, monthlyContribut
   if (num(monthlyContribution) <= 0) return null;
   return Math.ceil(gap / num(monthlyContribution));
 };
+
+/** Interest a loan accrues per month at its current balance. */
+export const monthlyInterest = (loan: Loan): number =>
+  num(loan.balance) * (num(loan.interestRate) / 100) / 12;
+
+export const totalLoanBalance = (loans: Loan[]): number =>
+  loans.reduce((sum, l) => sum + num(l.balance), 0);
+
+/** Highest interest rate first — the order they should be paid off in. */
+export const sortByAvalanche = (loans: Loan[]): Loan[] =>
+  [...loans].sort((a, b) => num(b.interestRate) - num(a.interestRate));
+
+export interface PayoffSimulation {
+  amountApplied: number;
+  newBalance: number;
+  newLiquidCash: number;
+  monthlyInterestSaved: number;
+  newRunwayMonths: number | null;
+  breachesBuffer: boolean; // payoff would leave < 1 month of essentials in cash
+  safeAmount: number;      // largest payment that keeps a 1-month buffer
+}
+
+export const simulatePayoff = (
+  loan: Loan, amount: number, liquidCash: number, essentialsPerMonth: number,
+): PayoffSimulation => {
+  const amountApplied = Math.min(num(amount), num(loan.balance));
+  const newLiquidCash = num(liquidCash) - amountApplied;
+  const newRunway = runwayMonths(newLiquidCash, num(essentialsPerMonth));
+  return {
+    amountApplied,
+    newBalance: num(loan.balance) - amountApplied,
+    newLiquidCash,
+    monthlyInterestSaved: amountApplied * (num(loan.interestRate) / 100) / 12,
+    newRunwayMonths: newRunway,
+    breachesBuffer: newRunway !== null && newRunway < 1,
+    safeAmount: Math.max(0, Math.min(num(loan.balance), num(liquidCash) - num(essentialsPerMonth))),
+  };
+};

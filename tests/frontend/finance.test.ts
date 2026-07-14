@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { Expense, ExpenseCategory } from '../../types';
+import { Expense, ExpenseCategory, Loan } from '../../types';
 import {
   monthlyAmount, monthlyEssentials, runwayMonths,
   emergencyFundTarget, monthsToTarget,
+  monthlyInterest, totalLoanBalance, sortByAvalanche, simulatePayoff,
 } from '../../utils/finance';
 
 const exp = (over: Partial<Expense>): Expense => ({
@@ -70,5 +71,52 @@ describe('monthsToTarget', () => {
   });
   it('returns null when there is no contribution', () => {
     expect(monthsToTarget(2192, 13470, 0)).toBeNull();
+  });
+});
+
+const sparkasse: Loan = { id: 'l1', name: 'Sparkasse Loan', balance: 36000, interestRate: 7.5, monthlyPayment: 500 };
+const dispo: Loan = { id: 'l2', name: 'Dispo', balance: 1200, interestRate: 11, monthlyPayment: 50 };
+
+describe('loan math', () => {
+  it('computes monthly interest (€36k @ 7.5% → €225/month)', () => {
+    expect(monthlyInterest(sparkasse)).toBeCloseTo(225, 5);
+  });
+  it('sums balances', () => {
+    expect(totalLoanBalance([sparkasse, dispo])).toBe(37200);
+  });
+  it('avalanche-sorts by rate descending without mutating input', () => {
+    const input = [sparkasse, dispo];
+    const sorted = sortByAvalanche(input);
+    expect(sorted.map(l => l.id)).toEqual(['l2', 'l1']);
+    expect(input.map(l => l.id)).toEqual(['l1', 'l2']);
+  });
+});
+
+describe('simulatePayoff', () => {
+  it('flags a payoff that leaves less than one month of essentials', () => {
+    // cash €38,000, essentials €2,245/month, pay full €36,000 → €2,000 left
+    const sim = simulatePayoff(sparkasse, 36000, 38000, 2245);
+    expect(sim.amountApplied).toBe(36000);
+    expect(sim.newLiquidCash).toBe(2000);
+    expect(sim.monthlyInterestSaved).toBeCloseTo(225, 5);
+    expect(sim.breachesBuffer).toBe(true);
+    expect(sim.safeAmount).toBe(35755); // 38,000 − 2,245
+  });
+  it('accepts a partial payoff that preserves the buffer', () => {
+    const sim = simulatePayoff(sparkasse, 33000, 38000, 2245);
+    expect(sim.newBalance).toBe(3000);
+    expect(sim.newLiquidCash).toBe(5000);
+    expect(sim.monthlyInterestSaved).toBeCloseTo(206.25, 2);
+    expect(sim.breachesBuffer).toBe(false);
+  });
+  it('caps the payment at the loan balance', () => {
+    const sim = simulatePayoff(dispo, 5000, 38000, 2245);
+    expect(sim.amountApplied).toBe(1200);
+    expect(sim.newBalance).toBe(0);
+  });
+  it('never flags a breach when essentials are unknown', () => {
+    const sim = simulatePayoff(sparkasse, 36000, 38000, 0);
+    expect(sim.breachesBuffer).toBe(false);
+    expect(sim.newRunwayMonths).toBeNull();
   });
 });
