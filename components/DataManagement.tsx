@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import {
   Expense, PortfolioAsset, Stock, ExpenseCategory, IncomeState, InvestmentState,
-  SavingsGoal, FIREState, NetWorthState, InvestmentFrequency, AssetType
+  SavingsGoal, FIREState, NetWorthState, InvestmentFrequency, AssetType, EmergencyFundState
 } from '../types';
 import { 
   pushToCloud, pullFromCloud, isNetworkError, 
@@ -22,6 +22,7 @@ interface DataManagementProps {
   goal: SavingsGoal;
   fire: FIREState;
   netWorthData: NetWorthState;
+  emergencyFund: EmergencyFundState;
   uniqueSyncId: string | null;
   lastSyncedAt: string | null;
   setExpenses: (data: Expense[]) => void;
@@ -32,14 +33,15 @@ interface DataManagementProps {
   setGoal: (data: SavingsGoal) => void;
   setFire: (data: FIREState) => void;
   setNetWorthData: (data: NetWorthState) => void;
+  setEmergencyFund: (data: EmergencyFundState) => void;
   onLogout: () => void;
   onRetryPull?: () => void;
 }
 
 export const DataManagement: React.FC<DataManagementProps> = ({
-  expenses, portfolio, stocks, income, investment, goal, fire, netWorthData,
+  expenses, portfolio, stocks, income, investment, goal, fire, netWorthData, emergencyFund,
   uniqueSyncId, lastSyncedAt,
-  setExpenses, setPortfolio, setStocks, setIncome, setInvestment, setGoal, setFire, setNetWorthData,
+  setExpenses, setPortfolio, setStocks, setIncome, setInvestment, setGoal, setFire, setNetWorthData, setEmergencyFund,
   onLogout, onRetryPull,
 }) => {
   const [isCloudSyncing, setIsCloudSyncing] = useState(false);
@@ -88,7 +90,7 @@ export const DataManagement: React.FC<DataManagementProps> = ({
     setIsCloudSyncing(true);
     setStatusMsg(null);
 
-    const payload = { expenses, portfolio, stocks, income, investment, goal, fire, netWorthData };
+    const payload = { expenses, portfolio, stocks, income, investment, goal, fire, netWorthData, emergencyFund };
 
     try {
       await pushToCloud(activeSyncKey, payload);
@@ -121,6 +123,7 @@ export const DataManagement: React.FC<DataManagementProps> = ({
       if (data.goal) setGoal(data.goal);
       if (data.fire) setFire(data.fire);
       if (data.netWorthData) setNetWorthData(data.netWorthData);
+      if (data.emergencyFund) setEmergencyFund(data.emergencyFund);
 
       setStatusMsg({ type: 'success', text: 'Data restored from cloud!' });
       setTimeout(() => setStatusMsg(null), 3000);

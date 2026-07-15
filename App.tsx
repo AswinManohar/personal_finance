@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, Component, ErrorInfo, ReactNode } from 'react';
-import { ActiveTab, Expense, InvestmentState, SavingsGoal as SavingsGoalType, FIREState, PortfolioAsset, IncomeState, Stock, NetWorthState, SavingsHistoryRecord } from './types';
+import { ActiveTab, Expense, InvestmentState, SavingsGoal as SavingsGoalType, FIREState, PortfolioAsset, IncomeState, Stock, NetWorthState, SavingsHistoryRecord, EmergencyFundState } from './types';
 import { Expenses } from './components/Expenses';
 import { InvestmentCalculator } from './components/InvestmentCalculator';
 import { SavingsGoal } from './components/SavingsGoal';
@@ -102,6 +102,7 @@ const AppMain: React.FC = () => {
   const [netWorthData, setNetWorthData] = usePersistedState<NetWorthState>('networth', { goldInvestment: 0, otherAssets: 0, remainingLoan: 0, monthlyRecurringSavings: 0, accumulatedSavings: 0 });
   const [history, setHistory] = usePersistedState<SavingsHistoryRecord[]>('savings_history', []);
   const [fire, setFire] = usePersistedState<FIREState>('fire', { currentAge: 30, annualExpenses: 30000, currentNetWorth: 50000, annualSavings: 12000, annualReturn: 7, withdrawalRate: 4 });
+  const [emergencyFund, setEmergencyFund] = usePersistedState<EmergencyFundState>('emergency_fund', { targetMonths: 3 });
   const [portfolio, setPortfolio] = usePersistedState<PortfolioAsset[]>('portfolio', []);
   const [stocks, setStocks] = usePersistedState<Stock[]>('stocks', []);
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
@@ -131,6 +132,7 @@ const AppMain: React.FC = () => {
         if (data.fire) setFire(data.fire);
         if (data.netWorthData) setNetWorthData(data.netWorthData);
         if (data.history) setHistory(data.history);
+        if (data.emergencyFund) setEmergencyFund(data.emergencyFund);
       }
 
       setLastSyncedAt(updatedAt ? new Date(updatedAt).toLocaleString() : new Date().toLocaleString());
@@ -146,7 +148,7 @@ const AppMain: React.FC = () => {
     } finally {
       pullInProgressRef.current = false;
     }
-  }, [activeUserKey, setExpenses, setPortfolio, setStocks, setIncome, setInvestment, setGoal, setFire, setNetWorthData, setHistory]);
+  }, [activeUserKey, setExpenses, setPortfolio, setStocks, setIncome, setInvestment, setGoal, setFire, setNetWorthData, setHistory, setEmergencyFund]);
 
   const triggerSync = useCallback(async (overrides?: any) => {
     if (!activeUserKey || syncInProgressRef.current) return;
@@ -156,7 +158,7 @@ const AppMain: React.FC = () => {
 
     try {
       const payload = {
-        expenses, portfolio, stocks, income, investment, goal, fire, netWorthData,
+        expenses, portfolio, stocks, income, investment, goal, fire, netWorthData, emergencyFund,
         ...overrides
       };
       await pushToCloud(activeUserKey, payload);
@@ -173,7 +175,7 @@ const AppMain: React.FC = () => {
     } finally {
       syncInProgressRef.current = false;
     }
-  }, [activeUserKey, expenses, portfolio, stocks, income, investment, goal, fire, netWorthData]);
+  }, [activeUserKey, expenses, portfolio, stocks, income, investment, goal, fire, netWorthData, emergencyFund]);
 
   useEffect(() => {
     if (activeUserKey) performCloudPull();
@@ -233,15 +235,15 @@ const AppMain: React.FC = () => {
     const syncCallback = activeUserKey ? triggerSync : undefined;
     switch (activeTab) {
       case 'expenses': return <Expenses expenses={expenses} setExpenses={setExpenses} income={income} setIncome={setIncome} onSync={syncCallback} />;
-      case 'savings': return <SavingsDashboard portfolio={portfolio} stocks={stocks} netWorthData={netWorthData} setNetWorthData={setNetWorthData} onSync={syncCallback || (async () => { })} />;
+      case 'savings': return <SavingsDashboard portfolio={portfolio} stocks={stocks} netWorthData={netWorthData} setNetWorthData={setNetWorthData} onSync={syncCallback || (async () => { })} expenses={expenses} emergencyFund={emergencyFund} setEmergencyFund={setEmergencyFund} />;
       case 'investment': return <InvestmentCalculator investment={investment} setInvestment={setInvestment} onSync={syncCallback} />;
       case 'goal': return <SavingsGoal goal={goal} setGoal={setGoal} onSync={syncCallback} />;
       case 'networth': return <NetWorth netWorthData={netWorthData} setNetWorthData={setNetWorthData} currentSavings={goal.currentSavings} stocks={stocks} portfolio={portfolio} syncKey={activeUserKey || undefined} history={history} setHistory={setHistory} onSync={syncCallback} />;
       case 'fire': return <FIRECalculator state={fire} setState={setFire} onSync={syncCallback} />;
       case 'portfolio': return <Portfolio assets={portfolio} setAssets={setPortfolio} onSync={syncCallback} />;
       case 'stocks': return <Stocks stocks={stocks} setStocks={setStocks} onSync={syncCallback} />;
-      case 'data': return <DataManagement expenses={expenses} portfolio={portfolio} stocks={stocks} income={income} investment={investment} goal={goal} fire={fire} netWorthData={netWorthData} uniqueSyncId={uniqueSyncId} lastSyncedAt={lastSyncedAt} setExpenses={setExpenses} setPortfolio={setPortfolio} setStocks={setStocks} setIncome={setIncome} setInvestment={setInvestment} setGoal={setGoal} setFire={setFire} setNetWorthData={setNetWorthData} onLogout={handleLogout} onRetryPull={performCloudPull} />;
-      default: return <SavingsDashboard portfolio={portfolio} stocks={stocks} netWorthData={netWorthData} setNetWorthData={setNetWorthData} onSync={syncCallback || (async () => { })} />;
+      case 'data': return <DataManagement expenses={expenses} portfolio={portfolio} stocks={stocks} income={income} investment={investment} goal={goal} fire={fire} netWorthData={netWorthData} emergencyFund={emergencyFund} uniqueSyncId={uniqueSyncId} lastSyncedAt={lastSyncedAt} setExpenses={setExpenses} setPortfolio={setPortfolio} setStocks={setStocks} setIncome={setIncome} setInvestment={setInvestment} setGoal={setGoal} setFire={setFire} setNetWorthData={setNetWorthData} setEmergencyFund={setEmergencyFund} onLogout={handleLogout} onRetryPull={performCloudPull} />;
+      default: return <SavingsDashboard portfolio={portfolio} stocks={stocks} netWorthData={netWorthData} setNetWorthData={setNetWorthData} onSync={syncCallback || (async () => { })} expenses={expenses} emergencyFund={emergencyFund} setEmergencyFund={setEmergencyFund} />;
     }
   };
 

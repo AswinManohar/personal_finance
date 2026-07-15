@@ -1,6 +1,7 @@
 
 import React, { useMemo, useState } from 'react';
-import { NetWorthState, PortfolioAsset, Stock } from '../types';
+import { NetWorthState, PortfolioAsset, Stock, Expense, EmergencyFundState } from '../types';
+import { monthlyEssentials, runwayMonths, emergencyFundTarget, monthsToTarget } from '../utils/finance';
 
 interface SavingsDashboardProps {
   portfolio: PortfolioAsset[];
@@ -8,6 +9,9 @@ interface SavingsDashboardProps {
   netWorthData: NetWorthState;
   setNetWorthData: React.Dispatch<React.SetStateAction<NetWorthState>>;
   onSync: (overrides?: any) => Promise<void>;
+  expenses?: Expense[];
+  emergencyFund?: EmergencyFundState;
+  setEmergencyFund?: (next: EmergencyFundState) => void;
 }
 
 export const SavingsDashboard: React.FC<SavingsDashboardProps> = ({
@@ -16,6 +20,9 @@ export const SavingsDashboard: React.FC<SavingsDashboardProps> = ({
   netWorthData,
   setNetWorthData,
   onSync,
+  expenses = [],
+  emergencyFund,
+  setEmergencyFund,
 }) => {
   const [addAmount, setAddAmount] = useState('');
 
@@ -41,6 +48,32 @@ export const SavingsDashboard: React.FC<SavingsDashboardProps> = ({
   const cash = num(netWorthData.accumulatedSavings);
   const otherAssets = num(netWorthData.otherAssets);
   const monthlySavings = num(netWorthData.monthlyRecurringSavings);
+
+  // Emergency fund & runway
+  const targetMonths = emergencyFund?.targetMonths ?? 3;
+  const essentials = monthlyEssentials(expenses);
+  const runway = runwayMonths(cash, essentials);
+  const target = emergencyFundTarget(essentials, targetMonths);
+  const etaMonths = monthsToTarget(cash, target, monthlySavings);
+
+  const runwayLabel =
+    runway === null ? '—'
+    : runway < 1 ? `~${Math.round(runway * 4.345)} weeks`
+    : `${runway.toFixed(1)} months`;
+
+  const etaLabel = (() => {
+    if (etaMonths === null) return '—';
+    if (etaMonths === 0) return 'Funded';
+    const d = new Date();
+    d.setMonth(d.getMonth() + etaMonths);
+    return `~${etaMonths} month${etaMonths === 1 ? '' : 's'} (${d.toLocaleDateString(undefined, { month: 'short', year: 'numeric' })})`;
+  })();
+
+  const handleTargetMonths = (m: number) => {
+    const next: EmergencyFundState = { targetMonths: m };
+    setEmergencyFund?.(next);
+    onSync({ emergencyFund: next });
+  };
 
   // Total assets = Mutual Funds + Stocks + Gold + Cash + Other Assets
   const totalAssets = portfolioValue + stockValue + gold + cash + otherAssets;
@@ -178,6 +211,77 @@ export const SavingsDashboard: React.FC<SavingsDashboardProps> = ({
                 />
               </svg>
             </div>
+          </div>
+        </section>
+
+        {/* ── Emergency Fund & Runway ── */}
+        <section className="col-span-12">
+          <div className="bg-surface-container-low p-6 rounded-xl">
+            <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
+              <h2 className="text-sm font-bold tracking-wider text-on-surface-variant uppercase">
+                Emergency Fund &amp; Runway
+              </h2>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] uppercase tracking-widest text-on-surface-variant font-medium">Target</span>
+                <div className="flex gap-1 bg-surface-container-lowest p-1 rounded-full">
+                  {[3, 4, 5, 6].map(m => (
+                    <button
+                      key={m}
+                      onClick={() => handleTargetMonths(m)}
+                      className={`px-3 py-1 text-[10px] font-bold rounded-full tabular-nums transition-colors ${
+                        targetMonths === m ? 'bg-surface-container-highest text-primary' : 'text-secondary hover:text-on-surface'
+                      }`}
+                    >
+                      {m}M
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {essentials <= 0 ? (
+              <p className="text-secondary text-sm italic">
+                Mark your recurring expenses as "Essential" in the Expenses tab to track your runway and emergency fund target.
+              </p>
+            ) : (
+              <>
+                {runway !== null && runway < 1 && (
+                  <div className="mb-6 p-3 bg-[#F26B6B]/10 border border-[#F26B6B]/20 rounded-lg">
+                    <p className="text-[#F26B6B] text-xs font-bold">
+                      Critical: less than one month of essential costs in cash.
+                    </p>
+                  </div>
+                )}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-widest text-on-surface-variant font-medium mb-1">Runway</p>
+                    <p className="text-2xl font-bold text-on-surface tabular-nums tracking-tight">{runwayLabel}</p>
+                    <p className="text-xs text-secondary mt-1">{fmt(essentials)} essential costs / month</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-widest text-on-surface-variant font-medium mb-1">
+                      Emergency Fund · {fmt(target)} target
+                    </p>
+                    <div className="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden my-3">
+                      <div
+                        className="h-full bg-primary rounded-full transition-all"
+                        style={{ width: `${Math.min(100, target > 0 ? (cash / target) * 100 : 0)}%` }}
+                      />
+                    </div>
+                    <p className="text-xs text-secondary tabular-nums">
+                      {fmt(cash)} of {fmt(target)} ({target > 0 ? Math.min(100, Math.round((cash / target) * 100)) : 0}%)
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-widest text-on-surface-variant font-medium mb-1">Fully Funded</p>
+                    <p className="text-2xl font-bold text-on-surface tabular-nums tracking-tight">{etaLabel}</p>
+                    <p className="text-xs text-secondary mt-1">
+                      {monthlySavings > 0 ? `at ${fmt(monthlySavings)} / month` : 'set a monthly savings target'}
+                    </p>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </section>
 
