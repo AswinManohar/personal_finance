@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { NetWorthState, PortfolioAsset, Stock, Expense, EmergencyFundState } from '../types';
-import { monthlyEssentials, runwayMonths, emergencyFundTarget, monthsToTarget } from '../utils/finance';
+import { monthlyEssentials, runwayMonths, emergencyFundTarget, monthsToTarget, monthlyAmount } from '../utils/finance';
 
 interface SavingsDashboardProps {
   portfolio: PortfolioAsset[];
@@ -60,6 +60,13 @@ export const SavingsDashboard: React.FC<SavingsDashboardProps> = ({
     runway === null ? '—'
     : runway < 1 ? `~${Math.round(runway * 4.345)} weeks`
     : `${runway.toFixed(1)} months`;
+
+  // Active subscriptions = recurring expenses, most expensive (per month) first
+  const subscriptions = useMemo(
+    () => expenses.filter(e => e.isRecurring).sort((a, b) => monthlyAmount(b) - monthlyAmount(a)),
+    [expenses]
+  );
+  const subscriptionTotal = subscriptions.reduce((s, e) => s + monthlyAmount(e), 0);
 
   const etaLabel = (() => {
     if (etaMonths === null) return '—';
@@ -601,6 +608,59 @@ export const SavingsDashboard: React.FC<SavingsDashboardProps> = ({
                 );
               })}
             </div>
+          </div>
+
+          {/* Active Subscriptions */}
+          <div className="bg-surface-container-low p-6 rounded-xl">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-sm font-bold tracking-wider text-on-surface-variant uppercase">
+                Active Subscriptions
+              </h2>
+              <span className="text-primary text-[10px] font-bold uppercase tracking-widest">
+                {subscriptions.length} active
+              </span>
+            </div>
+            {subscriptions.length === 0 ? (
+              <p className="text-secondary text-xs italic text-center py-4">
+                No active subscriptions. Recurring expenses appear here.
+              </p>
+            ) : (
+              <>
+                <div className="flex flex-col gap-3">
+                  {subscriptions.map(s => (
+                    <div
+                      key={s.id}
+                      data-testid="subscription-row"
+                      className="flex justify-between items-center py-2 border-b border-outline-variant/10"
+                    >
+                      <div className="flex flex-col gap-1">
+                        <span className="text-sm font-medium text-on-surface">{s.name}</span>
+                        <div className="flex gap-1">
+                          <span className="text-[10px] py-0.5 px-2 bg-primary/10 text-primary rounded-full w-fit font-bold uppercase tracking-tighter">
+                            {s.recurringFrequency || 'monthly'}
+                          </span>
+                          {s.isEssential && (
+                            <span className="text-[10px] py-0.5 px-2 bg-[#3DD68C]/10 text-[#3DD68C] rounded-full w-fit font-bold uppercase tracking-tighter">
+                              Essential
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <span className="text-sm font-bold tabular-nums text-on-surface">
+                        {fmt(monthlyAmount(s))}
+                        <span className="text-[10px] text-secondary font-medium"> /mo</span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-4 pt-3 border-t border-outline-variant/10 flex justify-between items-center">
+                  <span className="text-[10px] uppercase tracking-widest text-on-surface-variant font-medium">
+                    Total / Month
+                  </span>
+                  <span className="text-lg font-bold text-on-surface tabular-nums">{fmt(subscriptionTotal)}</span>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Quick Action Callout */}
