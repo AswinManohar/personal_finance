@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import {
   Expense, PortfolioAsset, Stock, ExpenseCategory, IncomeState, InvestmentState,
-  SavingsGoal, FIREState, NetWorthState, InvestmentFrequency, AssetType, EmergencyFundState
+  SavingsGoal, FIREState, NetWorthState, InvestmentFrequency, AssetType, EmergencyFundState, Loan
 } from '../types';
 import { 
   pushToCloud, pullFromCloud, isNetworkError, 
@@ -23,6 +23,7 @@ interface DataManagementProps {
   fire: FIREState;
   netWorthData: NetWorthState;
   emergencyFund: EmergencyFundState;
+  loans: Loan[];
   uniqueSyncId: string | null;
   lastSyncedAt: string | null;
   setExpenses: (data: Expense[]) => void;
@@ -34,14 +35,15 @@ interface DataManagementProps {
   setFire: (data: FIREState) => void;
   setNetWorthData: (data: NetWorthState) => void;
   setEmergencyFund: (data: EmergencyFundState) => void;
+  setLoans: (data: Loan[]) => void;
   onLogout: () => void;
   onRetryPull?: () => void;
 }
 
 export const DataManagement: React.FC<DataManagementProps> = ({
-  expenses, portfolio, stocks, income, investment, goal, fire, netWorthData, emergencyFund,
+  expenses, portfolio, stocks, income, investment, goal, fire, netWorthData, emergencyFund, loans,
   uniqueSyncId, lastSyncedAt,
-  setExpenses, setPortfolio, setStocks, setIncome, setInvestment, setGoal, setFire, setNetWorthData, setEmergencyFund,
+  setExpenses, setPortfolio, setStocks, setIncome, setInvestment, setGoal, setFire, setNetWorthData, setEmergencyFund, setLoans,
   onLogout, onRetryPull,
 }) => {
   const [isCloudSyncing, setIsCloudSyncing] = useState(false);
@@ -90,7 +92,7 @@ export const DataManagement: React.FC<DataManagementProps> = ({
     setIsCloudSyncing(true);
     setStatusMsg(null);
 
-    const payload = { expenses, portfolio, stocks, income, investment, goal, fire, netWorthData, emergencyFund };
+    const payload = { expenses, portfolio, stocks, income, investment, goal, fire, netWorthData, emergencyFund, loans };
 
     try {
       await pushToCloud(activeSyncKey, payload);
@@ -124,6 +126,7 @@ export const DataManagement: React.FC<DataManagementProps> = ({
       if (data.fire) setFire(data.fire);
       if (data.netWorthData) setNetWorthData(data.netWorthData);
       if (data.emergencyFund) setEmergencyFund(data.emergencyFund);
+      if (data.loans) setLoans(data.loans);
 
       setStatusMsg({ type: 'success', text: 'Data restored from cloud!' });
       setTimeout(() => setStatusMsg(null), 3000);

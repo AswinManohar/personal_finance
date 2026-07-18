@@ -1,0 +1,47 @@
+import React from 'react';
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { Debts } from '../../components/Debts';
+import { Loan, NetWorthState } from '../../types';
+
+const loans: Loan[] = [
+  { id: 'l1', name: 'Sparkasse Loan', balance: 36000, interestRate: 7.5, monthlyPayment: 500 },
+  { id: 'l2', name: 'Dispo', balance: 1200, interestRate: 11, monthlyPayment: 50 },
+];
+
+const nw = { accumulatedSavings: 38000 } as NetWorthState;
+
+describe('Debts tab', () => {
+  it('orders loans by interest rate (avalanche) and marks the top one', () => {
+    render(<Debts loans={loans} setLoans={() => {}} netWorthData={nw} />);
+    const rows = screen.getAllByTestId('loan-row');
+    expect(rows).toHaveLength(2);
+    expect(rows[0].textContent).toContain('Dispo');
+    expect(rows[0].textContent).toContain('PAY FIRST');
+    expect(rows[1].textContent).toContain('Sparkasse Loan');
+  });
+
+  it('shows per-loan monthly interest and totals', () => {
+    render(<Debts loans={loans} setLoans={() => {}} netWorthData={nw} />);
+    expect(document.body.textContent).toContain('€225'); // 36k @ 7.5%
+    expect(document.body.textContent).toContain('€11');  // 1.2k @ 11%
+    expect(document.body.textContent).toContain('€37,200'); // total balance
+  });
+
+  it('adds a loan through the form', () => {
+    const setLoans = vi.fn();
+    render(<Debts loans={[]} setLoans={setLoans} netWorthData={nw} />);
+    fireEvent.change(screen.getByPlaceholderText('e.g. Car Loan'), { target: { value: 'Car Loan' } });
+    fireEvent.change(screen.getByPlaceholderText('Remaining balance'), { target: { value: '8000' } });
+    fireEvent.change(screen.getByPlaceholderText('Annual rate %'), { target: { value: '4.9' } });
+    fireEvent.change(screen.getByPlaceholderText('Monthly payment'), { target: { value: '250' } });
+    fireEvent.click(screen.getByText('Add Loan'));
+    expect(setLoans).toHaveBeenCalledTimes(1);
+    expect(setLoans.mock.calls[0][0][0]).toMatchObject({ name: 'Car Loan', balance: 8000, interestRate: 4.9, monthlyPayment: 250 });
+  });
+
+  it('shows an empty state with no loans', () => {
+    render(<Debts loans={[]} setLoans={() => {}} netWorthData={nw} />);
+    expect(screen.getByText(/No loans tracked yet/)).toBeTruthy();
+  });
+});
