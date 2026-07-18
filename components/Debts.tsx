@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Loan, Expense, NetWorthState } from '../types';
 import { Trash2 } from 'lucide-react';
-import { monthlyInterest, sortByAvalanche, totalLoanBalance, num } from '../utils/finance';
+import { monthlyInterest, sortByAvalanche, totalLoanBalance, num, monthlyEssentials, simulatePayoff } from '../utils/finance';
 
 interface DebtsProps {
   loans: Loan[];
@@ -48,6 +48,17 @@ export const Debts: React.FC<DebtsProps> = ({ loans, setLoans, netWorthData, exp
     setLoans(updated);
     if (onSync) await onSync({ loans: updated });
   };
+
+  const [payoffLoanId, setPayoffLoanId] = useState('');
+  const [payoffAmount, setPayoffAmount] = useState('');
+
+  const liquidCash = num(netWorthData.accumulatedSavings);
+  const essentialsPerMonth = monthlyEssentials(expenses);
+  const selectedLoan = loans.find(l => l.id === payoffLoanId) || sorted[0];
+  const payAmount = parseFloat(payoffAmount);
+  const sim = selectedLoan && !isNaN(payAmount) && payAmount > 0
+    ? simulatePayoff(selectedLoan, payAmount, liquidCash, essentialsPerMonth)
+    : null;
 
   return (
     <div className="px-8 py-8 max-w-[1440px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -141,6 +152,66 @@ export const Debts: React.FC<DebtsProps> = ({ loans, setLoans, netWorthData, exp
             </div>
           )}
         </div>
+
+        {/* ── Payoff simulator ── */}
+        {loans.length > 0 && (
+          <div className="bg-surface-container-low p-6 rounded-xl">
+            <h2 className="text-sm font-bold tracking-wider text-on-surface-variant uppercase mb-2">Lump-Sum Payoff Simulator</h2>
+            <p className="text-xs text-secondary mb-4 tabular-nums">
+              Liquid cash: {fmt(liquidCash)}
+              {essentialsPerMonth > 0 ? ` · essentials ${fmt(essentialsPerMonth)}/month` : ''}
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+              <select
+                data-testid="payoff-loan-select"
+                value={selectedLoan?.id || ''}
+                onChange={e => setPayoffLoanId(e.target.value)}
+                className="w-full bg-surface-container-lowest border border-outline-variant/20 rounded-lg p-3 text-on-surface focus:outline-none appearance-none cursor-pointer"
+              >
+                {sorted.map(l => (
+                  <option key={l.id} value={l.id}>{l.name} ({fmt(l.balance)})</option>
+                ))}
+              </select>
+              <input
+                data-testid="payoff-amount-input"
+                type="number"
+                value={payoffAmount}
+                onChange={e => setPayoffAmount(e.target.value)}
+                placeholder="Amount to pay off"
+                className="w-full bg-surface-container-lowest border border-outline-variant/20 rounded-lg p-3 text-on-surface tabular-nums focus:outline-none focus:border-primary transition-colors"
+              />
+            </div>
+
+            {sim && (
+              <>
+                {sim.breachesBuffer && (
+                  <div className="mb-4 p-3 bg-[#F26B6B]/10 border border-[#F26B6B]/20 rounded-lg">
+                    <p className="text-[#F26B6B] text-xs font-bold">
+                      Leaves less than one month of essentials in cash. Max safe payoff: {fmt(sim.safeAmount)}.
+                    </p>
+                  </div>
+                )}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-widest text-on-surface-variant font-medium mb-1">Cash After Payoff</p>
+                    <p className="text-lg font-bold text-on-surface tabular-nums">{fmt(sim.newLiquidCash)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-widest text-on-surface-variant font-medium mb-1">Interest Saved / Month</p>
+                    <p className="text-lg font-bold text-[#3DD68C] tabular-nums">{fmt(sim.monthlyInterestSaved)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-widest text-on-surface-variant font-medium mb-1">New Runway</p>
+                    <p className="text-lg font-bold text-on-surface tabular-nums">
+                      {sim.newRunwayMonths === null ? '—' : `${sim.newRunwayMonths.toFixed(1)} months`}
+                    </p>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </section>
     </div>
   );

@@ -2,7 +2,7 @@ import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { Debts } from '../../components/Debts';
-import { Loan, NetWorthState } from '../../types';
+import { Loan, NetWorthState, Expense, ExpenseCategory } from '../../types';
 
 const loans: Loan[] = [
   { id: 'l1', name: 'Sparkasse Loan', balance: 36000, interestRate: 7.5, monthlyPayment: 500 },
@@ -43,5 +43,34 @@ describe('Debts tab', () => {
   it('shows an empty state with no loans', () => {
     render(<Debts loans={[]} setLoans={() => {}} netWorthData={nw} />);
     expect(screen.getByText(/No loans tracked yet/)).toBeTruthy();
+  });
+});
+
+const essentials: Expense[] = [
+  { id: 'e1', name: 'Rent', amount: 1500, category: ExpenseCategory.HOUSING, isRecurring: true, recurringFrequency: 'monthly', date: '2026-07-01', isEssential: true },
+  { id: 'e2', name: 'Home loans', amount: 745, category: ExpenseCategory.HOUSING, isRecurring: true, recurringFrequency: 'monthly', date: '2026-07-01', isEssential: true },
+];
+
+describe('Payoff simulator', () => {
+  const setup = () => {
+    render(<Debts loans={loans} setLoans={() => {}} netWorthData={nw} expenses={essentials} />);
+    fireEvent.change(screen.getByTestId('payoff-loan-select'), { target: { value: 'l1' } });
+  };
+
+  it('warns when a payoff would leave less than one month of essentials', () => {
+    setup();
+    fireEvent.change(screen.getByTestId('payoff-amount-input'), { target: { value: '36000' } });
+    // €38,000 − €36,000 = €2,000 < €2,245 essentials
+    expect(screen.getByText(/Leaves less than one month of essentials/)).toBeTruthy();
+    expect(document.body.textContent).toContain('€35,755'); // max safe payoff
+  });
+
+  it('shows savings and new runway for a buffer-safe payoff', () => {
+    setup();
+    fireEvent.change(screen.getByTestId('payoff-amount-input'), { target: { value: '33000' } });
+    expect(screen.queryByText(/Leaves less than one month/)).toBeNull();
+    expect(document.body.textContent).toContain('€206');    // interest saved / month
+    expect(document.body.textContent).toContain('€5,000');  // cash after payoff
+    expect(document.body.textContent).toContain('2.2 months'); // new runway
   });
 });
