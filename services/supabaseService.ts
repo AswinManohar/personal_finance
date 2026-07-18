@@ -196,7 +196,7 @@ export const pullFromCloud = async (userKey: string) => {
   try {
     const [financesRes, expensesRes, incomeRes, historyData] = await Promise.all([
       supabase.from('user_finances').select('data, updated_at').eq('user_key', userKey).limit(1),
-      // MATCHING SCHEMA: id, name, amount, category, vendor, is_recurring, recurring_frequency, created_at
+      // MATCHING SCHEMA: id, name, amount, category, vendor, is_recurring, recurring_frequency, is_essential, created_at
       supabase.from('user_expenses').select('id, name, amount, category, vendor, is_recurring, recurring_frequency, is_essential, created_at').eq('user_key', userKey).eq('deleted', false),
       supabase.from('user_income').select('salary_me, salary_partner').eq('user_key', userKey).limit(1),
       getSavingsHistory(userKey)

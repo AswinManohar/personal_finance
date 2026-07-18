@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { NetWorthState, Stock, PortfolioAsset, SavingsHistoryRecord, Loan } from '../types';
 import { Camera, Check, RefreshCw } from 'lucide-react';
 import { recordSavingsHistory, getSavingsHistory, deleteHistoryRecord } from '../services/supabaseService';
-import { totalLoanBalance } from '../utils/finance';
+import { totalLoanBalance, num } from '../utils/finance';
 
 interface NetWorthProps {
   netWorthData: NetWorthState;
@@ -27,7 +27,7 @@ export const NetWorth: React.FC<NetWorthProps> = ({
   const portfolioValue = portfolio.reduce((sum, p) => sum + p.currentValue, 0);
 
   const totalAssets = currentSavings + stockValue + portfolioValue + netWorthData.goldInvestment + (netWorthData.otherAssets || 0);
-  const totalLiabilities = loans.length > 0 ? totalLoanBalance(loans) : netWorthData.remainingLoan;
+  const totalLiabilities = loans.length > 0 ? totalLoanBalance(loans) : num(netWorthData.remainingLoan);
   const netWorth = totalAssets - totalLiabilities;
 
   const handleValueChange = (field: keyof NetWorthState, value: string) => {
