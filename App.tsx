@@ -243,7 +243,7 @@ const AppMain: React.FC = () => {
       case 'savings': return <SavingsDashboard portfolio={portfolio} stocks={stocks} netWorthData={netWorthData} setNetWorthData={setNetWorthData} onSync={syncCallback || (async () => { })} expenses={expenses} emergencyFund={emergencyFund} setEmergencyFund={setEmergencyFund} />;
       case 'investment': return <InvestmentCalculator investment={investment} setInvestment={setInvestment} onSync={syncCallback} />;
       case 'goal': return <SavingsGoal goal={goal} setGoal={setGoal} onSync={syncCallback} />;
-      case 'networth': return <NetWorth netWorthData={netWorthData} setNetWorthData={setNetWorthData} currentSavings={goal.currentSavings} stocks={stocks} portfolio={portfolio} syncKey={activeUserKey || undefined} history={history} setHistory={setHistory} onSync={syncCallback} />;
+      case 'networth': return <NetWorth netWorthData={netWorthData} setNetWorthData={setNetWorthData} currentSavings={goal.currentSavings} stocks={stocks} portfolio={portfolio} syncKey={activeUserKey || undefined} history={history} setHistory={setHistory} onSync={syncCallback} loans={loans} />;
       case 'debts': return <Debts loans={loans} setLoans={setLoans} netWorthData={netWorthData} expenses={expenses} onSync={syncCallback} />;
       case 'fire': return <FIRECalculator state={fire} setState={setFire} onSync={syncCallback} />;
       case 'portfolio': return <Portfolio assets={portfolio} setAssets={setPortfolio} onSync={syncCallback} />;

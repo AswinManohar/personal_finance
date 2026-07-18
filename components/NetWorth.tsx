@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { NetWorthState, Stock, PortfolioAsset, SavingsHistoryRecord } from '../types';
+import { NetWorthState, Stock, PortfolioAsset, SavingsHistoryRecord, Loan } from '../types';
 import { Camera, Check, RefreshCw } from 'lucide-react';
 import { recordSavingsHistory, getSavingsHistory, deleteHistoryRecord } from '../services/supabaseService';
+import { totalLoanBalance } from '../utils/finance';
 
 interface NetWorthProps {
   netWorthData: NetWorthState;
@@ -13,10 +14,11 @@ interface NetWorthProps {
   history: SavingsHistoryRecord[];
   setHistory: React.Dispatch<React.SetStateAction<SavingsHistoryRecord[]>>;
   onSync?: (overrides?: any) => Promise<void>;
+  loans?: Loan[];
 }
 
 export const NetWorth: React.FC<NetWorthProps> = ({
-  netWorthData, setNetWorthData, currentSavings, stocks, portfolio, syncKey, history, setHistory, onSync
+  netWorthData, setNetWorthData, currentSavings, stocks, portfolio, syncKey, history, setHistory, onSync, loans = []
 }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -25,7 +27,8 @@ export const NetWorth: React.FC<NetWorthProps> = ({
   const portfolioValue = portfolio.reduce((sum, p) => sum + p.currentValue, 0);
 
   const totalAssets = currentSavings + stockValue + portfolioValue + netWorthData.goldInvestment + (netWorthData.otherAssets || 0);
-  const netWorth = totalAssets - netWorthData.remainingLoan;
+  const totalLiabilities = loans.length > 0 ? totalLoanBalance(loans) : netWorthData.remainingLoan;
+  const netWorth = totalAssets - totalLiabilities;
 
   const handleValueChange = (field: keyof NetWorthState, value: string) => {
     const numValue = parseFloat(value);
@@ -45,7 +48,7 @@ export const NetWorth: React.FC<NetWorthProps> = ({
     try {
       await recordSavingsHistory(syncKey, {
         total_assets: totalAssets,
-        total_liabilities: netWorthData.remainingLoan,
+        total_liabilities: totalLiabilities,
         net_worth: netWorth,
         savings_amount: currentSavings,
         investment_amount: portfolioValue,
@@ -116,7 +119,7 @@ export const NetWorth: React.FC<NetWorthProps> = ({
       })()
     : null;
 
-  const debtRatio = totalAssets > 0 ? (netWorthData.remainingLoan / totalAssets) * 100 : 0;
+  const debtRatio = totalAssets > 0 ? (totalLiabilities / totalAssets) * 100 : 0;
 
   // Format helpers
   const fmt = (v: number) => v.toLocaleString(undefined, { maximumFractionDigits: 0 });
@@ -221,7 +224,7 @@ export const NetWorth: React.FC<NetWorthProps> = ({
               </div>
               <div className="space-y-1">
                 <span className="text-[10px] uppercase tracking-widest text-secondary/70 font-semibold">Total Liabilities</span>
-                <p className="text-3xl font-bold text-negative tabular-nums tracking-tight">-€{fmt(netWorthData.remainingLoan)}</p>
+                <p className="text-3xl font-bold text-negative tabular-nums tracking-tight">-€{fmt(totalLiabilities)}</p>
               </div>
             </div>
           </div>
@@ -327,10 +330,15 @@ export const NetWorth: React.FC<NetWorthProps> = ({
                         className="w-32 bg-surface-container-lowest border border-outline-variant/20 focus:border-primary rounded py-1 px-2 text-xs text-on-surface tabular-nums font-semibold outline-none transition-all"
                       />
                     </div>
+                    {loans.length > 0 && (
+                      <p className="text-[10px] text-secondary/50 mt-1">
+                        Using {loans.length} loan{loans.length !== 1 ? 's' : ''} from the Debts tab
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="font-bold tabular-nums tracking-tight text-on-surface">-€{fmt(netWorthData.remainingLoan)}</p>
+                  <p className="font-bold tabular-nums tracking-tight text-on-surface">-€{fmt(totalLiabilities)}</p>
                   <p className="text-[10px] text-negative font-bold tabular-nums">
                     {debtRatio.toFixed(1)}% debt ratio
                   </p>
