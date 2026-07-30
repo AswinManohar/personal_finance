@@ -60,6 +60,22 @@ def test_build_context_reads_income_recurring_and_baseline():
     assert ctx.baseline["Food"] == 100.0  # 300 over 90 days → 100/month
 
 
+def test_build_context_handles_missing_and_none_amounts():
+    now = datetime.now(timezone.utc)
+    expenses = [
+        {"name": "Subscription", "amount": None, "category": "Entertainment", "is_recurring": True,
+         "created_at": (now - timedelta(days=5)).isoformat()},
+        {"amount": 50, "category": "Food", "is_recurring": True,
+         "created_at": (now - timedelta(days=5)).isoformat()},  # missing "name" key
+    ]
+    ctx = build_context(FakeSupabase([{"salary_me": 1000, "salary_partner": 0}], expenses), "u1")
+    assert ctx.baseline["Entertainment"] == 0.0  # None amount contributes 0
+    assert ctx.recurring == [
+        {"name": "Subscription", "amount": 0.0, "category": "Entertainment"},
+        {"name": None, "amount": 50.0, "category": "Food"},
+    ]
+
+
 def test_review_returns_flags_and_drops_rogue_transactions():
     client = FakeClient([FlagList(flags=[GOOD_FLAG, ROGUE])])
     ctx = ReviewContext(monthly_income=4500, recurring=[], baseline={})

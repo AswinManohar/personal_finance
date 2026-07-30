@@ -46,13 +46,18 @@ def build_context(supabase, user_id: str) -> ReviewContext:
     ).data or []
 
     recurring = [
-        {"name": r["name"], "amount": r["amount"], "category": r["category"]}
+        {
+            "name": r.get("name"),
+            "amount": float(r.get("amount") or 0),
+            "category": r.get("category"),
+        }
         for r in rows
         if r.get("is_recurring")
     ]
     totals: dict[str, float] = {}
     for r in rows:
-        totals[r["category"]] = totals.get(r["category"], 0.0) + float(r["amount"])
+        category = r.get("category")
+        totals[category] = totals.get(category, 0.0) + float(r.get("amount") or 0)
     baseline = {cat: round(total / 3.0, 2) for cat, total in totals.items()}
     return ReviewContext(monthly_income=income, recurring=recurring, baseline=baseline)
 
