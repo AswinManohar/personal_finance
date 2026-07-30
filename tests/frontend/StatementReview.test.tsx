@@ -57,4 +57,39 @@ describe('StatementReview', () => {
     await userEvent.click(screen.getByRole('button', { name: /review statement/i }));
     expect(await screen.findByText(/no text layer/i)).toBeInTheDocument();
   });
+
+  it('shows an error and leaves the row unimported when import fails', async () => {
+    const onImported = vi.fn();
+    (importTransaction as any).mockRejectedValueOnce(new Error('network down'));
+    render(<StatementReview onImported={onImported} />);
+    const file = new File([new Uint8Array([1])], 'stmt.pdf', { type: 'application/pdf' });
+    await userEvent.upload(screen.getByLabelText(/statement pdf/i), file);
+    await userEvent.click(screen.getByRole('button', { name: /review statement/i }));
+    await userEvent.click(await screen.findByRole('button', { name: /add to expenses/i }));
+
+    expect(await screen.findByText(/import failed.*network down/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /add to expenses/i })).toBeInTheDocument();
+    expect(screen.queryByText(/^added$/i)).not.toBeInTheDocument();
+    expect(onImported).not.toHaveBeenCalled();
+  });
+
+  it('importing one of two identical missing_in_app rows only marks that row Added', async () => {
+    const dupReport = {
+      ...report,
+      crosscheck: { missing_in_app: [tx, tx], missing_on_statement: [], amount_mismatch: [] },
+    };
+    (reviewStatement as any).mockResolvedValueOnce(dupReport);
+    render(<StatementReview onImported={vi.fn()} />);
+    const file = new File([new Uint8Array([1])], 'stmt.pdf', { type: 'application/pdf' });
+    await userEvent.upload(screen.getByLabelText(/statement pdf/i), file);
+    await userEvent.click(screen.getByRole('button', { name: /review statement/i }));
+
+    const addButtons = await screen.findAllByRole('button', { name: /add to expenses/i });
+    expect(addButtons).toHaveLength(2);
+    await userEvent.click(addButtons[0]);
+
+    await waitFor(() => expect(importTransaction).toHaveBeenCalledTimes(1));
+    expect(screen.getAllByText(/^added$/i)).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: /add to expenses/i })).toHaveLength(1);
+  });
 });

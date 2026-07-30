@@ -17,9 +17,7 @@ export const StatementReview: React.FC<StatementReviewProps> = ({ onImported }) 
   const [report, setReport] = useState<ReviewReport | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [importedKeys, setImportedKeys] = useState<Set<string>>(new Set());
-
-  const txKey = (tx: StatementTransaction) => `${tx.date}|${tx.description}|${tx.amount}`;
+  const [importedIdx, setImportedIdx] = useState<Set<number>>(new Set());
 
   const runReview = async () => {
     if (!file) return;
@@ -33,10 +31,15 @@ export const StatementReview: React.FC<StatementReviewProps> = ({ onImported }) 
     }
   };
 
-  const handleImport = async (tx: StatementTransaction) => {
-    await importTransaction(tx);
-    setImportedKeys(prev => new Set(prev).add(txKey(tx)));
-    onImported();
+  const handleImport = async (tx: StatementTransaction, i: number) => {
+    try {
+      await importTransaction(tx);
+      setError(null);
+      setImportedIdx(prev => new Set(prev).add(i));
+      onImported();
+    } catch (e: any) {
+      setError(`Import failed: ${e.message || 'unknown error'}`);
+    }
   };
 
   const sortedFlags = report
@@ -120,11 +123,11 @@ export const StatementReview: React.FC<StatementReviewProps> = ({ onImported }) 
                 <span className="text-on-surface">
                   {tx.date} · {tx.description} · {tx.amount.toFixed(2)}
                 </span>
-                {importedKeys.has(txKey(tx)) ? (
+                {importedIdx.has(i) ? (
                   <span className="text-[#3DD68C] text-xs">Added</span>
                 ) : (
                   <button
-                    onClick={() => handleImport(tx)}
+                    onClick={() => handleImport(tx, i)}
                     className="flex items-center gap-1 text-primary text-xs font-semibold"
                   >
                     <Plus size={14} /> Add to expenses
