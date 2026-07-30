@@ -1,0 +1,60 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import React from 'react';
+
+const { tx, report } = vi.hoisted(() => {
+  const tx = { date: '2026-06-05', description: 'Lieferando', amount: 28.9,
+               category: 'Food', direction: 'debit' as const };
+  const report = {
+    transactions: [tx],
+    flags: [{ transaction: tx, flag_type: 'impulse', reason: 'Third delivery this week',
+              severity: 'medium', monthly_saving_estimate: 60 }],
+    crosscheck: { missing_in_app: [tx], missing_on_statement: [], amount_mismatch: [] },
+    redaction_preview: { masked_counts: { iban: 1 } },
+    totals: { statement_spend: 28.9, flagged_spend: 28.9, coverage_pct: 0 },
+  };
+  return { tx, report };
+});
+
+vi.mock('../../services/statementReview', () => ({
+  reviewStatement: vi.fn().mockResolvedValue(report),
+  importTransaction: vi.fn().mockResolvedValue(undefined),
+}));
+
+import { reviewStatement, importTransaction } from '../../services/statementReview';
+import { StatementReview } from '../../components/StatementReview';
+
+describe('StatementReview', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('uploads with redaction on by default and renders flags + crosscheck', async () => {
+    render(<StatementReview onImported={vi.fn()} />);
+    const file = new File([new Uint8Array([1])], 'stmt.pdf', { type: 'application/pdf' });
+    await userEvent.upload(screen.getByLabelText(/statement pdf/i), file);
+    await userEvent.click(screen.getByRole('button', { name: /review statement/i }));
+    await waitFor(() => expect(reviewStatement).toHaveBeenCalledWith(file, true, 'bank'));
+    expect(await screen.findByText(/third delivery this week/i)).toBeInTheDocument();
+    expect(screen.getByText(/missing in app/i)).toBeInTheDocument();
+  });
+
+  it('one-click import calls the service then onImported', async () => {
+    const onImported = vi.fn();
+    render(<StatementReview onImported={onImported} />);
+    const file = new File([new Uint8Array([1])], 'stmt.pdf', { type: 'application/pdf' });
+    await userEvent.upload(screen.getByLabelText(/statement pdf/i), file);
+    await userEvent.click(screen.getByRole('button', { name: /review statement/i }));
+    await userEvent.click(await screen.findByRole('button', { name: /add to expenses/i }));
+    await waitFor(() => expect(importTransaction).toHaveBeenCalledWith(tx));
+    expect(onImported).toHaveBeenCalled();
+  });
+
+  it('shows a friendly error when review fails', async () => {
+    (reviewStatement as any).mockRejectedValueOnce(new Error('no text layer'));
+    render(<StatementReview onImported={vi.fn()} />);
+    const file = new File([new Uint8Array([1])], 'stmt.pdf', { type: 'application/pdf' });
+    await userEvent.upload(screen.getByLabelText(/statement pdf/i), file);
+    await userEvent.click(screen.getByRole('button', { name: /review statement/i }));
+    expect(await screen.findByText(/no text layer/i)).toBeInTheDocument();
+  });
+});

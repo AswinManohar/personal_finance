@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Expense, ExpenseCategory, IncomeState, RecurringFrequency } from '../types';
 import { Trash2, Repeat } from 'lucide-react';
+import { StatementReview } from './StatementReview';
 
 interface ExpensesProps {
   expenses: Expense[];
@@ -300,6 +301,8 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
             </button>
           </div>
         </section>
+
+        <StatementReview onImported={() => { void onSync?.(); }} />
 
         {/* Recent Transactions */}
         <section className="bg-surface-container-low p-6 rounded-xl flex flex-col gap-4">
