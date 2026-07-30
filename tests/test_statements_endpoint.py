@@ -109,3 +109,96 @@ def test_garbage_pdf_maps_to_422_with_code():
     resp = client.post("/api/statements/review", files=files, data={"redact": "true"})
     assert resp.status_code == 422
     assert resp.json()["detail"]["code"] == "PDF_UNREADABLE"
+
+
+# --- Additional status-code coverage: 502, 503, 413, and the credits doubt ---
+
+class FakeResponsesBadExtraction:
+    """Always returns an extraction whose total_debits can never reconcile,
+    so every retry is rejected by validate_extraction() and extract_transactions
+    exhausts its retries and raises ExtractionFailedError."""
+    def __init__(self): self.calls = []
+    def parse(self, **kw):
+        self.calls.append(kw)
+        if kw["text_format"] is ExtractionResult:
+            bad = ExtractionResult(
+                transactions=[StatementTransaction(date="2026-06-01", description="X",
+                                                    amount=10.0, category="Other",
+                                                    direction="debit")],
+                total_debits=99999.99,
+            )
+            return FakeParsed(bad)
+        return FakeParsed(FlagList(flags=[]))
+class FakeOpenAIBadExtraction:
+    def __init__(self): self.responses = FakeResponsesBadExtraction()
+
+
+class FakeResponsesConnectionError:
+    def parse(self, **kw):
+        raise ConnectionError("boom")
+class FakeOpenAIConnectionError:
+    def __init__(self): self.responses = FakeResponsesConnectionError()
+
+
+def test_extraction_failure_maps_to_502():
+    bad_llm = FakeOpenAIBadExtraction()
+    app.dependency_overrides[statements.get_openai_client] = lambda: bad_llm
+    try:
+        resp = _post(redact="true", statement_type="bank")
+        assert resp.status_code == 502, resp.text
+        assert resp.json()["detail"]["code"] == "EXTRACTION_FAILED"
+    finally:
+        app.dependency_overrides[statements.get_openai_client] = lambda: statements._fake_llm_for_tests
+
+
+def test_llm_connection_error_maps_to_503():
+    down_llm = FakeOpenAIConnectionError()
+    app.dependency_overrides[statements.get_openai_client] = lambda: down_llm
+    try:
+        resp = _post(redact="true", statement_type="bank")
+        assert resp.status_code == 503, resp.text
+        assert resp.json()["detail"]["code"] == "LLM_UNAVAILABLE"
+    finally:
+        app.dependency_overrides[statements.get_openai_client] = lambda: statements._fake_llm_for_tests
+
+
+def test_oversize_pdf_maps_to_413():
+    files = {"file": ("big.pdf", b"x" * (10 * 1024 * 1024 + 1), "application/pdf")}
+    resp = client.post("/api/statements/review", files=files, data={"redact": "true"})
+    assert resp.status_code == 413, resp.text
+
+
+TXS_WITH_CREDIT = TXS + [
+    StatementTransaction(date="2026-06-10", description="SALARY", amount=3000.0,
+                         category="Income", direction="credit"),
+]
+
+
+class FakeResponsesWithCredit:
+    def __init__(self): self.calls = []
+    def parse(self, **kw):
+        self.calls.append(kw)
+        if kw["text_format"] is ExtractionResult:
+            return FakeParsed(ExtractionResult(transactions=TXS_WITH_CREDIT))
+        return FakeParsed(FlagList(flags=[]))
+class FakeOpenAIWithCredit:
+    def __init__(self): self.responses = FakeResponsesWithCredit()
+
+
+def test_credit_transaction_excluded_from_debit_totals_and_crosscheck():
+    credit_llm = FakeOpenAIWithCredit()
+    app.dependency_overrides[statements.get_openai_client] = lambda: credit_llm
+    try:
+        resp = _post(redact="true", statement_type="bank")
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        # the credit (SALARY) is included in the raw extraction...
+        assert len(body["transactions"]) == 3
+        # ...but crosscheck() filters to debits internally, so it never shows
+        # up as "missing" spend, and the debit-only totals are unaffected.
+        missing = body["crosscheck"]["missing_in_app"]
+        assert [m["description"] for m in missing] == ["Netflix"]
+        assert body["totals"]["statement_spend"] == 67.29
+        assert body["totals"]["coverage_pct"] == 50.0
+    finally:
+        app.dependency_overrides[statements.get_openai_client] = lambda: statements._fake_llm_for_tests
