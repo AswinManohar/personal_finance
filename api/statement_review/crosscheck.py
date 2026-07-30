@@ -7,7 +7,14 @@ from api.statement_review.models import AmountMismatch, CrosscheckReport, Statem
 
 DATE_WINDOW_DAYS = 3
 AMOUNT_TOLERANCE = 0.01
+AMOUNT_TOLERANCE_CENTS = round(AMOUNT_TOLERANCE * 100)
 MISMATCH_SIMILARITY = 0.75
+
+
+def _cents(amount: float) -> int:
+    """Integer cents so amount comparisons never trip on binary-float
+    rounding (e.g. abs(54.31 - 54.30) > 0.01 in IEEE 754)."""
+    return round(amount * 100)
 
 
 def _row_date(row: dict) -> date:
@@ -28,18 +35,47 @@ def crosscheck(transactions, app_expenses) -> CrosscheckReport:
     if not debits:
         return report
 
-    unmatched_rows = list(app_expenses)
-    for tx in debits:
+    rows = list(app_expenses)
+
+    # Phase 1: exact-amount match, resolved as a single order-independent
+    # global assignment. Processing transactions one at a time (in input
+    # order) and greedily claiming the best row for each is order-dependent:
+    # an earlier transaction can steal the only row a later transaction
+    # could have matched, producing a false missing_in_app that depends on
+    # transaction order. Instead, collect every eligible (tx, row) pair
+    # up front, then assign the globally best pairs first. Similarity is a
+    # tie-break only here, never a threshold — the match rule is amount +
+    # date, per spec.
+    pairs = []
+    for tx_idx, tx in enumerate(debits):
         tx_date = date.fromisoformat(tx.date)
-        candidates = [
-            r for r in unmatched_rows
-            if abs(float(r["amount"]) - tx.amount) <= AMOUNT_TOLERANCE
-            and abs((_row_date(r) - tx_date).days) <= DATE_WINDOW_DAYS
-        ]
-        if candidates:
-            best = max(candidates, key=lambda r: _similarity(tx, r))
-            unmatched_rows.remove(best)
+        tx_cents = _cents(tx.amount)
+        for row_idx, row in enumerate(rows):
+            if abs(_cents(float(row["amount"])) - tx_cents) > AMOUNT_TOLERANCE_CENTS:
+                continue
+            date_diff = abs((_row_date(row) - tx_date).days)
+            if date_diff > DATE_WINDOW_DAYS:
+                continue
+            pairs.append((tx_idx, row_idx, _similarity(tx, row), date_diff))
+
+    pairs.sort(key=lambda p: (-p[2], p[3], p[0], p[1]))
+
+    matched_tx_idx: set[int] = set()
+    matched_row_idx: set[int] = set()
+    for tx_idx, row_idx, _sim, _diff in pairs:
+        if tx_idx in matched_tx_idx or row_idx in matched_row_idx:
             continue
+        matched_tx_idx.add(tx_idx)
+        matched_row_idx.add(row_idx)
+
+    unmatched_rows = [row for idx, row in enumerate(rows) if idx not in matched_row_idx]
+
+    # Phase 2: near-name mismatch pass for transactions still unmatched,
+    # over the rows left over from phase 1 — unchanged from before.
+    for tx_idx, tx in enumerate(debits):
+        if tx_idx in matched_tx_idx:
+            continue
+        tx_date = date.fromisoformat(tx.date)
         near = [
             r for r in unmatched_rows
             if _similarity(tx, r) >= MISMATCH_SIMILARITY

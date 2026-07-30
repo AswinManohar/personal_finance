@@ -65,3 +65,39 @@ def test_duplicate_amounts_each_match_a_distinct_row():
     rows = [app_row("e1", "Coffee A", 4.50, "2026-06-01T00:00:00+00:00"),
             app_row("e2", "Coffee B", 4.50, "2026-06-01T00:00:00+00:00")]
     assert crosscheck(txs, rows).missing_in_app == []
+
+
+def test_one_cent_delta_matches_despite_float_rounding():
+    # abs(54.31 - 54.30) is slightly *over* 0.01 in binary float
+    # (0.010000000000005116), so a naive float comparison misclassifies
+    # this textbook 1-cent match as a mismatch. Cents-based comparison
+    # must treat it as an exact, clean match.
+    report = crosscheck([tx("2026-06-01", "REWE", 54.30)],
+                        [app_row("e1", "REWE", 54.31, "2026-06-01T00:00:00+00:00")])
+    assert report.missing_in_app == []
+    assert report.amount_mismatch == []
+    assert report.missing_on_statement == []
+
+
+def test_two_cent_delta_with_similar_name_is_amount_mismatch():
+    report = crosscheck([tx("2026-06-01", "REWE", 54.30)],
+                        [app_row("e1", "REWE", 54.32, "2026-06-01T00:00:00+00:00")])
+    assert report.missing_in_app == []
+    assert len(report.amount_mismatch) == 1
+    assert round(report.amount_mismatch[0].delta, 2) == -0.02
+
+
+def test_matching_is_order_independent_across_ambiguous_candidates():
+    # Two same-amount transactions where a naive per-transaction greedy pass
+    # would let whichever transaction is processed first steal the only row
+    # a later transaction could have matched, producing a false
+    # missing_in_app that depends on input order. Both orderings must
+    # produce a full match with no discrepancies.
+    rows = [app_row("e1", "Coffee", 5.00, "2026-06-01T00:00:00+00:00"),
+            app_row("e2", "Latte", 5.00, "2026-06-05T00:00:00+00:00")]
+    forward = [tx("2026-06-03", "Coffee", 5.00), tx("2026-06-01", "Coffee", 5.00)]
+    backward = [tx("2026-06-01", "Coffee", 5.00), tx("2026-06-03", "Coffee", 5.00)]
+    for txs in (forward, backward):
+        report = crosscheck(txs, rows)
+        assert report.missing_in_app == []
+        assert report.amount_mismatch == []
