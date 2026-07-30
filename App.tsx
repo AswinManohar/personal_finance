@@ -107,6 +107,10 @@ const AppMain: React.FC = () => {
   const [fire, setFire] = usePersistedState<FIREState>('fire', { currentAge: 30, annualExpenses: 30000, currentNetWorth: 50000, annualSavings: 12000, annualReturn: 7, withdrawalRate: 4 });
   const [emergencyFund, setEmergencyFund] = usePersistedState<EmergencyFundState>('emergency_fund', { targetMonths: 3 });
   const [loans, setLoans] = usePersistedState<Loan[]>('loans', []);
+  // Deletions must be carried explicitly to the cloud. Absence from `expenses`
+  // is not proof of deletion — the Telegram bot writes rows this client has not
+  // pulled yet. Persisted so a delete survives a reload before the next sync.
+  const [deletedExpenseIds, setDeletedExpenseIds] = usePersistedState<string[]>('deleted_expense_ids', []);
   const [portfolio, setPortfolio] = usePersistedState<PortfolioAsset[]>('portfolio', []);
   const [stocks, setStocks] = usePersistedState<Stock[]>('stocks', []);
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
@@ -164,9 +168,16 @@ const AppMain: React.FC = () => {
     try {
       const payload = {
         expenses, portfolio, stocks, income, investment, goal, fire, netWorthData, emergencyFund, loans,
+        deletedExpenseIds,
         ...overrides
       };
       await pushToCloud(activeUserKey, payload);
+      // Only drop the tombstone log once the server has accepted it, so a failed
+      // or offline sync retries the deletion rather than losing it.
+      const pushedDeletions: string[] = payload.deletedExpenseIds || [];
+      if (pushedDeletions.length > 0) {
+        setDeletedExpenseIds(prev => prev.filter(id => !pushedDeletions.includes(id)));
+      }
       setSyncStatus('success');
       setLastSyncedAt(new Date().toLocaleString());
       setTimeout(() => setSyncStatus('idle'), 3000);
@@ -180,7 +191,15 @@ const AppMain: React.FC = () => {
     } finally {
       syncInProgressRef.current = false;
     }
-  }, [activeUserKey, expenses, portfolio, stocks, income, investment, goal, fire, netWorthData, emergencyFund, loans]);
+  }, [activeUserKey, expenses, portfolio, stocks, income, investment, goal, fire, netWorthData, emergencyFund, loans, deletedExpenseIds, setDeletedExpenseIds]);
+
+  // Returns the resulting log synchronously so the caller can pass it straight
+  // into onSync without waiting for the state update to land.
+  const recordExpenseDeletion = useCallback((id: string): string[] => {
+    const next = deletedExpenseIds.includes(id) ? deletedExpenseIds : [...deletedExpenseIds, id];
+    setDeletedExpenseIds(next);
+    return next;
+  }, [deletedExpenseIds, setDeletedExpenseIds]);
 
   useEffect(() => {
     if (activeUserKey) performCloudPull();
@@ -239,7 +258,7 @@ const AppMain: React.FC = () => {
   const renderContent = () => {
     const syncCallback = activeUserKey ? triggerSync : undefined;
     switch (activeTab) {
-      case 'expenses': return <Expenses expenses={expenses} setExpenses={setExpenses} income={income} setIncome={setIncome} onSync={syncCallback} />;
+      case 'expenses': return <Expenses expenses={expenses} setExpenses={setExpenses} income={income} setIncome={setIncome} onSync={syncCallback} onExpenseDeleted={recordExpenseDeletion} />;
       case 'savings': return <SavingsDashboard portfolio={portfolio} stocks={stocks} netWorthData={netWorthData} setNetWorthData={setNetWorthData} onSync={syncCallback || (async () => { })} expenses={expenses} emergencyFund={emergencyFund} setEmergencyFund={setEmergencyFund} />;
       case 'investment': return <InvestmentCalculator investment={investment} setInvestment={setInvestment} onSync={syncCallback} />;
       case 'goal': return <SavingsGoal goal={goal} setGoal={setGoal} onSync={syncCallback} />;

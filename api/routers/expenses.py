@@ -85,7 +85,13 @@ async def update_expense(
 @router.delete("/{expense_id}", status_code=status.HTTP_204_NO_CONTENT, operation_id="delete_expense")
 async def delete_expense(expense_id: str, user_id: str = Depends(get_current_user_id)):
     """
-    Delete an expense for the current user.
+    Soft-delete an expense for the current user.
+
+    Marks the row `deleted = true` rather than removing it. A hard delete makes
+    the row vanish from user_expenses entirely, so it never surfaces in
+    /v1/integrations/expenses as a tombstone — meaning downstream consumers
+    (Life OS) never learn the expense was deleted and hold it forever. The
+    updated_at trigger advances the row so the change feed resurfaces it.
     """
     try:
         supabase = get_supabase_client()
@@ -104,7 +110,7 @@ async def delete_expense(expense_id: str, user_id: str = Depends(get_current_use
 
         (
             supabase.table("user_expenses")
-            .delete()
+            .update({"deleted": True})
             .eq("id", expense_id)
             .eq("user_key", user_id)
             .execute()

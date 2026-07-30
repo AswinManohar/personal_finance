@@ -8,6 +8,8 @@ interface ExpensesProps {
   income: IncomeState;
   setIncome: React.Dispatch<React.SetStateAction<IncomeState>>;
   onSync?: (overrides?: any) => Promise<void>;
+  /** Records an explicit deletion and returns the resulting tombstone log. */
+  onExpenseDeleted?: (id: string) => string[];
 }
 
 type TimeSpan = '7d' | '30d' | '90d' | 'all';
@@ -21,7 +23,7 @@ const CATEGORY_COLORS: Record<string, { stroke: string; bg: string; text: string
   [ExpenseCategory.OTHER]:         { stroke: '#ccc5c0', bg: 'bg-secondary',     text: 'text-secondary' },
 };
 
-export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, income, setIncome, onSync }) => {
+export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, income, setIncome, onSync, onExpenseDeleted }) => {
   const [newName, setNewName] = useState('');
   const [newAmount, setNewAmount] = useState('');
   const [newCategory, setNewCategory] = useState<ExpenseCategory>(ExpenseCategory.FOOD);
@@ -81,9 +83,11 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
 
   const handleDelete = async (id: string) => {
     const updatedExpenses = expenses.filter(e => e.id !== id);
+    // Carry the deletion explicitly — the push no longer infers it from absence.
+    const deletedExpenseIds = onExpenseDeleted ? onExpenseDeleted(id) : [id];
     setExpenses(updatedExpenses);
     if (onSync) {
-      await onSync({ expenses: updatedExpenses });
+      await onSync({ expenses: updatedExpenses, deletedExpenseIds });
     }
   };
 

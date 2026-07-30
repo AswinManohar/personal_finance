@@ -91,7 +91,7 @@ export const pushToCloud = async (userKey: string, payload: any) => {
   if (!userKey) throw new Error("Missing Unique Sync ID");
 
   const now = new Date().toISOString();
-  const { expenses, income, ...restOfData } = payload;
+  const { expenses, income, deletedExpenseIds, ...restOfData } = payload;
 
   // Dual-save strategy: We forcefully include income in the main JSON blob 
   // just in case the dedicated relational 'user_income' table encounters an RLS block.
@@ -137,22 +137,40 @@ export const pushToCloud = async (userKey: string, payload: any) => {
     }
   }
 
-  // 3. Sync Expenses (Strictly following user_expenses table schema + new fields)
+  // 3a. Tombstone ONLY the expenses the user actually deleted.
+  //
+  // Deletions are carried explicitly by the caller. They must never be inferred
+  // from "absent from this client's expenses array": the Telegram bot (and any
+  // second device) writes rows straight into user_expenses that this client has
+  // not pulled yet. The previous set-difference treated those as deletions and
+  // silently tombstoned them — propagating the delete onward to Life OS via
+  // /v1/integrations/expenses, which faithfully reports it.
+  if (Array.isArray(deletedExpenseIds) && deletedExpenseIds.length > 0) {
+    try {
+      const { error } = await supabase
+        .from('user_expenses')
+        .update({ deleted: true, updated_at: now })
+        .in('id', deletedExpenseIds)
+        .eq('user_key', userKey);
+      if (error) throw error;
+    } catch (err) {
+      logError("pushExpenseTombstones", err);
+      throw err;
+    }
+  }
+
+  // 3b. Upsert the expenses this client holds. Rows it does not hold are left
+  // untouched — they belong to someone else's write, not to a deletion.
   if (expenses !== undefined) {
     try {
-      // Step A: Mark deleted expenses as tombstones instead of hard deleting everything
-      const { data: existingExpenses } = await supabase.from('user_expenses').select('id').eq('user_key', userKey).eq('deleted', false);
-      const existingIds = new Set((existingExpenses || []).map(e => e.id));
-      const incomingIds = new Set(expenses.map((e: Expense) => e.id));
-      const idsToDelete = [...existingIds].filter(id => !incomingIds.has(id));
+      // A pull can restore a row whose tombstone has not been pushed yet (deleted
+      // while offline). Upserting it would write deleted:false and resurrect the
+      // expense, undoing 3a — so drop anything with a pending deletion.
+      const pendingDeletions = new Set<string>(deletedExpenseIds || []);
+      const toUpsert = expenses.filter((e: Expense) => !pendingDeletions.has(e.id));
 
-      if (idsToDelete.length > 0) {
-        await supabase.from('user_expenses').update({ deleted: true, updated_at: now }).in('id', idsToDelete);
-      }
-
-      // Step B: Upsert current expenses
-      if (expenses.length > 0) {
-        const records = expenses.map((e: Expense) => {
+      if (toUpsert.length > 0) {
+        const records = toUpsert.map((e: Expense) => {
           let isoDate = new Date().toISOString();
           if (e.date) {
             const parsed = new Date(e.date);
