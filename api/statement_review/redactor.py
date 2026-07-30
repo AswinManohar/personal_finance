@@ -21,7 +21,18 @@ _PHONE_INTL = r"(?:\+|00)\d{1,3}[\s\-/]?(?:\d[\s\-/]?){6,12}\d"
 # "01.06.2026" — the dot breaks the digit run and the match fails to reach
 # its minimum length. Leading/trailing digit boundaries via lookaround keep
 # it from starting mid-number (e.g. the "0" inside "2026" or "-54.30").
-_PHONE_LOCAL = r"(?<!\d)0(?:[\s\-/]?\d){8,13}(?!\d)"
+#
+# The trailing lookahead is `(?![\s\-/]?\d)`, not the weaker `(?!\d)`: a
+# plain `(?!\d)` only blocks the match from ending right before another
+# digit, but the {8,13} cap can still stop mid-run at a separator (e.g.
+# a space) even though more digits continue after it — that let a longer
+# 0-leading digit run (like a 12-18 digit card/account number) get
+# partially consumed as "phone", leaking its unconsumed tail in plaintext.
+# Requiring "not followed by an optional separator then a digit" forces
+# the match to end only where the digit run *actually* ends, so a
+# card-length run fails to match here at all and falls through intact to
+# the card pattern instead of being truncated.
+_PHONE_LOCAL = r"(?<!\d)0(?:[\s\-/]?\d){8,13}(?![\s\-/]?\d)"
 _PATTERNS: list[tuple[str, re.Pattern]] = [
     ("balance_line", re.compile(r"(?im)^.*\b(?:balance|saldo)\b.*$")),
     ("iban", re.compile(r"\b[A-Z]{2}\d{2}(?:\s?[A-Z0-9]{4}){2,8}(?:\s?[A-Z0-9]{1,3})?\b")),

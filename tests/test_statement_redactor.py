@@ -71,3 +71,13 @@ def test_international_phone_is_labeled_phone_not_card():
     # 4111 1111 1111 1111 card number).
     assert result.masked_counts["phone"] == 1
     assert result.masked_counts["card"] == 1
+
+
+def test_zero_leading_card_number_is_fully_masked_not_truncated():
+    # A 0-leading 12-18-digit run must never be partially consumed by the
+    # local-phone pattern and left with a leaking tail (e.g. old bug:
+    # "Card: 0111 2233 4455 6677 (test)" -> "Card: [PHONE] 6677 (test)").
+    text = "Card: 0111 2233 4455 6677 (test)"
+    result = redact(text)
+    for digits in ("0111", "2233", "4455", "6677"):
+        assert digits not in result.text
