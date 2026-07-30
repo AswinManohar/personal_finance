@@ -17,5 +17,6 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "fpdf2>=2.8.7",
     "pytest>=9.1.1",
 ]
