@@ -7,7 +7,11 @@ import pytest
 
 from api.statement_review.extractor import extract_transactions, validate_extraction
 from api.statement_review.models import ExtractionResult, StatementTransaction
-from api.statement_review.errors import ExtractionFailedError, NoTransactionsFoundError
+from api.statement_review.errors import (
+    ExtractionFailedError,
+    LlmUnavailableError,
+    NoTransactionsFoundError,
+)
 
 TX = StatementTransaction(date="2026-06-01", description="REWE", amount=54.30,
                           category="Food", direction="debit")
@@ -31,6 +35,21 @@ class FakeResponses:
 class FakeClient:
     def __init__(self, results):
         self.responses = FakeResponses(results)
+
+
+class RaisingResponses:
+    def __init__(self, exc):
+        self._exc = exc
+        self.calls = []
+
+    def parse(self, **kwargs):
+        self.calls.append(kwargs)
+        raise self._exc
+
+
+class RaisingClient:
+    def __init__(self, exc):
+        self.responses = RaisingResponses(exc)
 
 
 def test_valid_first_try_returns_result():
@@ -65,6 +84,28 @@ def test_zero_transactions_raises_no_transactions():
     client = FakeClient([empty])
     with pytest.raises(NoTransactionsFoundError):
         extract_transactions("text", "bank", client, model="test-model")
+
+
+def test_connection_error_raises_llm_unavailable():
+    client = RaisingClient(ConnectionError("boom"))
+    with pytest.raises(LlmUnavailableError) as exc_info:
+        extract_transactions("text", "bank", client, model="test-model")
+    assert "boom" in str(exc_info.value)
+
+
+def test_connection_error_does_not_retry():
+    client = RaisingClient(ConnectionError("boom"))
+    with pytest.raises(LlmUnavailableError):
+        extract_transactions("text", "bank", client, model="test-model", max_retries=2)
+    assert len(client.responses.calls) == 1
+
+
+def test_none_parsed_result_retries_then_succeeds():
+    good = ExtractionResult(transactions=[TX], total_debits=54.30)
+    client = FakeClient([None, good])
+    result = extract_transactions("text", "bank", client, model="test-model")
+    assert result.total_debits == 54.30
+    assert len(client.responses.calls) == 2
 
 
 def test_validate_flags_bad_dates_and_reconciliation():

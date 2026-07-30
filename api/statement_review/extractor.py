@@ -52,10 +52,19 @@ def extract_transactions(text, statement_type, client, model, max_retries=2):
             )
         except (ExtractionFailedError, LlmUnavailableError):
             raise
-        except Exception as exc:  # connection/auth/rate-limit from the SDK
+        except Exception as exc:
+            # `client` is duck-typed (real openai.OpenAI or a test fake), so
+            # the SDK's exception types are unknown at this layer. Any
+            # failure to even reach a response — connection, auth,
+            # rate-limit, or a bug in the fake — is treated as the LLM
+            # being unavailable rather than an extraction/validation
+            # problem, and is raised immediately without retrying.
             raise LlmUnavailableError(str(exc)) from exc
         result = response.output_parsed
-        last_problems = validate_extraction(result)
+        if result is None:
+            last_problems = ["model returned no parsed result"]
+        else:
+            last_problems = validate_extraction(result)
         if not last_problems:
             if not result.transactions:
                 raise NoTransactionsFoundError("No transactions found in statement text")
