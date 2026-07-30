@@ -10,13 +10,24 @@ class RedactionResult:
     masked_counts: dict[str, int] = field(default_factory=dict)
 
 
-# Order matters: IBAN before card so the card pattern can't eat IBAN digits.
+# Order matters: IBAN before card so the card pattern can't eat IBAN digits,
+# and phone before card so an international phone number (13+ digits with
+# a leading +/00 prefix) is labeled "phone" and not swallowed by the
+# looser card-number pattern.
+_PHONE_INTL = r"(?:\+|00)\d{1,3}[\s\-/]?(?:\d[\s\-/]?){6,12}\d"
+# Local-format phone (no + / 00 prefix): a leading 0 followed by 8-13 more
+# digits, optionally separated by space/dash/slash. Dot is deliberately
+# excluded from the separator set so this can't eat dotted dates like
+# "01.06.2026" — the dot breaks the digit run and the match fails to reach
+# its minimum length. Leading/trailing digit boundaries via lookaround keep
+# it from starting mid-number (e.g. the "0" inside "2026" or "-54.30").
+_PHONE_LOCAL = r"(?<!\d)0(?:[\s\-/]?\d){8,13}(?!\d)"
 _PATTERNS: list[tuple[str, re.Pattern]] = [
     ("balance_line", re.compile(r"(?im)^.*\b(?:balance|saldo)\b.*$")),
     ("iban", re.compile(r"\b[A-Z]{2}\d{2}(?:\s?[A-Z0-9]{4}){2,8}(?:\s?[A-Z0-9]{1,3})?\b")),
+    ("phone", re.compile(rf"{_PHONE_INTL}|{_PHONE_LOCAL}")),
     ("card", re.compile(r"\b(?:\d[ -]?){12,18}\d\b")),
     ("partial_card", re.compile(r"\*{2,4}\s?-?\s?\d{4}\b")),
-    ("phone", re.compile(r"(?:\+|00)\d{1,3}[\s\-/]?(?:\d[\s\-/]?){6,12}\d")),
     ("account", re.compile(r"(?i)(?:account\s*(?:no\.?|number)|kontonummer|a/c)\s*[:#]?\s*\S+")),
 ]
 

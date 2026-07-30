@@ -53,3 +53,21 @@ def test_no_names_arg_is_fine():
     result = redact("hello world")
     assert result.text == "hello world"
     assert result.masked_counts == {}
+
+
+def test_local_format_phone_numbers_are_masked():
+    text = "Mobile: 0176 12345678. Landline: 030-1234567. See you then."
+    result = redact(text)
+    assert "0176" not in result.text
+    assert "12345678" not in result.text
+    assert "1234567" not in result.text
+    assert result.masked_counts["phone"] == 2
+
+
+def test_international_phone_is_labeled_phone_not_card():
+    result = redact(SAMPLE, extra_names=["Aswin Manohar"])
+    # The +49 phone number must be tallied under "phone", not swallowed by
+    # the looser card-number pattern (which should only catch the real
+    # 4111 1111 1111 1111 card number).
+    assert result.masked_counts["phone"] == 1
+    assert result.masked_counts["card"] == 1
