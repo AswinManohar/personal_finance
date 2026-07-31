@@ -108,6 +108,39 @@ def test_none_parsed_result_retries_then_succeeds():
     assert len(client.responses.calls) == 2
 
 
+def test_validate_rejects_negative_amounts():
+    # Statements print money out as negative (e.g. "-1.500,00" or trailing
+    # "9,00-"), but the pipeline contract is: amount is always the positive
+    # absolute value, direction carries the sign. A negative amount would
+    # corrupt statement_spend and never match app expenses in crosscheck.
+    neg = StatementTransaction(date="2026-06-01", description="rent", amount=-1500.0,
+                               category="Housing", direction="debit")
+    problems = validate_extraction(ExtractionResult(transactions=[neg]))
+    assert any("positive" in p for p in problems)
+
+
+def test_negative_amount_is_retried_with_feedback():
+    neg = StatementTransaction(date="2026-06-01", description="rent", amount=-1500.0,
+                               category="Housing", direction="debit")
+    bad = ExtractionResult(transactions=[neg])
+    good = ExtractionResult(transactions=[TX], total_debits=54.30)
+    client = FakeClient([bad, good])
+    result = extract_transactions("text", "bank", client, model="test-model")
+    assert result.transactions[0].amount == 54.30
+    retry_input = str(client.responses.calls[1]["input"])
+    assert "positive" in retry_input
+
+
+def test_system_prompt_teaches_statement_sign_convention():
+    good = ExtractionResult(transactions=[TX], total_debits=54.30)
+    client = FakeClient([good])
+    extract_transactions("text", "bank", client, model="test-model")
+    system = str(client.responses.calls[0]["input"][0]["content"])
+    assert "negative" in system          # statement-side convention explained
+    assert "absolute value" in system    # output-side contract explained
+    assert "direction=debit" in system
+
+
 def test_validate_flags_bad_dates_and_reconciliation():
     bad_date = StatementTransaction(date="junk", description="x", amount=1,
                                     category="Other", direction="debit")

@@ -34,7 +34,7 @@ _PHONE_INTL = r"(?:\+|00)\d{1,3}[\s\-/]?(?:\d[\s\-/]?){6,12}\d"
 # the card pattern instead of being truncated.
 _PHONE_LOCAL = r"(?<!\d)0(?:[\s\-/]?\d){8,13}(?![\s\-/]?\d)"
 _PATTERNS: list[tuple[str, re.Pattern]] = [
-    ("balance_line", re.compile(r"(?im)^.*\b(?:balance|saldo)\b.*$")),
+    ("balance_line", re.compile(r"(?im)^.*\b(?:balance|saldo|kontostand)\b.*$")),
     ("iban", re.compile(r"\b[A-Z]{2}\d{2}(?:\s?[A-Z0-9]{4}){2,8}(?:\s?[A-Z0-9]{1,3})?\b")),
     ("phone", re.compile(rf"{_PHONE_INTL}|{_PHONE_LOCAL}")),
     ("card", re.compile(r"\b(?:\d[ -]?){12,18}\d\b")),

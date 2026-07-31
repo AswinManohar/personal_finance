@@ -12,7 +12,11 @@ from api.statement_review.models import ExtractionResult
 
 _SYSTEM = (
     "You extract transactions from a {statement_type} statement. "
-    "Amounts are positive numbers; use direction=debit for money out, "
+    "On the statement, money leaving the account is printed as a negative "
+    "amount (leading or trailing minus, e.g. -1.500,00 or 9,00-) and money "
+    "received as a positive amount; European statements may use comma as "
+    "the decimal separator. In your output, amount is ALWAYS the positive "
+    "absolute value — encode the sign as direction=debit for money out, "
     "credit for money in. Dates are ISO YYYY-MM-DD. If the statement "
     "prints its own debit total, set total_debits. Categorize each "
     "transaction (Food, Transport, Housing, Utilities, Entertainment, Other)."
@@ -26,6 +30,11 @@ def validate_extraction(result: ExtractionResult) -> list[str]:
             date.fromisoformat(tx.date)
         except ValueError:
             problems.append(f"transaction date not ISO YYYY-MM-DD: {tx.date!r}")
+        if tx.amount < 0:
+            problems.append(
+                f"amount must be the positive absolute value (the sign belongs "
+                f"in direction): {tx.description!r} has {tx.amount}"
+            )
     if result.total_debits is not None:
         extracted = sum(t.amount for t in result.transactions if t.direction == "debit")
         tolerance = max(1.00, abs(result.total_debits) * 0.01)

@@ -86,6 +86,20 @@ def test_bare_unlabeled_account_numbers_are_masked():
     assert result.masked_counts["long_number"] == 3
 
 
+def test_german_kontostand_balance_lines_are_masked():
+    # Sparkasse statements say "Kontostand", not "balance"/"saldo" — real
+    # document showed opening/closing balances (i.e. account wealth)
+    # surviving redaction.
+    text = ("Kontostand am 29.05.2026, Auszug Nr. 5  3.630,55\n"
+            "01.06.2026 REWE  -54.30\n"
+            "Kontostand am 30.06.2026 um 20:03 Uhr  27,68")
+    result = redact(text)
+    assert "3.630,55" not in result.text
+    assert "27,68" not in result.text
+    assert "-54.30" in result.text
+    assert result.masked_counts["balance_line"] == 2
+
+
 def test_long_number_followed_by_trailing_punctuation_is_masked():
     # Found on a real Auszug: "Privat Komfort 1935718393, DE89..." — the
     # trailing comma must not shield the account number from masking.
