@@ -40,6 +40,15 @@ _PATTERNS: list[tuple[str, re.Pattern]] = [
     ("card", re.compile(r"\b(?:\d[ -]?){12,18}\d\b")),
     ("partial_card", re.compile(r"\*{2,4}\s?-?\s?\d{4}\b")),
     ("account", re.compile(r"(?i)(?:account\s*(?:no\.?|number)|kontonummer|a/c)\s*[:#]?\s*\S+")),
+    # Catch-all for bare unlabeled account-length numbers, last so the more
+    # specific patterns above claim their matches first. German statements
+    # print the Konto-Nr (9-10 digits) and BLZ (8 digits) with no label at
+    # all — too short for the card pattern, no leading 0 for phone. Any
+    # contiguous run of 8+ digits is never a date/amount in statement text.
+    # The lookarounds refuse a match only when the neighbouring dot/comma
+    # sits BETWEEN digits (a decimal amount or dotted date continuing), not
+    # when it's trailing punctuation — "Konto 1935718393," must still match.
+    ("long_number", re.compile(r"(?<!\d)(?<!\d[.,])\d{8,}(?![.,]?\d)")),
 ]
 
 

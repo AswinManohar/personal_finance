@@ -73,6 +73,33 @@ def test_international_phone_is_labeled_phone_not_card():
     assert result.masked_counts["card"] == 1
 
 
+def test_bare_unlabeled_account_numbers_are_masked():
+    # Real German statements print the Konto-Nr (9-10 digits) and BLZ
+    # (8 digits) as bare numbers with no "Kontonummer:" label — too short
+    # for the card pattern, no leading 0 for the phone pattern. Found
+    # leaking on a real Auszug PDF.
+    text = "Auszug 6/2026 Konto 1935718393 BLZ 37050198\nRef 1641384820 end"
+    result = redact(text)
+    assert "1935718393" not in result.text
+    assert "37050198" not in result.text
+    assert "1641384820" not in result.text
+    assert result.masked_counts["long_number"] == 3
+
+
+def test_long_number_followed_by_trailing_punctuation_is_masked():
+    # Found on a real Auszug: "Privat Komfort 1935718393, DE89..." — the
+    # trailing comma must not shield the account number from masking.
+    result = redact("Privat Komfort 1935718393, some tail")
+    assert "1935718393" not in result.text
+
+
+def test_long_number_pattern_spares_dates_and_amounts():
+    text = "01.06.2026  REWE 44012  -54.30\n15.06.2026  Miete  -1.234,56"
+    result = redact(text)
+    assert result.text == text
+    assert "long_number" not in result.masked_counts
+
+
 def test_zero_leading_card_number_is_fully_masked_not_truncated():
     # A 0-leading 12-18-digit run must never be partially consumed by the
     # local-phone pattern and left with a leaking tail (e.g. old bug:
