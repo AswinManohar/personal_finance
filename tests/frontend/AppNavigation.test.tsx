@@ -221,3 +221,29 @@ describe('Statement import', () => {
     expect(await screen.findByText('Lieferando')).toBeInTheDocument();
   });
 });
+
+describe('Automatic sync', () => {
+  // "automatically upload to cloud, dont need to manual push button" — after a
+  // pull, anything that exists only on this device is pushed back up without a
+  // human involved. This is what reconciles a backlog created while sync was
+  // broken (the is_essential outage) or while offline.
+  it('pushes local-only expenses back up after the login pull', async () => {
+    window.localStorage.setItem('expenses', JSON.stringify([{
+      id: 'local-only', name: 'Added while sync was broken', amount: 12,
+      category: 'Food', isRecurring: false, date: '2026-07-30',
+    }]));
+
+    await renderApp();
+
+    await waitFor(() =>
+      expect(pushToCloud).toHaveBeenCalledWith(
+        'user-1',
+        expect.objectContaining({
+          expenses: expect.arrayContaining([
+            expect.objectContaining({ id: 'local-only' }),
+          ]),
+        })
+      )
+    );
+  });
+});

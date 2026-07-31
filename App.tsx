@@ -110,6 +110,8 @@ const AppMain: React.FC = () => {
 
   const pullInProgressRef = useRef(false);
   const syncInProgressRef = useRef(false);
+  // Bumped after each successful pull; the effect below pushes once per bump.
+  const [autoPushQueued, setAutoPushQueued] = useState(0);
 
   const activeUserKey = sessionUserId;
 
@@ -145,6 +147,12 @@ const AppMain: React.FC = () => {
       setLastSyncedAt(updatedAt ? new Date(updatedAt).toLocaleString() : new Date().toLocaleString());
       setSyncStatus('success');
       setTimeout(() => setSyncStatus('idle'), 3000);
+      // Queue a push-back. Anything that exists only on this device — an
+      // expense added while sync was broken, changes made offline — gets
+      // uploaded without anyone having to know a Push button exists. Deferred
+      // one render so the payload carries the merged state, not the pre-pull
+      // closure.
+      setAutoPushQueued(q => q + 1);
     } catch (err: any) {
       if (isNetworkError(err)) {
         setSyncStatus('offline');
@@ -227,6 +235,24 @@ const AppMain: React.FC = () => {
   useEffect(() => {
     if (activeUserKey) performCloudPull();
   }, [activeUserKey, performCloudPull]);
+
+  // The push half of automatic sync. Runs after the render that follows a
+  // successful pull, so triggerSync's closure holds the merged state.
+  useEffect(() => {
+    if (!autoPushQueued || !activeUserKey) return;
+    setAutoPushQueued(0);
+    void triggerSync();
+  }, [autoPushQueued, activeUserKey, triggerSync]);
+
+  // Pull whenever the app returns to the foreground — a phone app is
+  // backgrounded for days, and the Telegram bot writes the whole time.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void performCloudPull();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [performCloudPull]);
 
   // Android/browser back: close the More sheet, then fall back to the Savings
   // Hub, then let the platform have the event (which exits the app).

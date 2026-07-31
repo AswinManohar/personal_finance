@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   Download, Upload, CheckCircle, RefreshCw, AlertCircle,
-  LogOut, Key, Copy, Check, WifiOff, ArrowUpFromLine, ArrowDownToLine,
+  LogOut, Copy, WifiOff,
 } from 'lucide-react';
 import {
   Expense, PortfolioAsset, Stock, ExpenseCategory, IncomeState, InvestmentState,
@@ -90,6 +90,12 @@ export const DataManagement: React.FC<DataManagementProps> = ({
     } catch (e: any) {
       setStatusMsg({ type: 'error', text: 'Failed to revoke token: ' + e.message });
     }
+  };
+
+  /** Pull then push, so one tap reconciles both directions. */
+  const handleSyncNow = async () => {
+    await handleCloudSyncPull();
+    await handleCloudSyncPush();
   };
 
   const handleCloudSyncPush = async () => {
@@ -305,37 +311,28 @@ export const DataManagement: React.FC<DataManagementProps> = ({
         </div>
 
         {activeUserKey ? (
-          <>
-            <div className="px-5 py-3 border-b border-outline-variant/[.08] flex items-center justify-between gap-3">
-              <span className="flex items-center gap-3 min-w-0">
-                <ArrowUpFromLine size={18} className="text-secondary flex-none" />
-                <span className="min-w-0">
-                  <span className="block text-body font-semibold">Push to Cloud</span>
-                  <span className="block mt-0.5 text-label text-secondary">Upload current data</span>
+          // Sync runs by itself: on sign-in, whenever the app comes back to the
+          // foreground, and after every change. This is a manual nudge for
+          // impatience, not a step anyone has to remember — the old separate
+          // Push and Pull buttons made an automatic process look like a chore.
+          <div className="px-5 py-3 flex items-center justify-between gap-3">
+            <span className="flex items-center gap-3 min-w-0">
+              <RefreshCw size={18} className="text-secondary flex-none" />
+              <span className="min-w-0">
+                <span className="block text-body font-semibold">Sync now</span>
+                <span className="block mt-0.5 text-label text-secondary">
+                  Runs automatically — this just does it sooner
                 </span>
               </span>
-              <GhostButton onClick={handleCloudSyncPush} disabled={isCloudSyncing}>
-                {isCloudSyncing ? <RefreshCw size={15} className="animate-spin" /> : <Upload size={15} />}
-                Push
-              </GhostButton>
-            </div>
-            <div className="px-5 py-3 flex items-center justify-between gap-3">
-              <span className="flex items-center gap-3 min-w-0">
-                <ArrowDownToLine size={18} className="text-secondary flex-none" />
-                <span className="min-w-0">
-                  <span className="block text-body font-semibold">Pull from Cloud</span>
-                  <span className="block mt-0.5 text-label text-secondary">Restore data</span>
-                </span>
-              </span>
-              <GhostButton onClick={handleCloudSyncPull} disabled={isCloudSyncing}>
-                {isCloudSyncing ? <RefreshCw size={15} className="animate-spin" /> : <Download size={15} />}
-                Pull
-              </GhostButton>
-            </div>
-          </>
+            </span>
+            <GhostButton onClick={handleSyncNow} disabled={isCloudSyncing}>
+              {isCloudSyncing ? <RefreshCw size={15} className="animate-spin" /> : <RefreshCw size={15} />}
+              Sync
+            </GhostButton>
+          </div>
         ) : (
           <p className="px-5 py-4 text-body text-secondary">
-            Sign in with a Sync ID on the login screen to enable cloud backup.
+            Sign in with Google on the login screen to enable cloud backup.
           </p>
         )}
       </Card>
