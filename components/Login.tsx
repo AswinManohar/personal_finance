@@ -41,7 +41,15 @@ export const Login: React.FC<LoginProps> = ({ onGuestEnter, onSyncIdEnter }) => 
 
   return (
     <div className="app-shell md:min-h-screen bg-background flex items-center justify-center relative overflow-hidden">
-      <div className="w-[600px] h-[600px] rounded-full bg-primary/5 blur-[120px] absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none" />
+      {/* Gradient rather than a blurred circle — see the note in App.tsx. */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        aria-hidden="true"
+        style={{
+          background:
+            'radial-gradient(50% 40% at 50% 50%, rgba(193,193,255,0.07), transparent 70%)',
+        }}
+      />
 
       <div className="relative z-10 w-full max-w-sm px-6">
         <div className="mb-10">

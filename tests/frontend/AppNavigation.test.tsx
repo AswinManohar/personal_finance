@@ -170,12 +170,13 @@ describe('More sheet', () => {
 
   it('closes on a scrim tap', async () => {
     const user = userEvent.setup();
-    const { container } = render(<App />);
+    render(<App />);
 
     await user.click(within(bottomNav()).getByRole('button', { name: /more/i }));
-    const scrim = container.querySelector('[aria-hidden="true"].absolute.inset-0');
-    expect(scrim).not.toBeNull();
-    await user.click(scrim as Element);
+    // By test id, not by class: the scrim is aria-hidden and therefore invisible
+    // to role queries, and a class-based selector picked up the shell's
+    // decorative overlay the moment that also became an aria-hidden inset-0 div.
+    await user.click(screen.getByTestId('more-sheet-scrim'));
 
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
   });

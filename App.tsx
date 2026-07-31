@@ -347,10 +347,19 @@ const AppMain: React.FC = () => {
           required: the glows deliberately sit outside the viewport, and on
           desktop — where the shell does not clip — they would otherwise add
           horizontal scroll to the whole page. */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-primary/5 blur-[120px] rounded-full" />
-        <div className="absolute bottom-[-10%] left-[-10%] w-[30%] h-[30%] bg-tertiary/5 blur-[100px] rounded-full" />
-      </div>
+      {/* Radial gradients rather than `blur-[120px]` on a solid circle. The
+          filter version looked identical but forced the compositor to raster a
+          120px-radius blur on every paint — one of the most expensive things
+          that can go on a phone GPU, for something purely decorative. */}
+      <div
+        className="absolute inset-0 overflow-hidden pointer-events-none"
+        aria-hidden="true"
+        style={{
+          background:
+            'radial-gradient(60% 45% at 90% 0%, rgba(193,193,255,0.07), transparent 70%),' +
+            'radial-gradient(45% 35% at 5% 100%, rgba(238,192,96,0.06), transparent 70%)',
+        }}
+      />
 
       {/* Desktop top nav — sticky rather than fixed, since the shell is normal flow at md+ */}
       <header className="hidden md:flex sticky top-0 z-30 justify-between items-center px-8 h-14 flex-none bg-surface-container-low border-b border-outline-variant/15">

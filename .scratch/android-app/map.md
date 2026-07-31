@@ -61,6 +61,20 @@ Standing preferences for this effort:
   Also fixed "clear local cache" silently wiping the cloud. 9 + 2 new tests, written first and
   failing against the old code.
 
+- [Mirror the mobile prototype in the front-end](issues/09-mobile-layout-audit.md)
+  — The design arrived as artifact `9e97b65c` (390×844, every screen). Implemented across all 11
+  screens on a new `components/ui` primitive set, with a 4-tab + More-sheet shell. Extracted
+  reference kept at `docs/superpowers/specs/2026-07-31-mobile-design-reference.html`.
+- [Bundle Tailwind and fonts at build time](issues/01-bundle-tailwind-and-fonts-at-build-time.md)
+  — Tailwind compiled by PostCSS; Inter and Material Symbols self-hosted. The icon font could not be
+  subset with fonttools (ligature glyphs live in GSUB, not codepoints), so Google's name-based
+  subsetting API is used once via a committed script: **3.78MB → 64KB**. `dist/` now reaches no
+  external host but the app's own Supabase project.
+- [Scaffold the Capacitor Android shell](issues/02-scaffold-capacitor-android-shell.md)
+  — `com.aswinmanohar.cashflow` on Capacitor 7 (Cap 8 needs Node 22; this box has 20). Native
+  project committed, web assets bundling, keystore ignores fixed before ticket 03 can create one.
+  **Blocked on a JDK 17+** — AGP refuses Java 11, and installing one needs sudo.
+
 ## Not yet specified
 
 In-scope fog, not yet sharp enough to ticket:

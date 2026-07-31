@@ -40,6 +40,7 @@ export const MoreSheet: React.FC<{
       <div
         onClick={onClose}
         aria-hidden="true"
+        data-testid="more-sheet-scrim"
         className="md:hidden absolute inset-0 bg-[rgba(13,14,18,0.6)] z-30 animate-scrim-in"
       />
       <div
