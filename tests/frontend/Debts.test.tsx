@@ -1,6 +1,7 @@
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { Debts } from '../../components/Debts';
 import { Loan, NetWorthState, Expense, ExpenseCategory } from '../../types';
 
@@ -33,13 +34,20 @@ describe('Debts tab', () => {
   it('adds a loan through the form', () => {
     const setLoans = vi.fn();
     render(<Debts loans={[]} setLoans={setLoans} netWorthData={nw} />);
+    // Balance is no longer an input — it comes out of the schedule.
     fireEvent.change(screen.getByPlaceholderText('e.g. Car Loan'), { target: { value: 'Car Loan' } });
-    fireEvent.change(screen.getByPlaceholderText('Remaining balance'), { target: { value: '8000' } });
-    fireEvent.change(screen.getByPlaceholderText('Annual rate %'), { target: { value: '4.9' } });
-    fireEvent.change(screen.getByPlaceholderText('Monthly payment'), { target: { value: '250' } });
+    fireEvent.change(screen.getByLabelText(/annual rate/i), { target: { value: '4.9' } });
+    fireEvent.change(screen.getByLabelText(/monthly installment/i), { target: { value: '250' } });
+    fireEvent.change(screen.getByLabelText(/total installments/i), { target: { value: '36' } });
+    fireEvent.change(screen.getByLabelText(/installments paid/i), { target: { value: '0' } });
     fireEvent.click(screen.getByText('Add Loan'));
     expect(setLoans).toHaveBeenCalledTimes(1);
-    expect(setLoans.mock.calls[0][0][0]).toMatchObject({ name: 'Car Loan', balance: 8000, interestRate: 4.9, monthlyPayment: 250 });
+    expect(setLoans.mock.calls[0][0][0]).toMatchObject({
+      name: 'Car Loan', interestRate: 4.9, monthlyPayment: 250,
+      termMonths: 36, installmentsPaid: 0,
+    });
+    // 36 × €250 at 4.9% discounts to roughly €8.3k of principal.
+    expect(setLoans.mock.calls[0][0][0].balance).toBeCloseTo(8352, -2);
   });
 
   it('shows an empty state with no loans', () => {
@@ -74,5 +82,95 @@ describe('Payoff simulator', () => {
     expect(document.body.textContent).toContain('€206');    // interest saved / month
     expect(document.body.textContent).toContain('€5,000');  // cash after payoff
     expect(document.body.textContent).toContain('2.2 months'); // new runway
+  });
+});
+
+describe('Adding a loan from its schedule', () => {
+  // "I want the loan to be calculated just with interest, timespan and monthly
+  // contribution without the balance as well. Right now I am unable to add loan."
+  // Both halves were the same defect: balance was mandatory, and every failed
+  // validation was a bare `return` with no message.
+  const Harness = () => {
+    const [loans, setLoans] = React.useState<Loan[]>([]);
+    return (
+      <Debts
+        loans={loans}
+        setLoans={setLoans}
+        netWorthData={{ accumulatedSavings: 5000 } as NetWorthState}
+        expenses={[]}
+      />
+    );
+  };
+
+  const fill = async (user: ReturnType<typeof userEvent.setup>, vals: Record<string, string>) => {
+    for (const [label, value] of Object.entries(vals)) {
+      const field = screen.getByLabelText(new RegExp(label, 'i'));
+      await user.clear(field);
+      await user.type(field, value);
+    }
+  };
+
+  it('adds a loan with no balance entered, deriving it from the schedule', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+
+    await user.type(screen.getByPlaceholderText(/car loan/i), 'Car Loan');
+    await fill(user, {
+      'annual rate': '5',
+      'monthly installment': '188.71',
+      'total installments': '60',
+      'installments paid': '0',
+    });
+    await user.click(screen.getByRole('button', { name: /add loan/i }));
+
+    // €10,000 principal, derived — never typed.
+    const row = await screen.findByTestId('loan-row');
+    expect(row).toHaveTextContent('Car Loan');
+    expect(row.textContent).toMatch(/10,0\d\d/);
+  });
+
+  it('shows the outstanding balance falling as installments are recorded', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+
+    await fill(user, {
+      'annual rate': '5',
+      'monthly installment': '188.71',
+      'total installments': '60',
+      'installments paid': '30',
+    });
+
+    // Roughly half repaid: well under the €10,000 original.
+    const preview = screen.getByText(/outstanding balance/i).closest('div')!;
+    expect(preview.textContent).toMatch(/€5,\d\d\d/);
+  });
+
+  it('explains itself instead of doing nothing when a field is missing', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+
+    await user.click(screen.getByRole('button', { name: /add loan/i }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(/name/i);
+
+    await user.type(screen.getByPlaceholderText(/car loan/i), 'Car Loan');
+    await user.click(screen.getByRole('button', { name: /add loan/i }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(/interest rate/i);
+  });
+
+  it('rejects paying more installments than the loan has', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+
+    await user.type(screen.getByPlaceholderText(/car loan/i), 'Car Loan');
+    await fill(user, {
+      'annual rate': '5',
+      'monthly installment': '200',
+      'total installments': '12',
+      'installments paid': '20',
+    });
+    await user.click(screen.getByRole('button', { name: /add loan/i }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/between 0 and 12/i);
+    expect(screen.queryByTestId('loan-row')).not.toBeInTheDocument();
   });
 });

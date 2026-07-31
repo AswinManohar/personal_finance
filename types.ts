@@ -106,9 +106,18 @@ export interface SupabaseSyncState {
 export interface Loan {
   id: string;
   name: string;
+  /**
+   * Outstanding amount. Derived from the amortisation schedule below whenever
+   * one is present — see currentBalance() — and only authoritative for loans
+   * entered before the schedule fields existed.
+   */
   balance: number;
   interestRate: number; // annual nominal %, e.g. 7.5
   monthlyPayment: number;
+  /** Total number of installments over the life of the loan. */
+  termMonths?: number;
+  /** How many of those have been paid so far. */
+  installmentsPaid?: number;
   lender?: string;
 }
 

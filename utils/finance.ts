@@ -41,11 +41,28 @@ export const monthsToTarget = (current: number, target: number, monthlyContribut
 };
 
 /** Interest a loan accrues per month at its current balance. */
+/**
+ * What a loan currently owes.
+ *
+ * Prefers the amortisation schedule when the loan carries one, so the figure
+ * falls on its own as installments are recorded. Falls back to the stored
+ * `balance` for loans entered before the schedule existed.
+ */
+export const currentBalance = (loan: Loan): number => {
+  const derived = remainingBalance(
+    num(loan.monthlyPayment),
+    num(loan.interestRate),
+    num(loan.termMonths),
+    num(loan.installmentsPaid)
+  );
+  return derived === null ? num(loan.balance) : derived;
+};
+
 export const monthlyInterest = (loan: Loan): number =>
-  num(loan.balance) * (num(loan.interestRate) / 100) / 12;
+  currentBalance(loan) * (num(loan.interestRate) / 100) / 12;
 
 export const totalLoanBalance = (loans: Loan[]): number =>
-  loans.reduce((sum, l) => sum + num(l.balance), 0);
+  loans.reduce((sum, l) => sum + currentBalance(l), 0);
 
 /** Highest interest rate first — the order they should be paid off in. */
 export const sortByAvalanche = (loans: Loan[]): Loan[] =>
@@ -64,16 +81,53 @@ export interface PayoffSimulation {
 export const simulatePayoff = (
   loan: Loan, amount: number, liquidCash: number, essentialsPerMonth: number,
 ): PayoffSimulation => {
-  const amountApplied = Math.min(num(amount), num(loan.balance));
+  const owed = currentBalance(loan);
+  const amountApplied = Math.min(num(amount), owed);
   const newLiquidCash = num(liquidCash) - amountApplied;
   const newRunway = runwayMonths(newLiquidCash, num(essentialsPerMonth));
   return {
     amountApplied,
-    newBalance: num(loan.balance) - amountApplied,
+    newBalance: owed - amountApplied,
     newLiquidCash,
     monthlyInterestSaved: amountApplied * (num(loan.interestRate) / 100) / 12,
     newRunwayMonths: newRunway,
     breachesBuffer: newRunway !== null && newRunway < 1,
-    safeAmount: Math.max(0, Math.min(num(loan.balance), num(liquidCash) - num(essentialsPerMonth))),
+    safeAmount: Math.max(0, Math.min(owed, num(liquidCash) - num(essentialsPerMonth))),
   };
+};
+
+/**
+ * Outstanding balance of an amortising loan after `installmentsPaid` payments.
+ *
+ * Lets a loan be entered the way people actually hold it in their head — "€250
+ * a month at 5% for 5 years, I've paid 14" — rather than demanding a current
+ * balance nobody has to hand. The balance is the present value of the payments
+ * still to come:
+ *
+ *   remaining = PMT × (1 − (1 + r)^−m) / r      (r = monthly rate, m = months left)
+ *
+ * Returns null when it cannot be computed, so callers can tell "not enough
+ * information" apart from a genuine zero.
+ */
+export const remainingBalance = (
+  monthlyPayment: number,
+  annualRatePercent: number,
+  termMonths: number,
+  installmentsPaid: number = 0
+): number | null => {
+  const pmt = num(monthlyPayment);
+  const rate = num(annualRatePercent);
+  const term = Math.floor(num(termMonths));
+  const paid = Math.floor(num(installmentsPaid));
+
+  if (pmt <= 0 || term <= 0 || rate < 0 || paid < 0) return null;
+
+  const left = term - paid;
+  if (left <= 0) return 0; // fully repaid
+
+  const r = rate / 100 / 12;
+  // A 0% loan is plain division, and the annuity formula divides by r.
+  if (r === 0) return pmt * left;
+
+  return pmt * ((1 - Math.pow(1 + r, -left)) / r);
 };

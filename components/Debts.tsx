@@ -2,9 +2,10 @@ import React, { useMemo, useState } from 'react';
 import { Loan, Expense, NetWorthState } from '../types';
 import { Trash2 } from 'lucide-react';
 import {
-  Card, EmptyState, Input, Pill, PrimaryButton, SectionLabel, Select, StatBlock, Tile,
+  Card, EmptyState, Field, FieldLabel, Input, Pill, PrimaryButton, SectionLabel, Select,
+  StatBlock, Tile,
 } from './ui';
-import { monthlyInterest, sortByAvalanche, totalLoanBalance, num, monthlyEssentials, simulatePayoff } from '../utils/finance';
+import { monthlyInterest, sortByAvalanche, totalLoanBalance, num, monthlyEssentials, simulatePayoff, currentBalance, remainingBalance } from '../utils/finance';
 import { newId } from '../utils/id';
 
 interface DebtsProps {
@@ -20,7 +21,16 @@ export const Debts: React.FC<DebtsProps> = ({ loans, setLoans, netWorthData, exp
   const [newBalance, setNewBalance] = useState('');
   const [newRate, setNewRate] = useState('');
   const [newPayment, setNewPayment] = useState('');
+  const [newTerm, setNewTerm] = useState('');
+  const [newPaid, setNewPaid] = useState('');
   const [newLender, setNewLender] = useState('');
+  const [formError, setFormError] = useState<string | null>(null);
+
+  // Live preview of what the schedule implies, so the figure is visible before
+  // committing rather than appearing as a surprise in the list.
+  const previewBalance = remainingBalance(
+    parseFloat(newPayment), parseFloat(newRate), parseFloat(newTerm), parseFloat(newPaid) || 0
+  );
 
   const sorted = useMemo(() => sortByAvalanche(loans), [loans]);
   const totalBalance = totalLoanBalance(loans);
@@ -30,21 +40,57 @@ export const Debts: React.FC<DebtsProps> = ({ loans, setLoans, netWorthData, exp
     '€' + num(n).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
   const handleAdd = async () => {
-    const balance = parseFloat(newBalance);
+    // Every failure used to be a bare `return`: the button did nothing, said
+    // nothing, and leaving Balance empty — the whole point of the schedule —
+    // was itself one of the failures.
     const rate = parseFloat(newRate);
-    if (!newName || isNaN(balance) || balance <= 0 || isNaN(rate) || rate < 0) return;
+    const payment = parseFloat(newPayment);
+    const term = parseFloat(newTerm);
+    const paid = parseFloat(newPaid) || 0;
+
+    if (!newName.trim()) {
+      setFormError('Give the loan a name.');
+      return;
+    }
+    if (isNaN(rate) || rate < 0) {
+      setFormError('Enter the annual interest rate (0 is fine for an interest-free loan).');
+      return;
+    }
+    if (isNaN(payment) || payment <= 0) {
+      setFormError('Enter the monthly installment.');
+      return;
+    }
+    if (isNaN(term) || term <= 0) {
+      setFormError('Enter the total number of installments.');
+      return;
+    }
+    if (paid < 0 || paid > term) {
+      setFormError(`Installments paid must be between 0 and ${term}.`);
+      return;
+    }
+
+    const balance = remainingBalance(payment, rate, term, paid);
+    if (balance === null) {
+      setFormError('Those numbers do not describe a loan that can be calculated.');
+      return;
+    }
+
+    setFormError(null);
     const loan: Loan = {
       id: newId(),
       name: newName,
       balance,
       interestRate: rate,
-      monthlyPayment: parseFloat(newPayment) || 0,
+      monthlyPayment: payment,
+      termMonths: term,
+      installmentsPaid: paid,
       lender: newLender || undefined,
     };
     const updated = [...loans, loan];
     setLoans(updated);
     if (onSync) await onSync({ loans: updated });
-    setNewName(''); setNewBalance(''); setNewRate(''); setNewPayment(''); setNewLender('');
+    setNewName(''); setNewRate(''); setNewPayment('');
+    setNewTerm(''); setNewPaid(''); setNewLender('');
   };
 
   const handleDelete = async (id: string) => {
@@ -95,7 +141,7 @@ export const Debts: React.FC<DebtsProps> = ({ loans, setLoans, netWorthData, exp
                 </span>
                 <span className="flex items-center gap-2 flex-none">
                   <span className="text-right">
-                    <span className="block text-body font-bold tabular-nums">{fmt(loan.balance)}</span>
+                    <span className="block text-body font-bold tabular-nums">{fmt(currentBalance(loan))}</span>
                     <span className="block mt-0.5 text-micro font-bold text-negative tabular-nums">
                       {fmt(monthlyInterest(loan))}/mo interest
                     </span>
@@ -138,7 +184,7 @@ export const Debts: React.FC<DebtsProps> = ({ loans, setLoans, netWorthData, exp
               onChange={e => setPayoffLoanId(e.target.value)}
             >
               {sorted.map(l => (
-                <option key={l.id} value={l.id}>{l.name} ({fmt(l.balance)})</option>
+                <option key={l.id} value={l.id}>{l.name} ({fmt(currentBalance(l))})</option>
               ))}
             </Select>
             <Input
@@ -184,7 +230,7 @@ export const Debts: React.FC<DebtsProps> = ({ loans, setLoans, netWorthData, exp
       <Card className="flex flex-col gap-3 lg:col-span-4 lg:row-span-2 lg:order-2">
         <div>
           <SectionLabel>New Loan</SectionLabel>
-          <p className="mt-1 text-label text-secondary opacity-70">Track each debt individually</p>
+          <p className="mt-1 text-label text-secondary opacity-70">The balance is worked out for you</p>
         </div>
         <Input
           type="text"
@@ -193,29 +239,47 @@ export const Debts: React.FC<DebtsProps> = ({ loans, setLoans, netWorthData, exp
           onChange={e => setNewName(e.target.value)}
           placeholder="e.g. Car Loan"
         />
-        <Input
-          type="number"
-          aria-label="Remaining balance"
-          value={newBalance}
-          onChange={e => setNewBalance(e.target.value)}
-          placeholder="Remaining balance"
-        />
         <div className="grid grid-cols-2 gap-3">
-          <Input
-            type="number"
-            aria-label="Annual rate percent"
-            value={newRate}
-            onChange={e => setNewRate(e.target.value)}
-            placeholder="Annual rate %"
-          />
-          <Input
-            type="number"
-            aria-label="Monthly payment"
-            value={newPayment}
-            onChange={e => setNewPayment(e.target.value)}
-            placeholder="Monthly payment"
-          />
+          <Field label="Annual rate %" htmlFor="loan-rate">
+            <Input
+              id="loan-rate"
+              type="number"
+              step="0.1"
+              value={newRate}
+              onChange={e => setNewRate(e.target.value)}
+              placeholder="5.0"
+            />
+          </Field>
+          <Field label="Monthly installment" htmlFor="loan-payment">
+            <Input
+              id="loan-payment"
+              type="number"
+              prefix="€"
+              value={newPayment}
+              onChange={e => setNewPayment(e.target.value)}
+              placeholder="0"
+            />
+          </Field>
+          <Field label="Total installments" htmlFor="loan-term">
+            <Input
+              id="loan-term"
+              type="number"
+              value={newTerm}
+              onChange={e => setNewTerm(e.target.value)}
+              placeholder="60"
+            />
+          </Field>
+          <Field label="Installments paid" htmlFor="loan-paid">
+            <Input
+              id="loan-paid"
+              type="number"
+              value={newPaid}
+              onChange={e => setNewPaid(e.target.value)}
+              placeholder="0"
+            />
+          </Field>
         </div>
+
         <Input
           type="text"
           aria-label="Lender"
@@ -223,6 +287,28 @@ export const Debts: React.FC<DebtsProps> = ({ loans, setLoans, netWorthData, exp
           onChange={e => setNewLender(e.target.value)}
           placeholder="Lender (optional)"
         />
+
+        {/* The whole point: the balance is shown, never asked for. */}
+        <div className="flex items-center justify-between gap-3 p-3 rounded-field bg-surface-container-highest/40 border border-outline-variant/12">
+          <span className="min-w-0">
+            <FieldLabel className="!text-micro">Outstanding balance</FieldLabel>
+            <span className="block mt-0.5 text-label text-secondary">
+              {previewBalance === null
+                ? 'Fill in rate, installment and term'
+                : `after ${parseFloat(newPaid) || 0} of ${parseFloat(newTerm) || 0} installments`}
+            </span>
+          </span>
+          <span className="text-num-sm font-bold text-primary tabular-nums flex-none">
+            {previewBalance === null ? '—' : fmt(previewBalance)}
+          </span>
+        </div>
+
+        {formError && (
+          <p role="alert" className="text-label font-semibold text-negative">
+            {formError}
+          </p>
+        )}
+
         <PrimaryButton onClick={handleAdd}>Add Loan</PrimaryButton>
       </Card>
     </div>

@@ -4,6 +4,7 @@ import {
   monthlyAmount, monthlyEssentials, runwayMonths,
   emergencyFundTarget, monthsToTarget,
   monthlyInterest, totalLoanBalance, sortByAvalanche, simulatePayoff,
+  remainingBalance, currentBalance,
 } from '../../utils/finance';
 
 const exp = (over: Partial<Expense>): Expense => ({
@@ -118,5 +119,62 @@ describe('simulatePayoff', () => {
     const sim = simulatePayoff(sparkasse, 36000, 38000, 0);
     expect(sim.breachesBuffer).toBe(false);
     expect(sim.newRunwayMonths).toBeNull();
+  });
+});
+
+describe('remainingBalance', () => {
+  // The point of this: nobody knows their outstanding balance, but everyone
+  // knows "€X a month at Y% for Z years, I've paid N".
+  it('equals the original principal when nothing has been paid', () => {
+    // €10,000 at 5% over 60 months amortises at €188.71/month.
+    expect(remainingBalance(188.71, 5, 60, 0)).toBeCloseTo(10000, 0);
+  });
+
+  it('falls as installments are recorded', () => {
+    const start = remainingBalance(188.71, 5, 60, 0)!;
+    const mid = remainingBalance(188.71, 5, 60, 30)!;
+    const late = remainingBalance(188.71, 5, 60, 55)!;
+    expect(mid).toBeLessThan(start);
+    expect(late).toBeLessThan(mid);
+  });
+
+  it('reaches zero on the final installment', () => {
+    expect(remainingBalance(188.71, 5, 60, 60)).toBe(0);
+  });
+
+  it('does not go negative when over-paid', () => {
+    expect(remainingBalance(188.71, 5, 60, 75)).toBe(0);
+  });
+
+  it('treats a 0% loan as plain division', () => {
+    // 24 × €200 with no interest, 4 paid -> 20 payments left.
+    expect(remainingBalance(200, 0, 24, 4)).toBeCloseTo(4000, 6);
+  });
+
+  it('pays down slower early than late (interest front-loading)', () => {
+    const p = 188.71, r = 5, n = 60;
+    const firstYear = remainingBalance(p, r, n, 0)! - remainingBalance(p, r, n, 12)!;
+    const lastYear = remainingBalance(p, r, n, 48)! - remainingBalance(p, r, n, 60)!;
+    expect(lastYear).toBeGreaterThan(firstYear);
+  });
+
+  it('returns null when there is not enough information', () => {
+    expect(remainingBalance(0, 5, 60, 0)).toBeNull();
+    expect(remainingBalance(250, 5, 0, 0)).toBeNull();
+    expect(remainingBalance(NaN, 5, 60, 0)).toBeNull();
+    expect(remainingBalance(250, -1, 60, 0)).toBeNull();
+  });
+});
+
+describe('currentBalance', () => {
+  const base = { id: '1', name: 'Car', balance: 9999, interestRate: 5, monthlyPayment: 188.71 };
+
+  it('uses the schedule when the loan has one', () => {
+    expect(currentBalance({ ...base, termMonths: 60, installmentsPaid: 60 })).toBe(0);
+  });
+
+  it('falls back to the stored balance for loans without a schedule', () => {
+    // Loans entered before the schedule fields existed must keep working.
+    expect(currentBalance(base as any)).toBe(9999);
   });
 });
