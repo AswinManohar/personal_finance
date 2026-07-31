@@ -142,3 +142,47 @@ describe('Calculations', () => {
 // The "Statement import" case that lived here moved to AppNavigation.test.tsx.
 // Statement Review is a destination of its own now, so the import crosses a
 // screen boundary and can no longer be driven from inside Expenses.
+
+describe('Add validation feedback', () => {
+  // The form used to `return` silently when a field was missing: the button did
+  // nothing at all, with no message and nothing in the console. On the redesigned
+  // card the amount is the hero field and Description sits below it, so entering
+  // only an amount is an easy mistake to make — and it looked like a broken app.
+  it('explains why nothing was added when the description is missing', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+
+    await user.type(screen.getAllByPlaceholderText('0.00')[0], '99.99');
+    await user.click(screen.getByRole('button', { name: 'Add Expense' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/description/i);
+    expect(screen.getByText('No transactions yet.')).toBeInTheDocument();
+  });
+
+  it('explains why nothing was added when the amount is missing or zero', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+
+    await user.type(screen.getByPlaceholderText('e.g. Weekly Groceries'), 'Coffee');
+    await user.type(screen.getAllByPlaceholderText('0.00')[0], '0');
+    await user.click(screen.getByRole('button', { name: 'Add Expense' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/amount/i);
+    expect(screen.getByText('No transactions yet.')).toBeInTheDocument();
+  });
+
+  it('clears the message once a valid expense is added', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+
+    await user.type(screen.getAllByPlaceholderText('0.00')[0], '12.34');
+    await user.click(screen.getByRole('button', { name: 'Add Expense' }));
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+
+    await user.type(screen.getByPlaceholderText('e.g. Weekly Groceries'), 'Coffee');
+    await user.click(screen.getByRole('button', { name: 'Add Expense' }));
+
+    expect(await screen.findByText('Coffee')).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+});

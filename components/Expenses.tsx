@@ -38,6 +38,7 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
   const [newRecurringFrequency, setNewRecurringFrequency] = useState<RecurringFrequency>('monthly');
   const [newIsEssential, setNewIsEssential] = useState(false);
   const [timeSpan, setTimeSpan] = useState<TimeSpan>('30d');
+  const [formError, setFormError] = useState<string | null>(null);
 
   const [localSalaryMe, setLocalSalaryMe] = useState(income.salaryMe?.toString() || '');
   const [localSalaryPartner, setLocalSalaryPartner] = useState(income.salaryPartner?.toString() || '');
@@ -49,9 +50,18 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
   }, [income.salaryMe, income.salaryPartner]);
 
   const handleAdd = async () => {
-    if (!newName || !newAmount) return;
+    // Say why nothing happened. This used to `return` silently, so a missing
+    // description made the button look dead — no message, nothing in the console.
     const amount = parseFloat(newAmount);
-    if (isNaN(amount) || amount <= 0) return;
+    if (!newAmount || isNaN(amount) || amount <= 0) {
+      setFormError('Enter an amount greater than zero.');
+      return;
+    }
+    if (!newName.trim()) {
+      setFormError('Add a description so you can recognise this later.');
+      return;
+    }
+    setFormError(null);
 
     const newExpense: Expense = {
       id: newId(),
@@ -72,6 +82,7 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
       await onSync({ expenses: updatedExpenses });
     }
 
+    setFormError(null);
     setNewName('');
     setNewAmount('');
     setNewVendor('');
@@ -322,6 +333,12 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
               <option value="yearly">Yearly</option>
             </Select>
           </Field>
+        )}
+
+        {formError && (
+          <p role="alert" className="text-label font-semibold text-negative">
+            {formError}
+          </p>
         )}
 
         <PrimaryButton onClick={handleAdd}>Add Expense</PrimaryButton>
