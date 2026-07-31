@@ -148,14 +148,18 @@ const AppMain: React.FC = () => {
     } catch (err: any) {
       if (isNetworkError(err)) {
         setSyncStatus('offline');
+        toast('Offline — showing local data');
       } else {
         console.error("Cloud pull error:", err);
         setSyncStatus('error');
+        // Say it out loud. A silent failed pull is indistinguishable from
+        // "you have no data", which on a fresh phone install reads as loss.
+        toast(`Sync failed: ${err?.message ?? 'unknown error'}`);
       }
     } finally {
       pullInProgressRef.current = false;
     }
-  }, [activeUserKey, setExpenses, setPortfolio, setStocks, setIncome, setInvestment, setGoal, setFire, setNetWorthData, setHistory, setEmergencyFund, setLoans]);
+  }, [activeUserKey, toast, setExpenses, setPortfolio, setStocks, setIncome, setInvestment, setGoal, setFire, setNetWorthData, setHistory, setEmergencyFund, setLoans]);
 
   const triggerSync = useCallback(async (overrides?: any) => {
     if (!activeUserKey || syncInProgressRef.current) return;
