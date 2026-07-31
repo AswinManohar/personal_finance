@@ -13,18 +13,18 @@ To use these endpoints securely from outside the React app, you must authenticat
 
 ## Endpoints
 
-All expense endpoints are prefixed with `/api/expenses`. Replace `https://cashflow-487122773776.us-west1.run.app` with your actual Cloud Run URL.
+All expense endpoints are prefixed with `/api/expenses`. Replace `https://cashflow-eu-487122773776.europe-west4.run.app` with your actual Cloud Run URL.
 
 ### 1. Get All Expenses
 
 Retrieve a list of all expenses associated with your account.
 
 *   **Method:** `GET`
-*   **URL:** `https://cashflow-487122773776.us-west1.run.app/api/expenses/`
+*   **URL:** `https://cashflow-eu-487122773776.europe-west4.run.app/api/expenses/`
 
 **cURL Example:**
 ```bash
-curl -X GET "https://cashflow-487122773776.us-west1.run.app/api/expenses/" \
+curl -X GET "https://cashflow-eu-487122773776.europe-west4.run.app/api/expenses/" \
      -H "X-Personal-Token: your_secret_token_here"
 ```
 
@@ -33,7 +33,7 @@ curl -X GET "https://cashflow-487122773776.us-west1.run.app/api/expenses/" \
 Add a single new expense to your account.
 
 *   **Method:** `POST`
-*   **URL:** `https://cashflow-487122773776.us-west1.run.app/api/expenses/`
+*   **URL:** `https://cashflow-eu-487122773776.europe-west4.run.app/api/expenses/`
 *   **Content-Type:** `application/json`
 
 **Required Payload Structure:**
@@ -42,14 +42,16 @@ Add a single new expense to your account.
   "name": "Groceries",
   "amount": 150.50,
   "category": "Food",
-  "is_recurring": false
+  "is_recurring": false,
+  "created_at": "2026-03-01T12:00:00Z"
 }
 ```
 *Valid categories are: `Housing`, `Food`, `Transport`, `Utilities`, `Entertainment`, `Other`.*
+*`created_at` is optional. If omitted, the current timestamp is used.*
 
 **cURL Example:**
 ```bash
-curl -X POST "https://cashflow-487122773776.us-west1.run.app/api/expenses/" \
+curl -X POST "https://cashflow-eu-487122773776.europe-west4.run.app/api/expenses/" \
      -H "X-Personal-Token: your_secret_token_here" \
      -H "Content-Type: application/json" \
      -d '{"name": "Internet Bill", "amount": 80.00, "category": "Utilities", "is_recurring": true}'
@@ -60,19 +62,20 @@ curl -X POST "https://cashflow-487122773776.us-west1.run.app/api/expenses/" \
 Modify specific fields of an existing expense. You need the expense's unique `id`.
 
 *   **Method:** `PUT`
-*   **URL:** `https://cashflow-487122773776.us-west1.run.app/api/expenses/{expense_id}`
+*   **URL:** `https://cashflow-eu-487122773776.europe-west4.run.app/api/expenses/{expense_id}`
 *   **Content-Type:** `application/json`
 
 **Optional Payload Structure:** You only need to include the fields you want to change.
 ```json
 {
-  "amount": 85.00
+  "amount": 85.00,
+  "created_at": "2026-03-01T15:30:00Z"
 }
 ```
 
 **cURL Example:**
 ```bash
-curl -X PUT "https://cashflow-487122773776.us-west1.run.app/api/expenses/uuid-of-expense-here" \
+curl -X PUT "https://cashflow-eu-487122773776.europe-west4.run.app/api/expenses/uuid-of-expense-here" \
      -H "X-Personal-Token: your_secret_token_here" \
      -H "Content-Type: application/json" \
      -d '{"amount": 85.00}'
@@ -83,10 +86,10 @@ curl -X PUT "https://cashflow-487122773776.us-west1.run.app/api/expenses/uuid-of
 Remove an expense from your account entirely using its `id`.
 
 *   **Method:** `DELETE`
-*   **URL:** `https://cashflow-487122773776.us-west1.run.app/api/expenses/{expense_id}`
+*   **URL:** `https://cashflow-eu-487122773776.europe-west4.run.app/api/expenses/{expense_id}`
 
 **cURL Example:**
 ```bash
-curl -X DELETE "https://cashflow-487122773776.us-west1.run.app/api/expenses/uuid-of-expense-here" \
+curl -X DELETE "https://cashflow-eu-487122773776.europe-west4.run.app/api/expenses/uuid-of-expense-here" \
      -H "X-Personal-Token: your_secret_token_here"
 ```

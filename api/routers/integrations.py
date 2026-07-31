@@ -52,20 +52,26 @@ def _to_iso(value) -> Optional[str]:
 
 # --- Opaque cursor codec ------------------------------------------------------
 # The contract promises an *opaque* cursor (consumers must not parse it). We
-# base64url-encode the sort key (a timestamp) so the wire format can evolve
-# without breaking clients. `id` remains the dedup key, so re-pulling the
+# base64url-encode the sort key so the wire format can evolve without breaking
+# clients. The sort key is COMPOSITE — "<timestamp>|<row id>" — because the
+# timestamp alone loses rows: bulk writes (e.g. pushToCloud) stamp one `now`
+# on every record, and a plain gt(timestamp) resume would skip every tied row
+# left on the next page. `id` remains the dedup key, so re-pulling the
 # boundary row is idempotent.
 
-def _encode_cursor(value: Optional[str]) -> Optional[str]:
+def _encode_cursor(value: Optional[str], last_id: Optional[str] = None) -> Optional[str]:
     if value is None:
         return None
-    return base64.urlsafe_b64encode(str(value).encode("utf-8")).decode("ascii")
+    raw = str(value) if last_id is None else f"{value}|{last_id}"
+    return base64.urlsafe_b64encode(raw.encode("utf-8")).decode("ascii")
 
 
 _CURSOR_RE = re.compile(r"^[A-Za-z0-9_=-]+$")
 
 
-def _decode_cursor(cursor: Optional[str]) -> Optional[str]:
+def _decode_cursor(cursor: Optional[str]) -> Optional[tuple]:
+    """Returns (timestamp, last_id) — last_id is None for legacy cursors that
+    carried only the timestamp."""
     if not cursor:
         return None
     # urlsafe_b64decode silently drops out-of-alphabet bytes, so validate first
@@ -74,9 +80,27 @@ def _decode_cursor(cursor: Optional[str]) -> Optional[str]:
         raise HTTPException(status_code=400, detail="Malformed `since` cursor")
     try:
         padded = cursor + "=" * (-len(cursor) % 4)
-        return base64.urlsafe_b64decode(padded.encode("ascii")).decode("utf-8")
+        raw = base64.urlsafe_b64decode(padded.encode("ascii")).decode("utf-8")
     except (binascii.Error, UnicodeDecodeError, ValueError):
         raise HTTPException(status_code=400, detail="Malformed `since` cursor")
+    ts, sep, last_id = raw.partition("|")
+    return (ts, last_id if sep else None)
+
+
+def _apply_since(query, sort_key: str, since_value: Optional[tuple]):
+    """Resume strictly after the boundary row without losing timestamp ties.
+
+    rows come back ordered by (sort_key, id); the filter mirrors that:
+    sort_key > ts  OR  (sort_key == ts AND id > last_id).
+    """
+    if since_value is None:
+        return query
+    ts, last_id = since_value
+    if last_id is None:  # legacy timestamp-only cursor
+        return query.gt(sort_key, ts)
+    return query.or_(
+        f'{sort_key}.gt."{ts}",and({sort_key}.eq."{ts}",id.gt."{last_id}")'
+    )
 
 
 def _shape_expense(row: dict) -> dict:
@@ -127,8 +151,7 @@ def expenses_feed(
         .select("id, name, amount, category, vendor, is_recurring, recurring_frequency, created_at, updated_at, deleted")
         .eq("user_key", user_key)
     )
-    if since_value:
-        query = query.gt("updated_at", since_value)
+    query = _apply_since(query, "updated_at", since_value)
 
     try:
         # Secondary sort on id keeps paging deterministic for equal timestamps.
@@ -140,7 +163,9 @@ def expenses_feed(
 
     rows = response.data or []
     data = [_shape_expense(r) for r in rows]
-    next_cursor = _encode_cursor(rows[-1]["updated_at"]) if len(rows) == limit else None
+    next_cursor = (
+        _encode_cursor(rows[-1]["updated_at"], rows[-1]["id"]) if len(rows) == limit else None
+    )
     return {"data": data, "next_cursor": next_cursor}
 
 
@@ -162,8 +187,7 @@ def savings_history_feed(
         )
         .eq("user_key", user_key)
     )
-    if since_value:
-        query = query.gt("created_at", since_value)
+    query = _apply_since(query, "created_at", since_value)
 
     try:
         response = (
@@ -173,7 +197,9 @@ def savings_history_feed(
         raise HTTPException(status_code=500, detail=str(exc))
 
     rows = response.data or []
-    next_cursor = _encode_cursor(rows[-1]["created_at"]) if len(rows) == limit else None
+    next_cursor = (
+        _encode_cursor(rows[-1]["created_at"], rows[-1]["id"]) if len(rows) == limit else None
+    )
     return {"data": rows, "next_cursor": next_cursor}
 
 

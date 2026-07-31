@@ -1,7 +1,11 @@
 
 import React, { useMemo, useState } from 'react';
-import { NetWorthState, PortfolioAsset, Stock, Expense, EmergencyFundState } from '../types';
+import { ActiveTab, NetWorthState, PortfolioAsset, Stock, Expense, EmergencyFundState } from '../types';
 import { monthlyEssentials, runwayMonths, emergencyFundTarget, monthsToTarget, monthlyAmount } from '../utils/finance';
+import {
+  AreaChart, AxisLabels, Card, ChipGroup, Donut, Dot, EmptyState, FieldLabel, Input, ListRow,
+  Pill, PrimaryButton, ProgressBar, SectionLabel, StackedBar, StatBlock,
+} from './ui';
 
 interface SavingsDashboardProps {
   portfolio: PortfolioAsset[];
@@ -12,6 +16,8 @@ interface SavingsDashboardProps {
   expenses?: Expense[];
   emergencyFund?: EmergencyFundState;
   setEmergencyFund?: (next: EmergencyFundState) => void;
+  /** Lets the "Optimize Savings" callout hand off to the Calculator. */
+  onNavigate?: (tab: ActiveTab) => void;
 }
 
 export const SavingsDashboard: React.FC<SavingsDashboardProps> = ({
@@ -23,6 +29,7 @@ export const SavingsDashboard: React.FC<SavingsDashboardProps> = ({
   expenses = [],
   emergencyFund,
   setEmergencyFund,
+  onNavigate,
 }) => {
   const [addAmount, setAddAmount] = useState('');
 
@@ -68,12 +75,19 @@ export const SavingsDashboard: React.FC<SavingsDashboardProps> = ({
   );
   const subscriptionTotal = subscriptions.reduce((s, e) => s + monthlyAmount(e), 0);
 
-  const etaLabel = (() => {
-    if (etaMonths === null) return '—';
-    if (etaMonths === 0) return 'Funded';
+  // Split across the figure and its caption: the design gives "Fully Funded" a
+  // 25px slot, which "~2 months (Sep 2026)" would overflow on a phone.
+  const etaLabel =
+    etaMonths === null ? '—'
+    : etaMonths === 0 ? 'Funded'
+    : `~${etaMonths} month${etaMonths === 1 ? '' : 's'}`;
+
+  const etaSub = (() => {
+    if (etaMonths === null) return monthlySavings > 0 ? 'target not set' : 'set a monthly savings target';
+    if (etaMonths === 0) return 'target reached';
     const d = new Date();
     d.setMonth(d.getMonth() + etaMonths);
-    return `~${etaMonths} month${etaMonths === 1 ? '' : 's'} (${d.toLocaleDateString(undefined, { month: 'short', year: 'numeric' })})`;
+    return `by ${d.toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}`;
   })();
 
   const handleTargetMonths = (m: number) => {
@@ -107,40 +121,26 @@ export const SavingsDashboard: React.FC<SavingsDashboardProps> = ({
     setAddAmount('');
   };
 
-  // Asset categories for breakdown
+  // Asset categories for breakdown. Colours are literal so the stacked bar, the
+  // legend dot and the donut can never drift apart.
   const assetCategories = [
-    { label: 'Mutual Funds', value: portfolioValue, color: 'bg-primary-container', dotColor: 'bg-primary-container' },
-    { label: 'Stocks', value: stockValue, color: 'bg-primary', dotColor: 'bg-primary' },
-    { label: 'Gold', value: gold, color: 'bg-tertiary', dotColor: 'bg-tertiary' },
-    { label: 'Cash', value: cash, color: 'bg-outline-variant', dotColor: 'bg-outline-variant' },
+    { label: 'Mutual Funds', value: portfolioValue, color: '#8183ff' },
+    { label: 'Stocks', value: stockValue, color: '#c1c1ff' },
+    { label: 'Gold', value: gold, color: '#eec060' },
+    { label: 'Cash', value: cash, color: '#464554' },
   ];
 
-  const totalForBar = assetCategories.reduce((s, c) => s + c.value, 0) || 1;
-
-  // Distribution mix percentages for donut chart
   const distCategories = [
-    { label: 'Mutual Funds', value: portfolioValue, stroke: '#c1c1ff', dotColor: 'bg-primary' },
-    { label: 'Stocks', value: stockValue, stroke: '#8183ff', dotColor: 'bg-primary-container' },
-    { label: 'Gold & Other', value: gold + otherAssets, stroke: '#eec060', dotColor: 'bg-tertiary' },
+    { label: 'Mutual Funds', value: portfolioValue, color: '#8183ff' },
+    { label: 'Stocks', value: stockValue, color: '#c1c1ff' },
+    { label: 'Gold & Other', value: gold + otherAssets, color: '#eec060' },
   ];
   const totalDist = distCategories.reduce((s, c) => s + c.value, 0) || 1;
-
-  // SVG donut: r=80, circumference ~502
-  const circumference = 2 * Math.PI * 80; // ~502.65
-  const donutSegments = (() => {
-    let offset = 0;
-    return distCategories.map((cat) => {
-      const pct = cat.value / totalDist;
-      const dashLength = pct * circumference;
-      const dashOffset = circumference - offset;
-      offset += dashLength;
-      return { ...cat, dasharray: circumference, dashoffset: dashOffset - dashLength };
-    });
-  })();
 
   // 12-month outlook projected values
   const projected12m = cash + monthlySavings * 12;
   const netGrowth12m = monthlySavings * 12;
+  const outlookSeries = Array.from({ length: 13 }, (_, i) => cash + monthlySavings * i);
 
   // Monthly savings bar heights (decorative ratios based on savings categories)
   const autoRatio =
@@ -160,525 +160,272 @@ export const SavingsDashboard: React.FC<SavingsDashboardProps> = ({
     '€' +
     num(n).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
-  const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+
+  const pct = (value: number, total: number) => (total > 0 ? (value / total) * 100 : 0);
+  const efPct = pct(cash, target);
 
   return (
-    <div className="px-8 py-8 max-w-[1440px] mx-auto">
-      <div className="grid grid-cols-12 gap-6">
+    <>
+      {/* ── Hero: total tracked assets ── */}
+      <Card className="relative overflow-hidden">
+        <FieldLabel className="!tracking-[.16em] mb-2">Total Tracked Assets</FieldLabel>
+        <div className="text-num-lg font-extrabold text-hero tabular-nums mb-2">
+          {fmt(totalAssets)}
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-body font-bold text-positive tabular-nums">
+            ↗ +{pct(netGrowth12m, Math.max(totalAssets, 1)).toFixed(1)}%
+          </span>
+          <span className="text-label text-secondary opacity-60">projected annual</span>
+        </div>
+        <div className="absolute right-0 bottom-0 w-[45%] h-[72px] opacity-20 pointer-events-none">
+          <AreaChart points={outlookSeries} grid={false} />
+        </div>
+      </Card>
 
-        {/* ── Row 1: Hero Card ── */}
-        <section className="col-span-12">
-          <div className="bg-surface-container-low p-8 rounded-xl flex justify-between items-end relative overflow-hidden">
-            <div className="z-10">
-              <p className="text-[12px] uppercase tracking-[0.2em] text-secondary font-medium mb-2">
-                Total Tracked Assets
-              </p>
-              <h1
-                className="text-[3.5rem] font-bold text-[#F0EDE8] leading-none tracking-tighter tabular-nums mb-2"
-                style={{ fontVariantNumeric: 'tabular-nums' }}
-              >
-                {fmt(totalAssets)}
-              </h1>
-              <div className="flex items-center gap-2">
-                <span className="flex items-center text-[#3DD68C] text-sm font-semibold tabular-nums tracking-tight">
-                  <svg
-                    className="w-4 h-4 mr-1"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={2.5}
-                  >
-                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
-                    <polyline points="17 6 23 6 23 12" />
-                  </svg>
-                  +{totalAssets > 0 ? ((monthlySavings * 12 / Math.max(totalAssets, 1)) * 100).toFixed(1) : '0.0'}%
-                </span>
-                <span className="text-secondary text-xs opacity-60">projected annual</span>
+      {/* ── Emergency fund & runway ── */}
+      <Card>
+        <div className="flex justify-between items-center gap-2 mb-4">
+          <SectionLabel>Emergency Fund</SectionLabel>
+          <ChipGroup
+            aria-label="Emergency fund target in months"
+            value={targetMonths}
+            onChange={handleTargetMonths}
+            options={[3, 4, 5, 6].map(m => ({ value: m, label: `${m}M` }))}
+          />
+        </div>
+
+        {essentials <= 0 ? (
+          <EmptyState icon="shield">
+            Mark your recurring expenses as "Essential" in the Expenses tab to track your runway and
+            emergency fund target.
+          </EmptyState>
+        ) : (
+          <>
+            {runway !== null && runway < 1 && (
+              <div className="mb-4 p-3 rounded-field bg-[rgba(242,107,107,0.1)] border border-negative/20">
+                <p className="text-label font-bold text-negative">
+                  Critical: less than one month of essential costs in cash.
+                </p>
               </div>
-            </div>
-
-            {/* Decorative sparkline */}
-            <div className="absolute right-0 bottom-0 w-1/3 h-32 opacity-20 pointer-events-none">
-              <svg className="w-full h-full" viewBox="0 0 400 100" preserveAspectRatio="none">
-                <defs>
-                  <linearGradient id="hero-gradient" x1="0" x2="0" y1="0" y2="1">
-                    <stop offset="0%" stopColor="#c1c1ff" stopOpacity="0.5" />
-                    <stop offset="100%" stopColor="#c1c1ff" stopOpacity="0" />
-                  </linearGradient>
-                </defs>
-                <path
-                  d="M0,80 Q50,70 100,50 T200,60 T300,20 T400,10 V100 H0 Z"
-                  fill="url(#hero-gradient)"
-                />
-                <path
-                  d="M0,80 Q50,70 100,50 T200,60 T300,20 T400,10"
-                  fill="none"
-                  stroke="#c1c1ff"
-                  strokeWidth="3"
-                />
-              </svg>
-            </div>
-          </div>
-        </section>
-
-        {/* ── Emergency Fund & Runway ── */}
-        <section className="col-span-12">
-          <div className="bg-surface-container-low p-6 rounded-xl">
-            <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
-              <h2 className="text-sm font-bold tracking-wider text-on-surface-variant uppercase">
-                Emergency Fund &amp; Runway
-              </h2>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] uppercase tracking-widest text-on-surface-variant font-medium">Target</span>
-                <div className="flex gap-1 bg-surface-container-lowest p-1 rounded-full">
-                  {[3, 4, 5, 6].map(m => (
-                    <button
-                      key={m}
-                      onClick={() => handleTargetMonths(m)}
-                      className={`px-3 py-1 text-[10px] font-bold rounded-full tabular-nums transition-colors ${
-                        targetMonths === m ? 'bg-surface-container-highest text-primary' : 'text-secondary hover:text-on-surface'
-                      }`}
-                    >
-                      {m}M
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {essentials <= 0 ? (
-              <p className="text-secondary text-sm italic">
-                Mark your recurring expenses as "Essential" in the Expenses tab to track your runway and emergency fund target.
-              </p>
-            ) : (
-              <>
-                {runway !== null && runway < 1 && (
-                  <div className="mb-6 p-3 bg-[#F26B6B]/10 border border-[#F26B6B]/20 rounded-lg">
-                    <p className="text-[#F26B6B] text-xs font-bold">
-                      Critical: less than one month of essential costs in cash.
-                    </p>
-                  </div>
-                )}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div>
-                    <p className="text-[10px] uppercase tracking-widest text-on-surface-variant font-medium mb-1">Runway</p>
-                    <p className="text-2xl font-bold text-on-surface tabular-nums tracking-tight">{runwayLabel}</p>
-                    <p className="text-xs text-secondary mt-1">{fmt(essentials)} essential costs / month</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] uppercase tracking-widest text-on-surface-variant font-medium mb-1">
-                      Emergency Fund · {fmt(target)} target
-                    </p>
-                    <div className="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden my-3">
-                      <div
-                        className="h-full bg-primary rounded-full transition-all"
-                        style={{ width: `${Math.min(100, target > 0 ? (cash / target) * 100 : 0)}%` }}
-                      />
-                    </div>
-                    <p className="text-xs text-secondary tabular-nums">
-                      {fmt(cash)} of {fmt(target)} ({target > 0 ? Math.min(100, Math.round((cash / target) * 100)) : 0}%)
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] uppercase tracking-widest text-on-surface-variant font-medium mb-1">Fully Funded</p>
-                    <p className="text-2xl font-bold text-on-surface tabular-nums tracking-tight">{etaLabel}</p>
-                    <p className="text-xs text-secondary mt-1">
-                      {monthlySavings > 0 ? `at ${fmt(monthlySavings)} / month` : 'set a monthly savings target'}
-                    </p>
-                  </div>
-                </div>
-              </>
             )}
-          </div>
-        </section>
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <StatBlock
+                label="Runway"
+                size="num-sm"
+                value={runwayLabel}
+                sub={`${fmt(essentials)} essentials / mo`}
+              />
+              <StatBlock
+                label="Fully Funded"
+                size="num-sm"
+                tone={etaMonths === null ? 'neutral' : 'positive'}
+                value={etaLabel}
+                sub={etaSub}
+              />
+            </div>
+            <ProgressBar percent={efPct} className="mb-2" />
+            <p className="text-label text-secondary tabular-nums">
+              {fmt(cash)} of {fmt(target)} ({Math.min(100, Math.round(efPct))}%)
+            </p>
+          </>
+        )}
+      </Card>
 
-        {/* ── Row 2 Left: Asset Breakdown + 12-Month Outlook ── */}
-        <section className="col-span-12 lg:col-span-7 space-y-6">
-
-          {/* Asset Breakdown */}
-          <div className="bg-surface-container-low p-6 rounded-xl">
-            <h2 className="text-sm font-bold tracking-wider text-on-surface-variant uppercase mb-6">
-              Asset Breakdown
-            </h2>
-
-            {/* Horizontal stacked bar */}
-            <div className="h-10 w-full flex rounded-full overflow-hidden mb-8">
-              {assetCategories.map((cat) => (
-                <div
-                  key={cat.label}
-                  className={`h-full ${cat.color}`}
-                  style={{ width: `${(cat.value / totalForBar) * 100}%` }}
-                />
+      {/* Two columns from lg up; a single stack in prototype order below it. */}
+      <div className="flex flex-col gap-3 lg:grid lg:grid-cols-12 lg:gap-4 lg:items-start">
+        <div className="flex flex-col gap-3 lg:col-span-7">
+          {/* ── Asset breakdown ── */}
+          <Card>
+            <SectionLabel className="mb-4">Asset Breakdown</SectionLabel>
+            <StackedBar segments={assetCategories} className="mb-4" />
+            <div className="flex flex-col">
+              {assetCategories.map((cat, i) => (
+                <ListRow key={cat.label} divider={i < assetCategories.length - 1} className="h-11">
+                  <span className="flex items-center gap-3">
+                    <Dot color={cat.color} />
+                    <span className="text-body font-medium">{cat.label}</span>
+                  </span>
+                  <span className="text-body font-semibold tabular-nums">{fmt(cat.value)}</span>
+                </ListRow>
               ))}
             </div>
+          </Card>
 
-            {/* Legend grid */}
-            <div className="grid grid-cols-2 gap-y-4 gap-x-8">
-              {assetCategories.map((cat) => (
-                <div
-                  key={cat.label}
-                  className="flex justify-between items-center py-2 border-b border-outline-variant/10"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`w-2 h-2 rounded-full ${cat.dotColor}`} />
-                    <span className="text-sm font-medium text-on-surface">{cat.label}</span>
-                  </div>
-                  <span
-                    className="tabular-nums font-semibold text-on-surface tracking-tight"
-                    style={{ fontVariantNumeric: 'tabular-nums' }}
-                  >
-                    {fmt(cat.value)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* 12-Month Outlook */}
-          <div className="bg-surface-container-low p-6 rounded-xl">
-            <div className="flex justify-between items-center mb-8">
-              <h2 className="text-sm font-bold tracking-wider text-on-surface-variant uppercase">
-                12-Month Outlook
-              </h2>
-              <div className="flex gap-2">
-                <span className="px-3 py-1 bg-surface-container-high rounded-full text-[10px] font-bold text-primary">
-                  PROJECTED
-                </span>
-              </div>
-            </div>
-
-            <div className="h-64 relative flex items-end justify-between px-2">
-              {/* Grid lines */}
-              <div className="absolute inset-0 top-4 bottom-8 flex flex-col justify-between pointer-events-none opacity-10">
-                <div className="border-b border-on-surface w-full" />
-                <div className="border-b border-on-surface w-full" />
-                <div className="border-b border-on-surface w-full" />
-                <div className="border-b border-on-surface w-full" />
-              </div>
-
-              {/* Area chart SVG */}
-              <svg
-                className="absolute inset-0 h-48 w-full mt-4"
-                viewBox="0 0 100 100"
-                preserveAspectRatio="none"
-              >
-                <defs>
-                  <linearGradient id="chart-gradient" x1="0" x2="0" y1="0" y2="1">
-                    <stop offset="0%" stopColor="#c1c1ff" />
-                    <stop offset="100%" stopColor="#c1c1ff" stopOpacity="0" />
-                  </linearGradient>
-                </defs>
-                <path
-                  d="M0,80 L10,75 L20,78 L30,60 L40,55 L50,45 L60,40 L70,35 L80,25 L90,15 L100,10 V100 H0 Z"
-                  fill="url(#chart-gradient)"
-                  fillOpacity="0.15"
-                />
-                <path
-                  d="M0,80 L10,75 L20,78 L30,60 L40,55 L50,45 L60,40 L70,35 L80,25 L90,15 L100,10"
-                  fill="none"
-                  stroke="#c1c1ff"
-                  strokeWidth="1.5"
-                />
-              </svg>
-
-              {/* Month labels */}
-              <div className="w-full flex justify-between text-[10px] text-secondary font-semibold tracking-widest absolute bottom-0 tabular-nums">
-                {months.map((m) => (
-                  <span key={m}>{m}</span>
-                ))}
-              </div>
-            </div>
-
-            {/* Projected figures */}
-            <div className="mt-4 pt-4 border-t border-outline-variant/10 grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-[10px] uppercase tracking-widest text-on-surface-variant font-medium mb-1">
-                  Projected Balance
-                </p>
-                <p
-                  className="text-lg font-bold text-on-surface tabular-nums tracking-tight"
-                  style={{ fontVariantNumeric: 'tabular-nums' }}
-                >
-                  {fmt(projected12m)}
-                </p>
-              </div>
-              <div>
-                <p className="text-[10px] uppercase tracking-widest text-on-surface-variant font-medium mb-1">
-                  Net Growth
-                </p>
-                <p
-                  className="text-lg font-bold text-[#3DD68C] tabular-nums tracking-tight"
-                  style={{ fontVariantNumeric: 'tabular-nums' }}
-                >
-                  +{fmt(netGrowth12m)}
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ── Row 2 Right: Monthly Savings + Distribution Mix ── */}
-        <section className="col-span-12 lg:col-span-5 space-y-6">
-
-          {/* Monthly Savings */}
-          <div className="bg-surface-container-low p-6 rounded-xl">
-            <h2 className="text-sm font-bold tracking-wider text-on-surface-variant uppercase mb-4">
-              Monthly Savings
-            </h2>
-
-            {/* Input for monthly savings */}
-            <div className="mb-4">
-              <label className="text-[10px] uppercase tracking-widest text-on-surface-variant font-medium block mb-2">
-                Set Monthly Target
-              </label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary font-bold text-sm">
-                  €
-                </span>
-                <input
-                  type="number"
-                  value={netWorthData.monthlyRecurringSavings || ''}
-                  onChange={(e) => handleSavingsUpdate('monthlyRecurringSavings', e.target.value)}
-                  placeholder="0"
-                  className="w-full pl-7 pr-3 py-2 bg-surface-container rounded-lg border border-outline-variant/20 focus:border-primary/50 focus:outline-none text-on-surface font-semibold tabular-nums text-sm transition-colors"
-                  style={{ fontVariantNumeric: 'tabular-nums' }}
-                />
-              </div>
-            </div>
-
-            <div className="mb-6">
-              <span
-                className="text-4xl font-bold text-on-surface tabular-nums leading-tight tracking-tighter"
-                style={{ fontVariantNumeric: 'tabular-nums' }}
-              >
-                {fmt(monthlySavings)}
-              </span>
-              <p className="text-xs text-secondary mt-1">Monthly recurring savings target</p>
-            </div>
-
-            {/* Mini bar columns */}
-            <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <div className="h-24 bg-surface-container-high rounded-lg flex flex-col justify-end overflow-hidden p-1">
-                  <div
-                    className="bg-primary-container w-full rounded-md transition-all duration-500"
-                    style={{ height: `${Math.max(10, Math.min(90, autoRatio))}%` }}
-                  />
-                </div>
-                <p className="text-[10px] font-bold text-center text-on-surface-variant">AUTO</p>
-              </div>
-              <div className="space-y-2">
-                <div className="h-24 bg-surface-container-high rounded-lg flex flex-col justify-end overflow-hidden p-1">
-                  <div
-                    className="bg-primary w-full rounded-md transition-all duration-500"
-                    style={{ height: `${Math.max(10, Math.min(90, divsRatio))}%` }}
-                  />
-                </div>
-                <p className="text-[10px] font-bold text-center text-on-surface-variant">DIVS</p>
-              </div>
-              <div className="space-y-2">
-                <div className="h-24 bg-surface-container-high rounded-lg flex flex-col justify-end overflow-hidden p-1">
-                  <div
-                    className="bg-tertiary w-full rounded-md transition-all duration-500"
-                    style={{ height: `${Math.max(10, Math.min(90, extraRatio))}%` }}
-                  />
-                </div>
-                <p className="text-[10px] font-bold text-center text-on-surface-variant">EXTRA</p>
-              </div>
-            </div>
-
-            {/* Quick add accumulated savings */}
-            <div className="mt-6 pt-4 border-t border-outline-variant/10">
-              <label className="text-[10px] uppercase tracking-widest text-on-surface-variant font-medium block mb-2">
-                Cash Savings Balance
-              </label>
-              <div className="relative mb-2">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary font-bold text-sm">
-                  €
-                </span>
-                <input
-                  type="number"
-                  value={netWorthData.accumulatedSavings || ''}
-                  onChange={(e) => handleSavingsUpdate('accumulatedSavings', e.target.value)}
-                  placeholder="0"
-                  className="w-full pl-7 pr-3 py-2 bg-surface-container rounded-lg border border-outline-variant/20 focus:border-primary/50 focus:outline-none text-on-surface font-semibold tabular-nums text-sm transition-colors"
-                  style={{ fontVariantNumeric: 'tabular-nums' }}
-                />
-              </div>
-
-              {/* Manual add entry */}
-              <div className="flex gap-2 mt-3">
-                <div className="relative flex-1">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary font-bold text-sm">
-                    +€
-                  </span>
-                  <input
-                    type="number"
-                    value={addAmount}
-                    onChange={(e) => setAddAmount(e.target.value)}
-                    placeholder="Add amount"
-                    className="w-full pl-9 pr-3 py-2 bg-surface-container rounded-lg border border-outline-variant/20 focus:border-primary/50 focus:outline-none text-on-surface font-semibold tabular-nums text-sm transition-colors"
-                    onKeyDown={(e) => e.key === 'Enter' && handleQuickAdd()}
-                    style={{ fontVariantNumeric: 'tabular-nums' }}
-                  />
-                </div>
-                <button
-                  onClick={handleQuickAdd}
-                  className="px-4 py-2 bg-primary text-on-primary rounded-lg text-xs font-bold hover:opacity-90 transition-opacity shrink-0"
-                >
-                  ADD
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Distribution Mix Donut */}
-          <div className="bg-surface-container-low p-6 rounded-xl">
-            <h2 className="text-sm font-bold tracking-wider text-on-surface-variant uppercase mb-8">
-              Distribution Mix
-            </h2>
-
-            {/* SVG Donut */}
-            <div className="relative flex justify-center mb-8">
-              <svg className="w-48 h-48" style={{ transform: 'rotate(-90deg)' }}>
-                {/* Background track */}
-                <circle
-                  cx="96"
-                  cy="96"
-                  r="80"
-                  fill="transparent"
-                  stroke="#464554"
-                  strokeOpacity="0.2"
-                  strokeWidth="12"
-                />
-                {/* Segments */}
-                {donutSegments.map((seg, idx) => {
-                  const pct = seg.value / totalDist;
-                  if (pct <= 0) return null;
-                  const dashLen = pct * circumference;
-                  // cumulative offset
-                  const prevOffset = donutSegments
-                    .slice(0, idx)
-                    .reduce((s, c) => s + (c.value / totalDist) * circumference, 0);
-                  return (
-                    <circle
-                      key={seg.label}
-                      cx="96"
-                      cy="96"
-                      r="80"
-                      fill="transparent"
-                      stroke={seg.stroke}
-                      strokeWidth="12"
-                      strokeDasharray={`${dashLen} ${circumference - dashLen}`}
-                      strokeDashoffset={circumference - prevOffset}
-                    />
-                  );
-                })}
-              </svg>
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-xs text-secondary font-bold tracking-widest uppercase">
-                  Total
-                </span>
-                <span
-                  className="text-xl font-bold text-on-surface tracking-tighter tabular-nums"
-                  style={{ fontVariantNumeric: 'tabular-nums' }}
-                >
-                  {fmt(totalAssets)}
-                </span>
-              </div>
-            </div>
-
-            {/* Legend */}
-            <div className="space-y-3">
-              {distCategories.map((cat) => {
-                const pct = totalDist > 0 ? ((cat.value / totalDist) * 100).toFixed(0) : '0';
-                return (
-                  <div key={cat.label} className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2">
-                      <div className={`w-2 h-2 rounded-full ${cat.dotColor}`} />
-                      <span className="font-medium text-on-surface">{cat.label}</span>
-                    </div>
-                    <span
-                      className="tabular-nums font-semibold text-secondary tracking-tight"
-                      style={{ fontVariantNumeric: 'tabular-nums' }}
-                    >
-                      {pct}%
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Active Subscriptions */}
-          <div className="bg-surface-container-low p-6 rounded-xl">
+          {/* ── 12-month outlook ── */}
+          <Card>
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-sm font-bold tracking-wider text-on-surface-variant uppercase">
-                Active Subscriptions
-              </h2>
-              <span className="text-primary text-[10px] font-bold uppercase tracking-widest">
+              <SectionLabel>12-Month Outlook</SectionLabel>
+              <Pill>Projected</Pill>
+            </div>
+            <div className="h-[140px] mb-2">
+              <AreaChart points={outlookSeries} label="Projected savings over the next 12 months" />
+            </div>
+            <AxisLabels labels={['Jan', 'Mar', 'Jun', 'Sep', 'Dec']} className="mb-4" />
+            <div className="grid grid-cols-2 gap-3 pt-4 border-t border-outline-variant/12">
+              <StatBlock label="Projected Balance" value={fmt(projected12m)} />
+              <StatBlock label="Net Growth" tone="positive" value={`+${fmt(netGrowth12m)}`} />
+            </div>
+          </Card>
+        </div>
+
+        <div className="flex flex-col gap-3 lg:col-span-5">
+          {/* ── Monthly savings ── */}
+          <Card>
+            <SectionLabel className="mb-4">Monthly Savings</SectionLabel>
+
+            <FieldLabel className="mb-2">Set Monthly Target</FieldLabel>
+            <Input
+              type="number"
+              prefix="€"
+              aria-label="Monthly savings target"
+              value={netWorthData.monthlyRecurringSavings || ''}
+              onChange={e => handleSavingsUpdate('monthlyRecurringSavings', e.target.value)}
+              placeholder="0"
+              className="mb-4"
+            />
+
+            <div className="mb-4">
+              <span className="text-num font-bold tabular-nums">{fmt(monthlySavings)}</span>
+              <p className="mt-1 text-label text-secondary">Monthly recurring savings target</p>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3 mb-4">
+              {[
+                { label: 'AUTO', ratio: autoRatio, color: '#8183ff' },
+                { label: 'DIVS', ratio: divsRatio, color: '#c1c1ff' },
+                { label: 'EXTRA', ratio: extraRatio, color: '#eec060' },
+              ].map(b => (
+                <div key={b.label} className="flex flex-col gap-2">
+                  <div className="h-[88px] bg-surface-container-high rounded-field flex flex-col justify-end p-1 box-border">
+                    <div
+                      className="w-full rounded transition-[height] duration-500"
+                      style={{
+                        height: `${Math.max(10, Math.min(90, b.ratio))}%`,
+                        backgroundColor: b.color,
+                      }}
+                    />
+                  </div>
+                  <p className="text-label font-bold text-center text-on-surface-variant">{b.label}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="pt-4 border-t border-outline-variant/12">
+              <FieldLabel className="mb-2">Cash Savings Balance</FieldLabel>
+              <Input
+                type="number"
+                prefix="€"
+                aria-label="Cash savings balance"
+                value={netWorthData.accumulatedSavings || ''}
+                onChange={e => handleSavingsUpdate('accumulatedSavings', e.target.value)}
+                placeholder="0"
+                className="mb-3"
+              />
+              <div className="flex gap-3">
+                <Input
+                  type="number"
+                  prefix="+€"
+                  aria-label="Amount to add to savings"
+                  value={addAmount}
+                  onChange={e => setAddAmount(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleQuickAdd()}
+                  placeholder="Add amount"
+                  className="flex-1"
+                />
+                <PrimaryButton size="md" onClick={handleQuickAdd}>
+                  ADD
+                </PrimaryButton>
+              </div>
+            </div>
+          </Card>
+
+          {/* ── Distribution mix ── */}
+          <Card>
+            <SectionLabel className="mb-5">Distribution Mix</SectionLabel>
+            <div className="flex justify-center mb-5">
+              <Donut segments={distCategories} label="Total" value={fmt(totalAssets)} />
+            </div>
+            <div className="flex flex-col">
+              {distCategories.map((cat, i) => (
+                <ListRow key={cat.label} divider={i < distCategories.length - 1} className="h-10">
+                  <span className="flex items-center gap-3">
+                    <Dot color={cat.color} />
+                    <span className="text-body font-medium">{cat.label}</span>
+                  </span>
+                  <span className="text-body font-semibold text-secondary tabular-nums">
+                    {pct(cat.value, totalDist).toFixed(0)}%
+                  </span>
+                </ListRow>
+              ))}
+            </div>
+          </Card>
+
+          {/* ── Active subscriptions ── */}
+          <Card>
+            <div className="flex justify-between items-center mb-3">
+              <SectionLabel>Active Subscriptions</SectionLabel>
+              <span className="text-label font-bold tracking-[.08em] uppercase text-primary">
                 {subscriptions.length} active
               </span>
             </div>
             {subscriptions.length === 0 ? (
-              <p className="text-secondary text-xs italic text-center py-4">
+              <EmptyState icon="autorenew">
                 No active subscriptions. Recurring expenses appear here.
-              </p>
+              </EmptyState>
             ) : (
               <>
-                <div className="flex flex-col gap-3">
-                  {subscriptions.map(s => (
-                    <div
+                <div className="flex flex-col">
+                  {subscriptions.map((s, i) => (
+                    <ListRow
                       key={s.id}
-                      data-testid="subscription-row"
-                      className="flex justify-between items-center py-2 border-b border-outline-variant/10"
+                      divider={i < subscriptions.length - 1}
+                      className="min-h-14 py-2"
                     >
-                      <div className="flex flex-col gap-1">
-                        <span className="text-sm font-medium text-on-surface">{s.name}</span>
-                        <div className="flex gap-1">
-                          <span className="text-[10px] py-0.5 px-2 bg-primary/10 text-primary rounded-full w-fit font-bold uppercase tracking-tighter">
-                            {s.recurringFrequency || 'monthly'}
-                          </span>
-                          {s.isEssential && (
-                            <span className="text-[10px] py-0.5 px-2 bg-[#3DD68C]/10 text-[#3DD68C] rounded-full w-fit font-bold uppercase tracking-tighter">
-                              Essential
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <span className="text-sm font-bold tabular-nums text-on-surface">
-                        {fmt(monthlyAmount(s))}
-                        <span className="text-[10px] text-secondary font-medium"> /mo</span>
+                      <span
+                        data-testid="subscription-row"
+                        className="flex flex-col gap-1 min-w-0"
+                      >
+                        <span className="text-body font-medium truncate">{s.name}</span>
+                        <span className="flex gap-1">
+                          <Pill>{s.recurringFrequency || 'monthly'}</Pill>
+                          {s.isEssential && <Pill tone="positive">Essential</Pill>}
+                        </span>
                       </span>
-                    </div>
+                      <span className="text-body font-bold tabular-nums flex-none">
+                        {fmt(monthlyAmount(s))}
+                        <span className="text-micro font-medium text-secondary"> /mo</span>
+                      </span>
+                    </ListRow>
                   ))}
                 </div>
-                <div className="mt-4 pt-3 border-t border-outline-variant/10 flex justify-between items-center">
-                  <span className="text-[10px] uppercase tracking-widest text-on-surface-variant font-medium">
-                    Total / Month
-                  </span>
-                  <span className="text-lg font-bold text-on-surface tabular-nums">{fmt(subscriptionTotal)}</span>
+                <div className="flex justify-between items-center pt-3">
+                  <FieldLabel>Total / Month</FieldLabel>
+                  <span className="text-stat font-bold tabular-nums">{fmt(subscriptionTotal)}</span>
                 </div>
               </>
             )}
-          </div>
+          </Card>
 
-          {/* Quick Action Callout */}
-          <div className="bg-primary/5 border border-primary/10 p-5 rounded-xl flex items-center justify-between">
-            <div>
-              <h4 className="text-sm font-bold text-primary">Optimize Savings</h4>
-              <p className="text-[11px] text-on-surface-variant">
-                Projected 12-month growth:{' '}
-                <span className="tabular-nums font-semibold">{fmt(netGrowth12m)}</span>
+          {/* ── Optimize callout ── */}
+          <div className="bg-primary/5 border border-primary/10 rounded-card p-5 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <h4 className="text-body font-bold text-primary">Optimize Savings</h4>
+              <p className="mt-1 text-label text-on-surface-variant">
+                12-month growth:{' '}
+                <span className="font-semibold tabular-nums">{fmt(netGrowth12m)}</span>
               </p>
             </div>
-            <button className="bg-primary text-on-primary px-4 py-2 rounded-lg text-xs font-bold hover:opacity-90 transition-opacity">
+            <PrimaryButton
+              size="md"
+              className="flex-none"
+              onClick={() => onNavigate?.('investment')}
+            >
               REVIEW
-            </button>
+            </PrimaryButton>
           </div>
-        </section>
-
+        </div>
       </div>
-    </div>
+    </>
   );
 };

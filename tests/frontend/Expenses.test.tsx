@@ -139,25 +139,6 @@ describe('Calculations', () => {
   });
 });
 
-describe('Statement import', () => {
-  it('an imported transaction appears in Recent immediately, without a reload', async () => {
-    const onSync = vi.fn().mockResolvedValue(undefined);
-    render(<Harness onSync={onSync} />);
-
-    expect(screen.getByText('No transactions yet.')).toBeInTheDocument();
-
-    const file = new File([new Uint8Array([1])], 'stmt.pdf', { type: 'application/pdf' });
-    await userEvent.upload(screen.getByLabelText(/statement pdf/i), file);
-    await userEvent.click(screen.getByRole('button', { name: /review statement/i }));
-    await userEvent.click(await screen.findByRole('button', { name: /add to expenses/i }));
-
-    // Visible in Recent without any pull/reload — this is the optimistic
-    // append driven by StatementReview's onImported(expense) callback.
-    expect(await screen.findByText('Lieferando')).toBeInTheDocument();
-    expect(screen.getByText('-€28.90')).toBeInTheDocument();
-
-    await waitFor(() => expect(onSync).toHaveBeenCalledWith(
-      expect.objectContaining({ expenses: expect.arrayContaining([importedExpense]) })
-    ));
-  });
-});
+// The "Statement import" case that lived here moved to AppNavigation.test.tsx.
+// Statement Review is a destination of its own now, so the import crosses a
+// screen boundary and can no longer be driven from inside Expenses.

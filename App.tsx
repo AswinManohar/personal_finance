@@ -11,6 +11,11 @@ import { DataManagement } from './components/DataManagement';
 import { SavingsDashboard } from './components/SavingsDashboard';
 import { Debts } from './components/Debts';
 import { Login } from './components/Login';
+import { StatementReview } from './components/StatementReview';
+import { BottomNav } from './components/shell/BottomNav';
+import { MoreSheet } from './components/shell/MoreSheet';
+import { Toast, useToast } from './components/shell/Toast';
+import { ALL_DESTINATIONS } from './components/shell/navigation';
 import { AlertTriangle } from 'lucide-react';
 import { pullFromCloud, pushToCloud, isNetworkError, supabase, signOut } from './services/supabaseService';
 
@@ -68,30 +73,10 @@ function usePersistedState<T>(key: string, initialValue: T): [T, React.Dispatch<
   return [state, setState];
 }
 
-const tabs = [
-  { id: 'savings' as ActiveTab, label: 'Savings Hub' },
-  { id: 'expenses' as ActiveTab, label: 'Expenses' },
-  { id: 'goal' as ActiveTab, label: 'Goals' },
-  { id: 'investment' as ActiveTab, label: 'Calculator' },
-  { id: 'fire' as ActiveTab, label: 'FIRE' },
-  { id: 'networth' as ActiveTab, label: 'Net Worth' },
-  { id: 'debts' as ActiveTab, label: 'Debts' },
-  { id: 'portfolio' as ActiveTab, label: 'Portfolio' },
-  { id: 'stocks' as ActiveTab, label: 'Stocks' },
-  { id: 'data' as ActiveTab, label: 'Data' },
-];
-
-const mobileBottomTabs: { id: ActiveTab; label: string; icon: string }[] = [
-  { id: 'savings', label: 'Savings', icon: 'savings' },
-  { id: 'expenses', label: 'Expenses', icon: 'receipt_long' },
-  { id: 'fire', label: 'FIRE', icon: 'local_fire_department' },
-  { id: 'networth', label: 'Net Worth', icon: 'account_balance' },
-  { id: 'debts', label: 'Debts', icon: 'credit_card' },
-  { id: 'data', label: 'Data', icon: 'database' },
-];
-
 const AppMain: React.FC = () => {
   const [activeTab, setActiveTab] = useState<ActiveTab>('savings');
+  const [moreOpen, setMoreOpen] = useState(false);
+  const { message: toastMessage, toast } = useToast();
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'success' | 'error' | 'offline'>('idle');
   const [uniqueSyncId, setUniqueSyncId] = usePersistedState<string | null>('unique_sync_id', null);
   const [isGuest, setIsGuest] = useState(() => window.localStorage.getItem('isGuest') === 'true');
@@ -201,9 +186,59 @@ const AppMain: React.FC = () => {
     return next;
   }, [deletedExpenseIds, setDeletedExpenseIds]);
 
+  const navigate = useCallback((tab: ActiveTab) => {
+    setActiveTab(tab);
+    setMoreOpen(false);
+  }, []);
+
+  /**
+   * Statement Review is its own destination now, so the import lands here
+   * rather than inside Expenses. Appends optimistically — same pattern as
+   * Expenses' own handleAdd — so the row appears without waiting for a pull.
+   */
+  const handleStatementImport = useCallback((imported: Expense) => {
+    setExpenses(prev => {
+      const next = [...prev, imported].sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+      if (activeUserKey) void triggerSync({ expenses: next });
+      return next;
+    });
+    toast(`Imported ${imported.name}`);
+  }, [setExpenses, triggerSync, activeUserKey, toast]);
+
   useEffect(() => {
     if (activeUserKey) performCloudPull();
   }, [activeUserKey, performCloudPull]);
+
+  // Android/browser back: close the More sheet, then fall back to the Savings
+  // Hub, then let the platform have the event (which exits the app).
+  //
+  // Exactly one guard entry exists at a time. Consuming it re-arms the guard on
+  // the next render if there is still somewhere to go back to, so history never
+  // accumulates an entry per tab change.
+  const backGuardRef = useRef(false);
+  const moreOpenRef = useRef(moreOpen);
+  const activeTabRef = useRef(activeTab);
+  moreOpenRef.current = moreOpen;
+  activeTabRef.current = activeTab;
+
+  useEffect(() => {
+    if ((moreOpen || activeTab !== 'savings') && !backGuardRef.current) {
+      backGuardRef.current = true;
+      window.history.pushState({ cashflow: 'guard' }, '');
+    }
+  }, [moreOpen, activeTab]);
+
+  useEffect(() => {
+    const onPopState = () => {
+      backGuardRef.current = false;
+      if (moreOpenRef.current) setMoreOpen(false);
+      else if (activeTabRef.current !== 'savings') setActiveTab('savings');
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
 
   const handleLogout = async () => {
     await signOut();
@@ -259,7 +294,7 @@ const AppMain: React.FC = () => {
     const syncCallback = activeUserKey ? triggerSync : undefined;
     switch (activeTab) {
       case 'expenses': return <Expenses expenses={expenses} setExpenses={setExpenses} income={income} setIncome={setIncome} onSync={syncCallback} onExpenseDeleted={recordExpenseDeletion} />;
-      case 'savings': return <SavingsDashboard portfolio={portfolio} stocks={stocks} netWorthData={netWorthData} setNetWorthData={setNetWorthData} onSync={syncCallback || (async () => { })} expenses={expenses} emergencyFund={emergencyFund} setEmergencyFund={setEmergencyFund} />;
+      case 'savings': return <SavingsDashboard portfolio={portfolio} stocks={stocks} netWorthData={netWorthData} setNetWorthData={setNetWorthData} onSync={syncCallback || (async () => { })} expenses={expenses} emergencyFund={emergencyFund} setEmergencyFund={setEmergencyFund} onNavigate={navigate} />;
       case 'investment': return <InvestmentCalculator investment={investment} setInvestment={setInvestment} onSync={syncCallback} />;
       case 'goal': return <SavingsGoal goal={goal} setGoal={setGoal} onSync={syncCallback} />;
       case 'networth': return <NetWorth netWorthData={netWorthData} setNetWorthData={setNetWorthData} currentSavings={goal.currentSavings} stocks={stocks} portfolio={portfolio} syncKey={activeUserKey || undefined} history={history} setHistory={setHistory} onSync={syncCallback} loans={loans} />;
@@ -267,77 +302,122 @@ const AppMain: React.FC = () => {
       case 'fire': return <FIRECalculator state={fire} setState={setFire} onSync={syncCallback} />;
       case 'portfolio': return <Portfolio assets={portfolio} setAssets={setPortfolio} onSync={syncCallback} />;
       case 'stocks': return <Stocks stocks={stocks} setStocks={setStocks} onSync={syncCallback} />;
+      case 'stmt': return <StatementReview onImported={handleStatementImport} />;
       case 'data': return <DataManagement expenses={expenses} portfolio={portfolio} stocks={stocks} income={income} investment={investment} goal={goal} fire={fire} netWorthData={netWorthData} emergencyFund={emergencyFund} loans={loans} uniqueSyncId={uniqueSyncId} lastSyncedAt={lastSyncedAt} setExpenses={setExpenses} setPortfolio={setPortfolio} setStocks={setStocks} setIncome={setIncome} setInvestment={setInvestment} setGoal={setGoal} setFire={setFire} setNetWorthData={setNetWorthData} setEmergencyFund={setEmergencyFund} setLoans={setLoans} onLogout={handleLogout} onRetryPull={performCloudPull} />;
-      default: return <SavingsDashboard portfolio={portfolio} stocks={stocks} netWorthData={netWorthData} setNetWorthData={setNetWorthData} onSync={syncCallback || (async () => { })} expenses={expenses} emergencyFund={emergencyFund} setEmergencyFund={setEmergencyFund} />;
+      default: return <SavingsDashboard portfolio={portfolio} stocks={stocks} netWorthData={netWorthData} setNetWorthData={setNetWorthData} onSync={syncCallback || (async () => { })} expenses={expenses} emergencyFund={emergencyFund} setEmergencyFund={setEmergencyFund} onNavigate={navigate} />;
     }
   };
 
+  const syncing = syncStatus === 'syncing';
+  const syncButton = (
+    <button
+      onClick={() => triggerSync()}
+      aria-label="Sync now"
+      title={syncStatus === 'offline' ? 'Offline — changes are saved locally' : 'Sync now'}
+      className="w-11 h-11 flex items-center justify-center rounded-full text-primary hover:bg-surface-container-high transition-colors"
+    >
+      <span
+        className={`material-symbols-outlined ${syncing ? 'animate-spin' : ''} ${
+          syncStatus === 'offline' ? 'text-outline' : ''
+        }`}
+        style={{ fontSize: 22 }}
+      >
+        {syncStatus === 'offline' ? 'cloud_off' : 'sync'}
+      </span>
+    </button>
+  );
+
+  const avatar = userMetadata?.avatar_url ? (
+    <img src={userMetadata.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover" />
+  ) : (
+    <div className="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center text-secondary text-label font-bold">
+      {isGuest ? 'G' : 'U'}
+    </div>
+  );
+
   return (
-    <div className="min-h-screen bg-background text-on-surface font-body">
-      {/* Fixed Top Nav - desktop */}
-      <header className="fixed top-0 w-full z-50 justify-between items-center px-8 h-14 bg-[#1a1b20] border-b border-[#464554]/15 hidden md:flex">
-        <div className="flex items-center gap-8">
-          <span className="text-xl font-bold text-[#e3e2e7] tracking-widest uppercase">Cashflow</span>
-          <nav className="flex gap-6 items-center">
-            {tabs.map(tab => (
-              <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                className={activeTab === tab.id
-                  ? "text-[#c1c1ff] border-b-2 border-[#c1c1ff] pb-1 font-semibold text-sm"
-                  : "text-[#ccc5c0] hover:text-[#e3e2e7] transition-colors text-sm"
-                }
-              >{tab.label}</button>
+    // `relative` scopes the More sheet, toast and ambient glows to the app
+    // surface. On mobile `.app-shell` makes this a fixed-height flex viewport
+    // so the header and bottom bar are layout siblings of a scrolling main —
+    // the arrangement that survives a mobile URL bar and reserves safe areas.
+    <div className="app-shell relative flex flex-col bg-background text-on-surface font-body md:min-h-screen">
+      {/* Ambient glows. First in the DOM and unpositioned in z, so everything
+          after them stacks on top without needing a negative index that would
+          hide them behind the shell's own background. The clipping wrapper is
+          required: the glows deliberately sit outside the viewport, and on
+          desktop — where the shell does not clip — they would otherwise add
+          horizontal scroll to the whole page. */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-primary/5 blur-[120px] rounded-full" />
+        <div className="absolute bottom-[-10%] left-[-10%] w-[30%] h-[30%] bg-tertiary/5 blur-[100px] rounded-full" />
+      </div>
+
+      {/* Desktop top nav — sticky rather than fixed, since the shell is normal flow at md+ */}
+      <header className="hidden md:flex sticky top-0 z-30 justify-between items-center px-8 h-14 flex-none bg-surface-container-low border-b border-outline-variant/15">
+        <div className="flex items-center gap-8 min-w-0">
+          <span className="text-stat font-bold text-on-surface tracking-widest uppercase">Cashflow</span>
+          {/* Distinct from the bottom bar's "Primary": both are in the DOM at
+              once and only CSS hides one, so sharing a label would leave two
+              identically-named landmarks. */}
+          <nav aria-label="All sections" className="flex gap-6 items-center overflow-x-auto no-scrollbar">
+            {ALL_DESTINATIONS.map(d => (
+              <button
+                key={d.id}
+                onClick={() => navigate(d.id)}
+                aria-current={activeTab === d.id ? 'page' : undefined}
+                className={`whitespace-nowrap text-body transition-colors ${
+                  activeTab === d.id
+                    ? 'text-primary border-b-2 border-primary pb-1 font-semibold'
+                    : 'text-secondary hover:text-on-surface'
+                }`}
+              >
+                {d.title}
+              </button>
             ))}
           </nav>
         </div>
-        <div className="flex items-center gap-4">
-          <button onClick={() => triggerSync()} className="p-2 rounded-full hover:bg-[#38393d] transition-all duration-200 text-[#c1c1ff]">
-            <span className="material-symbols-outlined">sync</span>
+        <div className="flex items-center gap-3 flex-none">
+          {syncButton}
+          {avatar}
+          <button
+            onClick={handleLogout}
+            className="text-secondary hover:text-on-surface text-caption transition-colors"
+          >
+            Exit
           </button>
-          {userMetadata?.avatar_url ? (
-            <img src={userMetadata.avatar_url} alt="User" className="w-8 h-8 rounded-full object-cover" />
-          ) : (
-            <div className="w-8 h-8 rounded-full bg-[#292a2e] flex items-center justify-center text-[#ccc5c0] text-xs font-bold">
-              {isGuest ? 'G' : 'U'}
-            </div>
-          )}
-          <button onClick={handleLogout} className="text-[#ccc5c0] hover:text-[#e3e2e7] text-xs transition-colors">Exit</button>
         </div>
       </header>
 
-      {/* Mobile header - simple top bar */}
-      <header className="fixed top-0 w-full z-50 flex justify-between items-center px-4 h-14 bg-[#1a1b20] border-b border-[#464554]/15 md:hidden">
-        <span className="text-base font-bold text-[#e3e2e7] tracking-widest uppercase">Cashflow</span>
-        <button onClick={() => triggerSync()} className="p-2 rounded-full hover:bg-[#38393d] text-[#c1c1ff]">
-          <span className="material-symbols-outlined text-sm">sync</span>
-        </button>
+      {/* Mobile top bar */}
+      <header className="md:hidden flex-none app-header-safe box-border flex justify-between items-center px-4 bg-surface-container-low border-b border-outline-variant/15 z-20">
+        <span className="text-title font-extrabold text-on-surface tracking-[.18em] uppercase">
+          Cashflow
+        </span>
+        <div className="flex items-center gap-2">
+          {syncButton}
+          {avatar}
+        </div>
       </header>
 
-      {/* Main content - with top padding for fixed nav, bottom padding for mobile bottom nav */}
-      <main className="pt-14 pb-20 md:pb-8 min-h-screen">
-        <div className="max-w-[1600px] mx-auto">{renderContent()}</div>
+      <main className="relative z-10 flex-1 min-h-0 overflow-y-auto app-scroll p-4 pb-6 md:p-8">
+        <div className="max-w-[1600px] mx-auto flex flex-col gap-3">{renderContent()}</div>
       </main>
 
-      {/* Mobile bottom nav */}
-      <nav className="md:hidden fixed bottom-0 left-0 w-full bg-[#1a1b20] h-16 flex items-center justify-around z-50 px-4 border-t border-[#464554]/10">
-        {mobileBottomTabs.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className="flex flex-col items-center justify-center gap-0.5"
-          >
-            <span
-              className={`material-symbols-outlined text-xl ${activeTab === tab.id ? 'text-[#c1c1ff]' : 'text-[#ccc5c0] opacity-70'}`}
-            >{tab.icon}</span>
-            <span
-              className={`text-[10px] font-bold uppercase tracking-tighter ${activeTab === tab.id ? 'text-[#c1c1ff]' : 'text-[#ccc5c0] opacity-70'}`}
-            >{tab.label}</span>
-          </button>
-        ))}
-      </nav>
+      <BottomNav
+        activeTab={activeTab}
+        onNavigate={navigate}
+        onOpenMore={() => setMoreOpen(true)}
+        moreOpen={moreOpen}
+      />
 
-      {/* Ambient glows */}
-      <div className="fixed top-[-10%] right-[-10%] w-[40%] h-[40%] bg-[#c1c1ff]/5 blur-[120px] rounded-full pointer-events-none z-[-1]"></div>
-      <div className="fixed bottom-[-10%] left-[-10%] w-[30%] h-[30%] bg-[#eec060]/5 blur-[100px] rounded-full pointer-events-none z-[-1]"></div>
+      <MoreSheet
+        open={moreOpen}
+        activeTab={activeTab}
+        onNavigate={navigate}
+        onClose={() => setMoreOpen(false)}
+      />
+
+      <Toast message={toastMessage} />
     </div>
   );
 };

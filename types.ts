@@ -116,4 +116,7 @@ export interface EmergencyFundState {
   targetMonths: number; // 3–6 months of essential costs
 }
 
-export type ActiveTab = 'expenses' | 'savings' | 'investment' | 'networth' | 'fire' | 'portfolio' | 'stocks' | 'data' | 'goal' | 'debts';
+// 'stmt' is Statement Review. It used to render inside the Expenses screen; the
+// mobile design promotes it to a destination of its own, reached from the More
+// sheet, so it needs a tab id like everything else.
+export type ActiveTab = 'expenses' | 'savings' | 'investment' | 'networth' | 'fire' | 'portfolio' | 'stocks' | 'data' | 'goal' | 'debts' | 'stmt';

@@ -17,7 +17,9 @@ describe('Debts tab', () => {
     const rows = screen.getAllByTestId('loan-row');
     expect(rows).toHaveLength(2);
     expect(rows[0].textContent).toContain('Dispo');
-    expect(rows[0].textContent).toContain('PAY FIRST');
+    // Written in sentence case and uppercased by CSS, so screen readers get
+    // "Pay First" rather than a spelled-out acronym.
+    expect(rows[0].textContent).toContain('Pay First');
     expect(rows[1].textContent).toContain('Sparkasse Loan');
   });
 

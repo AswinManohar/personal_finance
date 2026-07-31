@@ -4,6 +4,7 @@ Uses a fake Supabase service client so no live database is required. Validates
 auth rejection, tombstone shaping, recurring fields, and the incremental cursor.
 """
 import os
+import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -16,9 +17,14 @@ from api.main import app
 
 
 class FakeQuery:
+    _OR_RE = re.compile(
+        r'^(?P<key>\w+)\.gt\."(?P<ts>[^"]*)",and\((?P=key)\.eq\."(?P=ts)",id\.gt\."(?P<id>[^"]*)"\)$'
+    )
+
     def __init__(self, rows):
         self._rows = rows
         self._since = None
+        self._resume = None
         self._limit = None
         self._order_key = None
 
@@ -30,6 +36,13 @@ class FakeQuery:
 
     def gt(self, key, value):
         self._since = (key, value)
+        return self
+
+    def or_(self, filters):
+        # Composite-cursor resume filter emitted by integrations._apply_since.
+        m = self._OR_RE.match(filters)
+        assert m, f"fake cannot parse or_ filter: {filters}"
+        self._resume = (m.group("key"), m.group("ts"), m.group("id"))
         return self
 
     def order(self, key, desc=False):
@@ -46,6 +59,13 @@ class FakeQuery:
         if self._since:
             key, value = self._since
             rows = [r for r in rows if (r.get(key) or "") > value]
+        if self._resume:
+            key, ts, last_id = self._resume
+            rows = [
+                r for r in rows
+                if (r.get(key) or "") > ts
+                or ((r.get(key) or "") == ts and (r.get("id") or "") > last_id)
+            ]
         if self._limit is not None:
             rows = rows[: self._limit]
         return type("Resp", (), {"data": rows})()
@@ -140,7 +160,8 @@ def test_expenses_feed_paging_emits_opaque_cursor(monkeypatch):
     page1 = client.get("/v1/integrations/expenses", params={"limit": 2}).json()
     assert [d["id"] for d in page1["data"]] == ["a1", "a2"]
     assert page1["next_cursor"] is not None
-    assert _decode_cursor(page1["next_cursor"]) == "2026-06-02T08:00:00+00:00"
+    # Composite (timestamp, boundary-row id) cursor — tie-safe resume.
+    assert _decode_cursor(page1["next_cursor"]) == ("2026-06-02T08:00:00+00:00", "a2")
 
     page2 = client.get(
         "/v1/integrations/expenses", params={"limit": 2, "since": page1["next_cursor"]}

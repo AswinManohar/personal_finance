@@ -221,23 +221,41 @@ export const pullFromCloud = async (userKey: string) => {
     ]);
 
     if (financesRes.error) throw financesRes.error;
+    // A failed expenses read must NOT masquerade as "user has no expenses" —
+    // returning [] here could let the caller sync an empty list back over
+    // real data. Throw so the app falls back to local state instead.
+    if (expensesRes.error) throw expensesRes.error;
 
     const mainBlob = financesRes.data?.[0]?.data || {};
     const updatedAt = financesRes.data?.[0]?.updated_at;
 
+    const todayIso = new Date().toISOString().split('T')[0];
+
     // Transform expenses from user_expenses table back to internal Expense type
     // Since the schema lacks a 'date' column, we use 'created_at' as the source for 'date'
-    const expenses: Expense[] = (expensesRes.data || []).map(e => ({
-      id: e.id || crypto.randomUUID(),
-      name: e.name,
-      amount: parseFloat(e.amount) || 0,
-      category: e.category,
-      vendor: e.vendor || undefined,
-      isRecurring: !!e.is_recurring,
-      recurringFrequency: e.recurring_frequency || undefined,
-      isEssential: !!e.is_essential,
-      date: e.created_at ? new Date(e.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
-    }));
+    const expenses: Expense[] = (expensesRes.data || []).map(e => {
+      // An unparseable created_at must not poison the whole pull:
+      // new Date(garbage).toISOString() throws, so validate per row and fall
+      // back to today for just that row.
+      let date = todayIso;
+      if (e.created_at) {
+        const parsed = new Date(e.created_at);
+        if (!isNaN(parsed.getTime())) {
+          date = parsed.toISOString().split('T')[0];
+        }
+      }
+      return {
+        id: e.id || crypto.randomUUID(),
+        name: e.name,
+        amount: parseFloat(e.amount) || 0,
+        category: e.category,
+        vendor: e.vendor || undefined,
+        isRecurring: !!e.is_recurring,
+        recurringFrequency: e.recurring_frequency || undefined,
+        isEssential: !!e.is_essential,
+        date
+      };
+    });
 
     // Reconstruct income state
     let income: IncomeState = { salaryMe: 0, salaryPartner: 0 };

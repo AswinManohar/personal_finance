@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Cashflow — Private Ledger</title>
   <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
@@ -40,14 +40,41 @@
             "inverse-surface": "#e3e2e7",
             "positive": "#3DD68C",
             "negative": "#F26B6B",
-            "gold": "#D4A84B"
+            "gold": "#D4A84B",
+            // Hero numerals sit a touch warmer/brighter than body text.
+            "hero": "#f0ede8"
           },
           fontFamily: {
             "headline": ["Inter"],
             "body": ["Inter"],
             "label": ["Inter"]
           },
-          borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }
+          // Type scale from the mobile prototype. Tracking is baked in so a size
+          // and its letter-spacing can never drift apart across screens.
+          // Defaults (text-xs/sm/base…) stay available underneath.
+          fontSize: {
+            "nav":      ["9px",  { lineHeight: "1",    letterSpacing: "-0.01em" }],
+            "micro":    ["10px", { lineHeight: "1.2" }],
+            "label":    ["11px", { lineHeight: "1.3" }],
+            "caption":  ["12px", { lineHeight: "1.4" }],
+            "body":     ["13px", { lineHeight: "1.45" }],
+            "body-lg":  ["14px", { lineHeight: "1.45" }],
+            "title":    ["16px", { lineHeight: "1.3" }],
+            "stat":     ["20px", { lineHeight: "1.2",  letterSpacing: "-0.02em" }],
+            "ring":     ["22px", { lineHeight: "1",    letterSpacing: "-0.02em" }],
+            "num-sm":   ["25px", { lineHeight: "1.1",  letterSpacing: "-0.02em" }],
+            "num":      ["31px", { lineHeight: "1.1",  letterSpacing: "-0.02em" }],
+            "num-lg":   ["39px", { lineHeight: "1",    letterSpacing: "-0.03em" }]
+          },
+          borderRadius: {
+            "DEFAULT": "0.25rem",
+            "lg": "0.5rem",     /*  8 — chips, pills */
+            "field": "10px",    /* 10 — inputs, small buttons, icon boxes */
+            "xl": "0.75rem",    /* 12 — list rows, large buttons */
+            "card": "16px",
+            "sheet": "20px",
+            "full": "9999px"
+          }
         }
       }
     }
@@ -62,6 +89,50 @@
     .tabular-nums { font-variant-numeric: tabular-nums; }
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    /* ── Phone shell ───────────────────────────────────────────────────────
+       The prototype is a fixed-viewport app: header and nav are flex-none
+       siblings of a scrolling main, not `fixed` overlays. That is what keeps
+       a mobile URL bar (and, later, the Capacitor WebView) from jittering the
+       layout, and it is the only arrangement where safe-area insets can be
+       reserved rather than painted over. */
+    :root {
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    /* Phone only. Desktop keeps normal document flow, so this must not leak
+       past the breakpoint — expressed as a media query rather than a Tailwind
+       `md:` override because both are single classes and the cascade order
+       between this block and the runtime-injected utilities is not guaranteed. */
+    @media (max-width: 767px) {
+      .app-shell {
+        height: 100vh;
+        height: 100dvh;
+        overflow: hidden;
+      }
+    }
+    /* Chrome sits inside its nominal height; the inset is added on top so the
+       56/64px touch areas survive a notch or a gesture bar. */
+    .app-header-safe {
+      height: calc(56px + var(--safe-top));
+      padding-top: var(--safe-top);
+    }
+    .app-nav-safe {
+      height: calc(64px + var(--safe-bottom));
+      padding-bottom: var(--safe-bottom);
+    }
+    .app-sheet-safe { padding-bottom: calc(24px + var(--safe-bottom)); }
+    .app-scroll { overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; }
+
+    @keyframes toastIn { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+    @keyframes sheetIn { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    @keyframes scrimIn { from { opacity: 0; } to { opacity: 1; } }
+    .animate-toast-in { animation: toastIn .2s ease; }
+    .animate-sheet-in { animation: sheetIn .22s cubic-bezier(.32, .72, 0, 1); }
+    .animate-scrim-in { animation: scrimIn .2s ease; }
+    @media (prefers-reduced-motion: reduce) {
+      .animate-toast-in, .animate-sheet-in, .animate-scrim-in { animation: none; }
+    }
   </style>
 </head>
 

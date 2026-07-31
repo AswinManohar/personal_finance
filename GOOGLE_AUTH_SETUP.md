@@ -15,9 +15,9 @@ To enable "Sign in with Google" for your Supabase project, follow these steps:
     *   Application type: **Web application**.
     *   Name: `Supabase Auth` (or similar).
     *   **Authorized JavaScript origins**:
-        *   `http://localhost:3000` (or your local port, e.g., `http://localhost:3001`)
+        *   `http://localhost:5173` (or your local port)
         *   `https://ognusjgoyvhihypbtgvl.supabase.co` (Your Supabase URL)
-        *   `https://cashflow-487122773776.us-west1.run.app` **(Your Cloud Run App)**
+        *   `https://cashflow-eu-487122773776.europe-west4.run.app` **(Your Cloud Run App)**
     *   **Authorized redirect URIs**:
         *   `https://ognusjgoyvhihypbtgvl.supabase.co/auth/v1/callback`
     *   Click **Create**.
@@ -35,9 +35,9 @@ To enable "Sign in with Google" for your Supabase project, follow these steps:
 ## 3. URL Configuration
 
 1.  In Supabase, go to **Authentication > URL Configuration**.
-2.  **Site URL**: Set this to your production URL: `https://cashflow-487122773776.us-west1.run.app`
+2.  **Site URL**: Set this to your production URL: `https://cashflow-eu-487122773776.europe-west4.run.app`
 3.  **Redirect URLs**: Add the following:
-    *   `http://localhost:3000/*` (and `3001` just in case)
-    *   `https://cashflow-487122773776.us-west1.run.app/*`
+    *   `http://localhost:5173/*`
+    *   `https://cashflow-eu-487122773776.europe-west4.run.app/*`
 
 Once these steps are done, the "Sign in with Google" button will work for both your local environment and your hosted app!
