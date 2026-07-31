@@ -83,15 +83,18 @@ Standing preferences for this effort:
   Authorized Client ID — one of ticket 03's steps disappears. Nonce deliberately off until the
   plain flow is proven on a device. **Code complete but never run on hardware.**
 
+- [Android-safe file export/import](issues/11-android-safe-file-export-import.md)
+  — `services/download.ts` writes to `Directory.Cache` + share sheet on Android; the blob: path
+  silently did nothing in a WebView. No permissions needed.
+- **Sync ID removed.** It was never access control: a text box writing straight into `user_key`,
+  with no `auth.uid()` behind it, so anyone holding the string had the data — and it was printed in
+  plain text on the Data screen. The user key is now the Supabase user id and nothing else.
+
 ## Not yet specified
 
 In-scope fog, not yet sharp enough to ticket:
 
-- **Android back-button behaviour.** Should back pop tab history, or exit? Interacts with the
-  More sheet once that exists.
-- **Safe areas, status bar and notch.** The app uses `fixed` headers and a `fixed` bottom nav
-  (`App.tsx:259,289,302`); insets need handling but the specifics depend on the shell.
-- **App icon and splash screen.** Needs the M3 palette in `index.html` as its source.
+- **App icon.** Still the default Capacitor icon — needs a real source image.
 - **Shipping v2.** Sideloading has no update channel. Manual reinstall, or something better?
 - **Keystore custody.** Losing it means the app can never be updated in place; where does it live,
   and how is it backed up?

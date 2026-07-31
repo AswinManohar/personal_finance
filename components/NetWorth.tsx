@@ -14,7 +14,7 @@ interface NetWorthProps {
   currentSavings: number;
   stocks: Stock[];
   portfolio: PortfolioAsset[];
-  syncKey?: string;
+  userKey?: string;
   history: SavingsHistoryRecord[];
   setHistory: React.Dispatch<React.SetStateAction<SavingsHistoryRecord[]>>;
   onSync?: (overrides?: any) => Promise<void>;
@@ -22,7 +22,7 @@ interface NetWorthProps {
 }
 
 export const NetWorth: React.FC<NetWorthProps> = ({
-  netWorthData, setNetWorthData, currentSavings, stocks, portfolio, syncKey, history, setHistory, onSync, loans = []
+  netWorthData, setNetWorthData, currentSavings, stocks, portfolio, userKey, history, setHistory, onSync, loans = []
 }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -47,10 +47,10 @@ export const NetWorth: React.FC<NetWorthProps> = ({
   };
 
   const handleRecordSnapshot = async () => {
-    if (!syncKey) return;
+    if (!userKey) return;
     setIsRecording(true);
     try {
-      await recordSavingsHistory(syncKey, {
+      await recordSavingsHistory(userKey, {
         total_assets: totalAssets,
         total_liabilities: totalLiabilities,
         net_worth: netWorth,
@@ -59,7 +59,7 @@ export const NetWorth: React.FC<NetWorthProps> = ({
         gold_amount: netWorthData.goldInvestment,
         stock_amount: stockValue
       });
-      const updatedHistory = await getSavingsHistory(syncKey);
+      const updatedHistory = await getSavingsHistory(userKey);
       setHistory(updatedHistory);
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 3000);
@@ -293,7 +293,7 @@ export const NetWorth: React.FC<NetWorthProps> = ({
             size="md"
             className="flex-none"
             onClick={handleRecordSnapshot}
-            disabled={isRecording || !syncKey}
+            disabled={isRecording || !userKey}
           >
             {showSuccess ? <Check size={16} /> : <Camera size={16} />}
             {showSuccess ? 'Saved!' : isRecording ? 'Saving…' : 'Snapshot'}

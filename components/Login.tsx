@@ -1,44 +1,12 @@
-import React, { useState } from 'react';
-import { Key, Copy, Check } from 'lucide-react';
+import React from 'react';
+
 import { signInWithGoogle } from '../services/auth';
-import { Card, FieldLabel, GhostButton, Input, PrimaryButton } from './ui';
 
 interface LoginProps {
   onGuestEnter: () => void;
-  onSyncIdEnter: (id: string) => void;
 }
 
-export const Login: React.FC<LoginProps> = ({ onGuestEnter, onSyncIdEnter }) => {
-  const [inputSyncId, setInputSyncId] = useState('');
-  const [copied, setCopied] = useState(false);
-  const [error, setError] = useState('');
-  const [showSyncInput, setShowSyncInput] = useState(false);
-
-  const generateNewId = () => {
-    const charset = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    let newId = 'ID-';
-    for (let i = 0; i < 16; i++) {
-      if (i > 0 && i % 4 === 0) newId += '-';
-      newId += charset.charAt(Math.floor(Math.random() * charset.length));
-    }
-    setInputSyncId(newId);
-    setError('');
-  };
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(inputSyncId);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const handleSubmit = () => {
-    if (inputSyncId.length < 5) {
-      setError('Please enter a valid Sync ID');
-      return;
-    }
-    onSyncIdEnter(inputSyncId);
-  };
-
+export const Login: React.FC<LoginProps> = ({ onGuestEnter }) => {
   return (
     <div className="app-shell md:min-h-screen bg-background flex items-center justify-center relative overflow-hidden">
       {/* Gradient rather than a blurred circle — see the note in App.tsx. */}
@@ -74,55 +42,6 @@ export const Login: React.FC<LoginProps> = ({ onGuestEnter, onSyncIdEnter }) => 
             </svg>
             Continue with Google
           </button>
-
-          {!showSyncInput ? (
-            <button
-              onClick={() => setShowSyncInput(true)}
-              className="w-full h-12 px-4 flex items-center gap-3 rounded-field border border-outline-variant/20
-                bg-transparent text-on-surface text-body font-medium hover:bg-surface-container-low transition-colors"
-            >
-              <Key size={18} className="text-secondary flex-none" />
-              Continue with Sync ID
-            </button>
-          ) : (
-            <Card className="flex flex-col gap-3 border border-outline-variant/20">
-              <FieldLabel>Unique Sync ID</FieldLabel>
-              <div className="relative">
-                <Key className="absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary z-10" size={16} />
-                <Input
-                  type="text"
-                  aria-label="Unique Sync ID"
-                  value={inputSyncId}
-                  onChange={e => {
-                    setInputSyncId(e.target.value.toUpperCase());
-                    setError('');
-                  }}
-                  placeholder="ID-XXXX-XXXX-XXXX-XXXX"
-                  className="!pl-10 !font-mono tracking-wider"
-                />
-              </div>
-              {error && <p className="text-label font-bold text-negative">{error}</p>}
-
-              <div className="flex gap-2">
-                <GhostButton className="flex-1" onClick={generateNewId}>
-                  Generate New ID
-                </GhostButton>
-                {inputSyncId && (
-                  <GhostButton onClick={handleCopy} aria-label="Copy Sync ID">
-                    {copied ? <Check size={16} className="text-positive" /> : <Copy size={16} />}
-                  </GhostButton>
-                )}
-              </div>
-
-              <PrimaryButton onClick={handleSubmit} disabled={!inputSyncId}>
-                Access Dashboard
-              </PrimaryButton>
-
-              <p className="text-label text-secondary leading-relaxed">
-                Save your Sync ID to restore data on other devices — no account needed.
-              </p>
-            </Card>
-          )}
 
           <div className="flex items-center gap-3 py-1">
             <span className="flex-1 h-px bg-outline-variant/20" />

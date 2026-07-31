@@ -1,4 +1,5 @@
 import type { CapacitorConfig } from '@capacitor/cli';
+import { KeyboardResize } from '@capacitor/keyboard';
 
 /**
  * Capacitor packaging for the Android build.
@@ -27,6 +28,28 @@ const config: CapacitorConfig = {
     // ticket 03. Left explicit so it is obvious this is not yet a shippable
     // configuration.
     buildOptions: {},
+  },
+  plugins: {
+    SplashScreen: {
+      // Matches --background (#121317) and the app-shell placeholder React
+      // renders while the session is being restored, so there is no flash of a
+      // different colour between the native splash and the first paint.
+      backgroundColor: '#121317',
+      // Hidden explicitly from services/nativeShell.ts once React has mounted;
+      // auto-hiding on a timer shows a blank frame if the app is slower.
+      launchAutoHide: false,
+      androidSpinnerStyle: 'small',
+      spinnerColor: '#c1c1ff',
+    },
+    StatusBar: {
+      backgroundColor: '#1a1b20',
+      style: 'DARK',
+      overlaysWebView: true,
+    },
+    Keyboard: {
+      // Enum, not the bare string — nativeShell.ts also sets this at runtime.
+      resize: KeyboardResize.Native,
+    },
   },
   server: {
     // No `url` on purpose. Pointing this at the Railway host would turn the app

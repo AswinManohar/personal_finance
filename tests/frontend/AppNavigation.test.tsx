@@ -57,8 +57,11 @@ vi.mock('../../services/supabaseService', () => ({
   revokeIntegrationToken: vi.fn(),
   supabase: {
     auth: {
-      // No Supabase session; the sync id below is what gets the app past Login.
-      getSession: vi.fn().mockResolvedValue({ data: { session: null } }),
+      // A real session is now the only way past Login — the Sync ID text box is
+      // gone, because it wrote straight into user_key with no auth.uid() behind it.
+      getSession: vi.fn().mockResolvedValue({
+        data: { session: { user: { id: 'user-1', user_metadata: { email: 'a@example.com' } } } },
+      }),
       onAuthStateChange: vi.fn().mockReturnValue({
         data: { subscription: { unsubscribe: vi.fn() } },
       }),
@@ -70,8 +73,6 @@ import App from '../../App';
 
 beforeEach(() => {
   window.localStorage.clear();
-  // usePersistedState reads JSON, so the id has to be stored as JSON.
-  window.localStorage.setItem('unique_sync_id', JSON.stringify('user-1'));
   pushToCloud.mockClear();
 });
 
@@ -79,12 +80,22 @@ afterEach(() => {
   window.localStorage.clear();
 });
 
+/**
+ * Renders and waits for the session check to resolve. App now gates the first
+ * render on getSession() so a cold start does not flash the login screen, which
+ * means the shell is not present synchronously.
+ */
+const renderApp = async () => {
+  render(<App />);
+  await screen.findByRole('navigation', { name: 'Primary' });
+};
+
 const bottomNav = () => screen.getByRole('navigation', { name: 'Primary' });
 const moreSheet = () => screen.getByRole('dialog', { name: /more destinations/i });
 
 describe('Bottom navigation', () => {
-  it('offers four destinations plus More', () => {
-    render(<App />);
+  it('offers four destinations plus More', async () => {
+    await renderApp();
     const nav = within(bottomNav());
     expect(nav.getAllByRole('button')).toHaveLength(5);
     // Queried by accessible name, which is what proves the decorative icon
@@ -96,7 +107,7 @@ describe('Bottom navigation', () => {
 
   it('switches screens and marks the current one', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    await renderApp();
 
     await user.click(within(bottomNav()).getByRole('button', { name: /debts/i }));
 
@@ -111,7 +122,7 @@ describe('Bottom navigation', () => {
 describe('More sheet', () => {
   it('is closed until More is pressed', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    await renderApp();
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     await user.click(within(bottomNav()).getByRole('button', { name: /more/i }));
@@ -120,7 +131,7 @@ describe('More sheet', () => {
 
   it('lists every destination that is not in the bottom bar', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    await renderApp();
     await user.click(within(bottomNav()).getByRole('button', { name: /more/i }));
 
     for (const label of ['FIRE', 'Goals', 'Calculator', 'Statements', 'Portfolio', 'Stocks', 'Data']) {
@@ -130,7 +141,7 @@ describe('More sheet', () => {
 
   it('navigates and closes when a destination is chosen', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    await renderApp();
 
     await user.click(within(bottomNav()).getByRole('button', { name: /more/i }));
     await user.click(within(moreSheet()).getByRole('button', { name: /^FIRE/i }));
@@ -141,7 +152,7 @@ describe('More sheet', () => {
 
   it('keeps More highlighted while a screen behind it is open', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    await renderApp();
 
     await user.click(within(bottomNav()).getByRole('button', { name: /more/i }));
     await user.click(within(moreSheet()).getByRole('button', { name: /^Goals/i }));
@@ -156,7 +167,7 @@ describe('More sheet', () => {
 
   it('closes on Escape without navigating', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    await renderApp();
 
     await user.click(within(bottomNav()).getByRole('button', { name: /more/i }));
     await user.keyboard('{Escape}');
@@ -170,7 +181,7 @@ describe('More sheet', () => {
 
   it('closes on a scrim tap', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    await renderApp();
 
     await user.click(within(bottomNav()).getByRole('button', { name: /more/i }));
     // By test id, not by class: the scrim is aria-hidden and therefore invisible
@@ -188,7 +199,7 @@ describe('Statement import', () => {
   // through the shell.
   it('an imported transaction reaches the Expenses screen and is pushed', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    await renderApp();
 
     await user.click(within(bottomNav()).getByRole('button', { name: /more/i }));
     await user.click(within(moreSheet()).getByRole('button', { name: /^Statements/i }));

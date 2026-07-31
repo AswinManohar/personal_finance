@@ -15,6 +15,7 @@ import {
   Card, DangerButton, FieldLabel, GhostButton, IconBox, Pill, ScreenTitle, Tile,
 } from './ui';
 import { newId } from '../utils/id';
+import { saveTextFile } from '../services/download';
 
 interface DataManagementProps {
   expenses: Expense[];
@@ -27,7 +28,9 @@ interface DataManagementProps {
   netWorthData: NetWorthState;
   emergencyFund: EmergencyFundState;
   loans: Loan[];
-  uniqueSyncId: string | null;
+  userId: string | null;
+  /** Shown instead of the raw id, which is no longer a credential. */
+  accountEmail?: string | null;
   lastSyncedAt: string | null;
   setExpenses: (data: Expense[]) => void;
   setPortfolio: (data: PortfolioAsset[]) => void;
@@ -45,33 +48,32 @@ interface DataManagementProps {
 
 export const DataManagement: React.FC<DataManagementProps> = ({
   expenses, portfolio, stocks, income, investment, goal, fire, netWorthData, emergencyFund, loans,
-  uniqueSyncId, lastSyncedAt,
+  userId, accountEmail, lastSyncedAt,
   setExpenses, setPortfolio, setStocks, setIncome, setInvestment, setGoal, setFire, setNetWorthData, setEmergencyFund, setLoans,
   onLogout, onRetryPull,
 }) => {
   const [isCloudSyncing, setIsCloudSyncing] = useState(false);
   const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error' | 'info' | 'offline'; text: string } | null>(null);
-  const [copied, setCopied] = useState(false);
   
   const [tokens, setTokens] = useState<any[]>([]);
   const [isGeneratingToken, setIsGeneratingToken] = useState(false);
   const [newTokenText, setNewTokenText] = useState<string | null>(null);
 
-  const activeSyncKey = uniqueSyncId;
+  const activeUserKey = userId;
 
   React.useEffect(() => {
-    if (activeSyncKey) {
-      getIntegrationTokens(activeSyncKey).then(data => setTokens(data)).catch(console.error);
+    if (activeUserKey) {
+      getIntegrationTokens(activeUserKey).then(data => setTokens(data)).catch(console.error);
     }
-  }, [activeSyncKey]);
+  }, [activeUserKey]);
 
   const handleGenerateToken = async () => {
-    if (!activeSyncKey) return;
+    if (!activeUserKey) return;
     setIsGeneratingToken(true);
     try {
-      const token = await generateIntegrationToken(activeSyncKey, "Life OS Integration");
+      const token = await generateIntegrationToken(activeUserKey, "Life OS Integration");
       setNewTokenText(token);
-      const updatedTokens = await getIntegrationTokens(activeSyncKey);
+      const updatedTokens = await getIntegrationTokens(activeUserKey);
       setTokens(updatedTokens);
     } catch (e: any) {
       setStatusMsg({ type: 'error', text: 'Failed to generate token: ' + e.message });
@@ -91,14 +93,14 @@ export const DataManagement: React.FC<DataManagementProps> = ({
   };
 
   const handleCloudSyncPush = async () => {
-    if (!activeSyncKey) return;
+    if (!activeUserKey) return;
     setIsCloudSyncing(true);
     setStatusMsg(null);
 
     const payload = { expenses, portfolio, stocks, income, investment, goal, fire, netWorthData, emergencyFund, loans };
 
     try {
-      await pushToCloud(activeSyncKey, payload);
+      await pushToCloud(activeUserKey, payload);
       setStatusMsg({ type: 'success', text: 'Cloud backup updated successfully!' });
       setTimeout(() => setStatusMsg(null), 3000);
     } catch (error: any) {
@@ -113,12 +115,12 @@ export const DataManagement: React.FC<DataManagementProps> = ({
   };
 
   const handleCloudSyncPull = async () => {
-    if (!activeSyncKey) return;
+    if (!activeUserKey) return;
     setIsCloudSyncing(true);
     setStatusMsg(null);
 
     try {
-      const { data } = await pullFromCloud(activeSyncKey);
+      const { data } = await pullFromCloud(activeUserKey);
 
       if (data.expenses) setExpenses(data.expenses);
       if (data.portfolio) setPortfolio(data.portfolio);
@@ -144,42 +146,33 @@ export const DataManagement: React.FC<DataManagementProps> = ({
     }
   };
 
-  const copySyncId = () => {
-    if (uniqueSyncId) {
-      navigator.clipboard.writeText(uniqueSyncId);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
-  const exportCSV = (type: 'expenses' | 'portfolio' | 'stocks') => {
-    const downloadCSV = (content: string, filename: string) => {
-      const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      link.setAttribute('download', filename);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+  const exportCSV = async (type: 'expenses' | 'portfolio' | 'stocks') => {
+    // saveTextFile, not a blob: URL — a Capacitor WebView registers no
+    // DownloadListener and refuses blob: navigations, so the old helper made
+    // these buttons do nothing at all on the phone.
+    const downloadCSV = async (content: string, filename: string) => {
+      try {
+        await saveTextFile(filename, content);
+      } catch (e: any) {
+        setStatusMsg({ type: 'error', text: `Export failed: ${e?.message ?? e}` });
+      }
     };
 
     if (type === 'expenses') {
       const headers = ['Name,Category,Amount,Recurring'];
       const rows = expenses.map((e) => `"${e.name}","${e.category}",${e.amount},${e.isRecurring}`);
-      downloadCSV([headers, ...rows].join('\n'), 'expenses.csv');
+      await downloadCSV([headers, ...rows].join('\n'), 'expenses.csv');
     } else if (type === 'portfolio') {
       const headers = ['Name,Type,Current Value,Monthly Investment,Return %,TER %,Tax Rate %,Frequency'];
       const rows = portfolio.map(
         (p) =>
           `"${p.name}","${p.type}",${p.currentValue},${p.monthlyInvestment},${p.expectedReturn},${p.expenseRatio},${p.taxRate},"${p.frequency}"`
       );
-      downloadCSV([headers, ...rows].join('\n'), 'portfolio.csv');
+      await downloadCSV([headers, ...rows].join('\n'), 'portfolio.csv');
     } else if (type === 'stocks') {
       const headers = ['Symbol,Quantity,Buy Price,Frequency'];
       const rows = stocks.map((s) => `"${s.symbol}",${s.quantity},${s.buyPrice},"${s.frequency}"`);
-      downloadCSV([headers, ...rows].join('\n'), 'stocks.csv');
+      await downloadCSV([headers, ...rows].join('\n'), 'stocks.csv');
     }
   };
 
@@ -252,8 +245,8 @@ export const DataManagement: React.FC<DataManagementProps> = ({
       <ScreenTitle
         title="Data Management"
         subtitle={
-          uniqueSyncId
-            ? 'Connected via Sync ID — cloud backup enabled.'
+          userId
+            ? 'Signed in with Google — cloud backup enabled.'
             : 'Local sandbox mode — data stored in browser only.'
         }
       />
@@ -290,20 +283,20 @@ export const DataManagement: React.FC<DataManagementProps> = ({
       )}
 
       {/* ── Cloud sync ── */}
-      <Card flush className={activeSyncKey ? '' : 'opacity-60'}>
+      <Card flush className={activeUserKey ? '' : 'opacity-60'}>
         <div className="px-5 py-4 border-b border-outline-variant/12 flex items-center gap-3">
-          <IconBox icon="cloud" tone={activeSyncKey ? 'primary' : 'neutral'} />
+          <IconBox icon="cloud" tone={activeUserKey ? 'primary' : 'neutral'} />
           <div className="flex-1 min-w-0">
             <p className="text-body font-bold">Cloud Sync</p>
             <p className="mt-0.5 text-label text-secondary truncate">
-              {activeSyncKey
+              {activeUserKey
                 ? lastSyncedAt
                   ? `Last synced: ${lastSyncedAt}`
                   : 'Connected — never synced'
-                : 'Login with a Sync ID to enable'}
+                : 'Sign in with Google to enable'}
             </p>
           </div>
-          {activeSyncKey && (
+          {activeUserKey && (
             <span className="flex items-center gap-1.5 flex-none">
               <span className="w-2 h-2 rounded-full bg-positive" />
               <span className="text-label font-bold text-positive">Active</span>
@@ -311,7 +304,7 @@ export const DataManagement: React.FC<DataManagementProps> = ({
           )}
         </div>
 
-        {activeSyncKey ? (
+        {activeUserKey ? (
           <>
             <div className="px-5 py-3 border-b border-outline-variant/[.08] flex items-center justify-between gap-3">
               <span className="flex items-center gap-3 min-w-0">
@@ -368,7 +361,7 @@ export const DataManagement: React.FC<DataManagementProps> = ({
               <p className="mt-0.5 text-label text-secondary tabular-nums">{set.count}</p>
             </div>
             <div className="flex gap-2 flex-none">
-              <GhostButton size="sm" onClick={() => exportCSV(set.key)}>
+              <GhostButton size="sm" onClick={() => { void exportCSV(set.key); }}>
                 <Download size={15} /> Export
               </GhostButton>
               <label
@@ -395,33 +388,25 @@ export const DataManagement: React.FC<DataManagementProps> = ({
         <div className="px-5 py-4 border-b border-outline-variant/12 flex items-center gap-3">
           <IconBox icon="person" tone="neutral" />
           <div className="flex-1 min-w-0">
-            <p className="text-body font-bold">{uniqueSyncId ? 'Sync ID Session' : 'Guest Session'}</p>
+            <p className="text-body font-bold">{userId ? 'Google Account' : 'Guest Session'}</p>
             <p className="mt-0.5 text-label text-secondary">
-              {uniqueSyncId ? 'Private cloud sync enabled' : 'Local data only — no cloud'}
+              {userId ? 'Private cloud sync enabled' : 'Local data only — no cloud'}
             </p>
           </div>
-          <Pill tone={uniqueSyncId ? 'primary' : 'neutral'}>
-            {uniqueSyncId ? 'Sync ID' : 'Local Mode'}
+          <Pill tone={userId ? 'primary' : 'neutral'}>
+            {userId ? 'Synced' : 'Local Mode'}
           </Pill>
         </div>
 
-        {uniqueSyncId && (
+        {userId && (
           <div className="px-5 py-4 border-b border-outline-variant/[.08]">
-            <div className="flex justify-between items-center mb-2">
-              <FieldLabel className="flex items-center gap-1.5">
-                <Key size={12} /> Your Sync ID
-              </FieldLabel>
-              <button
-                onClick={copySyncId}
-                className="flex items-center gap-1 px-2 py-2 text-label font-bold text-primary hover:text-on-surface transition-colors"
-              >
-                {copied ? <Check size={13} /> : <Copy size={13} />}
-                {copied ? 'Copied' : 'Copy'}
-              </button>
-            </div>
-            <p className="font-mono text-caption tracking-[.04em] break-all select-all">{uniqueSyncId}</p>
+            <FieldLabel className="mb-1">Signed in as</FieldLabel>
+            <p className="text-body font-semibold break-all">
+              {accountEmail ?? 'Google account'}
+            </p>
             <p className="mt-2 text-micro text-secondary italic">
-              Use this ID on other devices to restore your data.
+              Your data is tied to this account. Sign in with it on another device to
+              see the same figures.
             </p>
           </div>
         )}
@@ -429,13 +414,13 @@ export const DataManagement: React.FC<DataManagementProps> = ({
         <div className="px-5 py-3">
           <DangerButton onClick={onLogout}>
             <LogOut size={16} />
-            {uniqueSyncId ? 'Exit Session' : 'Exit Guest Mode'}
+            {userId ? 'Exit Session' : 'Exit Guest Mode'}
           </DangerButton>
         </div>
       </Card>
 
       {/* ── Integrations ── */}
-      {uniqueSyncId && (
+      {userId && (
         <Card flush>
           <div className="px-5 py-4 border-b border-outline-variant/12 flex items-center gap-3">
             <IconBox icon="key" tone="neutral" />

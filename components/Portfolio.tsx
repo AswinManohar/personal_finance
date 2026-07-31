@@ -6,6 +6,7 @@ import {
   GhostButton, Input, PrimaryButton, ScreenTitle, SectionLabel, Select, StackedBar, StatBlock, Tile,
 } from './ui';
 import { newId } from '../utils/id';
+import { saveTextFile } from '../services/download';
 
 interface PortfolioProps {
   assets: PortfolioAsset[];
@@ -158,20 +159,14 @@ export const Portfolio: React.FC<PortfolioProps> = ({ assets, setAssets, onSync 
     }));
   }, [assets, totalValue]);
 
-  const exportCSV = () => {
+  const exportCSV = async () => {
     const headers = 'Fund Name,Type,Expense Ratio,Expected Return,Tax Rate,Monthly Investment,Current Value';
     const rows = assets.map(
       (a) =>
         `"${a.name}","${typeLabel[a.type]}",${a.expenseRatio}%,${a.expectedReturn}%,${a.taxRate}%,${a.monthlyInvestment},${a.currentValue}`
     );
-    const blob = new Blob([[headers, ...rows].join('\n')], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', 'portfolio.csv');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // See services/download.ts: a blob: URL silently does nothing in a WebView.
+    await saveTextFile('portfolio.csv', [headers, ...rows].join('\n'));
   };
 
   const fmt = (v: number) =>
@@ -209,7 +204,7 @@ export const Portfolio: React.FC<PortfolioProps> = ({ assets, setAssets, onSync 
       <Card>
         <div className="flex justify-between items-center mb-3">
           <SectionLabel>Holdings</SectionLabel>
-          <GhostButton size="sm" onClick={exportCSV}>
+          <GhostButton size="sm" onClick={() => { void exportCSV(); }}>
             <Download size={15} /> Export
           </GhostButton>
         </div>

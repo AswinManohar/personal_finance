@@ -20,6 +20,7 @@ import { mergePulledExpenses } from './utils/mergeExpenses';
 import { AlertTriangle } from 'lucide-react';
 import { pullFromCloud, pushToCloud, isNetworkError, supabase } from './services/supabaseService';
 import { signOut, initAuth } from './services/auth';
+import { startNativeShell } from './services/nativeShell';
 
 // Global Error Boundary
 class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean, error: Error | null }> {
@@ -80,7 +81,12 @@ const AppMain: React.FC = () => {
   const [moreOpen, setMoreOpen] = useState(false);
   const { message: toastMessage, toast } = useToast();
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'success' | 'error' | 'offline'>('idle');
-  const [uniqueSyncId, setUniqueSyncId] = usePersistedState<string | null>('unique_sync_id', null);
+  // The user key is the Supabase user id and nothing else. There used to be a
+  // "Sync ID" text box that wrote straight into user_key — which was not access
+  // control: anyone holding the string got the data, and RLS could not help
+  // because that path had no auth.uid() at all.
+  const [sessionUserId, setSessionUserId] = useState<string | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
   const [isGuest, setIsGuest] = useState(() => window.localStorage.getItem('isGuest') === 'true');
   const [userMetadata, setUserMetadata] = useState<any>(null);
 
@@ -105,8 +111,7 @@ const AppMain: React.FC = () => {
   const pullInProgressRef = useRef(false);
   const syncInProgressRef = useRef(false);
 
-  // The active key is just the Unique Sync ID now
-  const activeUserKey = uniqueSyncId;
+  const activeUserKey = sessionUserId;
 
   const performCloudPull = useCallback(async () => {
     if (!activeUserKey || pullInProgressRef.current) return;
@@ -238,6 +243,20 @@ const AppMain: React.FC = () => {
     }
   }, [moreOpen, activeTab]);
 
+  // Android hardware back. Same precedence as the History fallback below:
+  // close the sheet, then fall back to Savings, then let the platform exit.
+  useEffect(() => {
+    let stop: (() => void) | undefined;
+    void startNativeShell({
+      onBackButton: () => {
+        if (moreOpenRef.current) { setMoreOpen(false); return true; }
+        if (activeTabRef.current !== 'savings') { setActiveTab('savings'); return true; }
+        return false;
+      },
+    }).then(fn => { stop = fn; });
+    return () => stop?.();
+  }, []);
+
   useEffect(() => {
     const onPopState = () => {
       backGuardRef.current = false;
@@ -250,7 +269,7 @@ const AppMain: React.FC = () => {
 
   const handleLogout = async () => {
     await signOut();
-    setUniqueSyncId(null);
+    setSessionUserId(null);
     setIsGuest(false);
     window.localStorage.clear();
     window.location.reload();
@@ -266,42 +285,45 @@ const AppMain: React.FC = () => {
     // Check active session
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
-        setUniqueSyncId(session.user.id);
+        setSessionUserId(session.user.id);
         setUserMetadata(session.user.user_metadata);
         setIsGuest(false);
       }
+      // Gates the first render: without it the app flashes the login screen
+      // for a moment on every cold start while the stored session is restored,
+      // which on a phone reads as being signed out.
+      setAuthChecked(true);
     });
 
     // Listen for changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
-        setUniqueSyncId(session.user.id);
+        setSessionUserId(session.user.id);
         setUserMetadata(session.user.user_metadata);
         setIsGuest(false);
         window.localStorage.removeItem('isGuest');
       } else if (_event === 'SIGNED_OUT') {
-        setUniqueSyncId(null);
+        setSessionUserId(null);
         setUserMetadata(null);
       }
+      setAuthChecked(true);
     });
 
     return () => subscription.unsubscribe();
-  }, [setUniqueSyncId]);
+  }, []);
 
   const handleEnterAsGuest = () => {
     setIsGuest(true);
-    setUniqueSyncId(null);
     window.localStorage.setItem('isGuest', 'true');
   };
 
-  const handleSyncIdLogin = (id: string) => {
-    setUniqueSyncId(id);
-    setIsGuest(false);
-    window.localStorage.removeItem('isGuest');
-  };
+  if (!authChecked) {
+    // Matches the native splash colour so the handover is invisible.
+    return <div className="app-shell md:min-h-screen bg-background" aria-busy="true" />;
+  }
 
-  if (!uniqueSyncId && !isGuest) {
-    return <Login onGuestEnter={handleEnterAsGuest} onSyncIdEnter={handleSyncIdLogin} />;
+  if (!sessionUserId && !isGuest) {
+    return <Login onGuestEnter={handleEnterAsGuest} />;
   }
 
   const renderContent = () => {
@@ -311,13 +333,13 @@ const AppMain: React.FC = () => {
       case 'savings': return <SavingsDashboard portfolio={portfolio} stocks={stocks} netWorthData={netWorthData} setNetWorthData={setNetWorthData} onSync={syncCallback || (async () => { })} expenses={expenses} emergencyFund={emergencyFund} setEmergencyFund={setEmergencyFund} onNavigate={navigate} />;
       case 'investment': return <InvestmentCalculator investment={investment} setInvestment={setInvestment} onSync={syncCallback} />;
       case 'goal': return <SavingsGoal goal={goal} setGoal={setGoal} onSync={syncCallback} />;
-      case 'networth': return <NetWorth netWorthData={netWorthData} setNetWorthData={setNetWorthData} currentSavings={goal.currentSavings} stocks={stocks} portfolio={portfolio} syncKey={activeUserKey || undefined} history={history} setHistory={setHistory} onSync={syncCallback} loans={loans} />;
+      case 'networth': return <NetWorth netWorthData={netWorthData} setNetWorthData={setNetWorthData} currentSavings={goal.currentSavings} stocks={stocks} portfolio={portfolio} userKey={activeUserKey || undefined} history={history} setHistory={setHistory} onSync={syncCallback} loans={loans} />;
       case 'debts': return <Debts loans={loans} setLoans={setLoans} netWorthData={netWorthData} expenses={expenses} onSync={syncCallback} />;
       case 'fire': return <FIRECalculator state={fire} setState={setFire} onSync={syncCallback} />;
       case 'portfolio': return <Portfolio assets={portfolio} setAssets={setPortfolio} onSync={syncCallback} />;
       case 'stocks': return <Stocks stocks={stocks} setStocks={setStocks} onSync={syncCallback} />;
       case 'stmt': return <StatementReview onImported={handleStatementImport} />;
-      case 'data': return <DataManagement expenses={expenses} portfolio={portfolio} stocks={stocks} income={income} investment={investment} goal={goal} fire={fire} netWorthData={netWorthData} emergencyFund={emergencyFund} loans={loans} uniqueSyncId={uniqueSyncId} lastSyncedAt={lastSyncedAt} setExpenses={setExpenses} setPortfolio={setPortfolio} setStocks={setStocks} setIncome={setIncome} setInvestment={setInvestment} setGoal={setGoal} setFire={setFire} setNetWorthData={setNetWorthData} setEmergencyFund={setEmergencyFund} setLoans={setLoans} onLogout={handleLogout} onRetryPull={performCloudPull} />;
+      case 'data': return <DataManagement expenses={expenses} portfolio={portfolio} stocks={stocks} income={income} investment={investment} goal={goal} fire={fire} netWorthData={netWorthData} emergencyFund={emergencyFund} loans={loans} userId={sessionUserId} accountEmail={userMetadata?.email} lastSyncedAt={lastSyncedAt} setExpenses={setExpenses} setPortfolio={setPortfolio} setStocks={setStocks} setIncome={setIncome} setInvestment={setInvestment} setGoal={setGoal} setFire={setFire} setNetWorthData={setNetWorthData} setEmergencyFund={setEmergencyFund} setLoans={setLoans} onLogout={handleLogout} onRetryPull={performCloudPull} />;
       default: return <SavingsDashboard portfolio={portfolio} stocks={stocks} netWorthData={netWorthData} setNetWorthData={setNetWorthData} onSync={syncCallback || (async () => { })} expenses={expenses} emergencyFund={emergencyFund} setEmergencyFund={setEmergencyFund} onNavigate={navigate} />;
     }
   };

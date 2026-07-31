@@ -1,7 +1,7 @@
 # Implement Android-safe file export and import
 
 Type: task
-Status: open
+Status: resolved
 Blocked by: 02
 
 ## Question
@@ -44,3 +44,18 @@ Also settle the open product question: keep three separate CSV exports, or add a
 whole-state JSON backup? The research recommends a generic `saveTextFile()` that serves both.
 
 While here, fix the `URL.revokeObjectURL` leak on the web path — `exportCSV` leaks a blob per click.
+
+## Answer
+
+**Done.** `services/download.ts` branches: the browser keeps the `blob:` + synthetic `<a download>`
+path, Android writes to `Directory.Cache` via `@capacitor/filesystem` and hands the file to
+`@capacitor/share`.
+
+Cache rather than Documents on purpose — it needs **no storage permission at all** and Android
+reclaims it itself. Both CSV exporters now route through it (`DataManagement`, and `Portfolio`,
+which had its own copy of the blob helper).
+
+Import already worked: `<input type="file">` opens the Storage Access Framework in a WebView with no
+extra plugin.
+
+Not verified on a device — no APK exists yet.
