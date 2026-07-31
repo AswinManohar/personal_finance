@@ -16,6 +16,11 @@ origins = [
     "http://127.0.0.1:3000",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    # The Capacitor Android app. Its WebView serves the bundled assets from
+    # https://localhost (androidScheme in capacitor.config.ts), so its /api
+    # calls to this backend are cross-origin and need CORS.
+    "https://localhost",
+    "capacitor://localhost",
 ]
 
 app.add_middleware(

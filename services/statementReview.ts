@@ -1,4 +1,5 @@
 import { supabase } from './supabaseService';
+import { apiUrl } from './apiBase';
 import { Expense } from '../types';
 import { newId } from '../utils/id';
 
@@ -69,7 +70,7 @@ export const reviewStatement = async (
     const fullName = await signedInUserFullName();
     if (fullName) form.append('redact_names', fullName);
   }
-  const res = await fetch('/api/statements/review', {
+  const res = await fetch(apiUrl('/api/statements/review'), {
     method: 'POST',
     headers: await authHeader(),
     body: form,
@@ -79,7 +80,7 @@ export const reviewStatement = async (
 };
 
 export const importTransaction = async (tx: StatementTransaction): Promise<Expense> => {
-  const res = await fetch('/api/expenses/', {
+  const res = await fetch(apiUrl('/api/expenses/'), {
     method: 'POST',
     headers: { ...(await authHeader()), 'Content-Type': 'application/json' },
     body: JSON.stringify({
