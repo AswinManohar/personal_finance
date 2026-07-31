@@ -1,7 +1,7 @@
 # Scaffold the Capacitor Android shell
 
 Type: task
-Status: blocked
+Status: resolved
 Blocked by: —
 
 ## Question
@@ -92,3 +92,12 @@ Once the JDK is there, `npm run android:apk` should produce
 `android/app/build/outputs/apk/debug/app-debug.apk`.
 
 Auth is expected to be broken until ticket 04 — that is by design.
+
+## Verified on the emulator (2026-07-31)
+
+JDK 21 installed by the human; AGP bumped to 8.9.1 / compileSdk 36 (androidx.browser 1.9.0,
+pulled in by the social-login plugin, demanded both). `assembleDebug` produces a 7.7MB APK.
+Installed on `Medium_Phone_API_36` and screenshotted: the bundled assets render — Inter, the
+Material Symbols subset (real glyphs, not name fallbacks), the full Savings Hub, the 4+More
+bottom nav, safe-area respected. Guest mode, fully offline, no Railway dependency. Auth broken
+as expected until tickets 03/04's console work.
