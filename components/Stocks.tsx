@@ -5,6 +5,7 @@ import {
   Card, EmptyState, Field, IconBox, Input, PrimaryButton, ScreenTitle, SectionLabel, Select,
   StatBlock, Tile,
 } from './ui';
+import { newId } from '../utils/id';
 
 interface StocksProps {
   stocks: Stock[];
@@ -22,7 +23,7 @@ export const Stocks: React.FC<StocksProps> = ({ stocks, setStocks, onSync }) => 
     if (!newSymbol || !newQuantity || !newBuyPrice) return;
 
     const stock: Stock = {
-      id: crypto.randomUUID(),
+      id: newId(),
       symbol: newSymbol.toUpperCase(),
       quantity: parseFloat(newQuantity),
       buyPrice: parseFloat(newBuyPrice),

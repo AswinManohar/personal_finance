@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { Expense, SavingsHistoryRecord, IncomeState, PortfolioAsset, Stock } from '../types';
+import { newId } from '../utils/id';
 
 // Supabase Configuration
 // Project ID: ognusjgoyvhihypbtgvl
@@ -245,7 +246,7 @@ export const pullFromCloud = async (userKey: string) => {
         }
       }
       return {
-        id: e.id || crypto.randomUUID(),
+        id: e.id || newId(),
         name: e.name,
         amount: parseFloat(e.amount) || 0,
         category: e.category,
@@ -323,7 +324,7 @@ export const generateIntegrationToken = async (userKey: string, tokenName: strin
   if (!userKey) throw new Error("Sync ID missing");
   // The raw token is returned to the user once and never stored; only its hash
   // is persisted, so a leaked DB row cannot be replayed as a live credential.
-  const rawToken = 'ff_live_' + crypto.randomUUID().replace(/-/g, '');
+  const rawToken = 'ff_live_' + newId().replace(/-/g, '');
   const tokenHash = await sha256Hex(rawToken);
   const { error } = await supabase.from('integration_tokens').insert([{
     user_key: userKey,

@@ -5,6 +5,7 @@ import {
   AreaChart as UiAreaChart, AxisLabels, Card, ChipGroup, Dot, EmptyState, Field, FieldLabel,
   GhostButton, Input, PrimaryButton, ScreenTitle, SectionLabel, Select, StackedBar, StatBlock, Tile,
 } from './ui';
+import { newId } from '../utils/id';
 
 interface PortfolioProps {
   assets: PortfolioAsset[];
@@ -48,7 +49,7 @@ export const Portfolio: React.FC<PortfolioProps> = ({ assets, setAssets, onSync 
     if (!newName) return;
 
     const asset: PortfolioAsset = {
-      id: crypto.randomUUID(),
+      id: newId(),
       name: newName,
       type: newType,
       currentValue: parseFloat(newCurrentValue) || 0,

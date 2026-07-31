@@ -5,6 +5,7 @@ import {
   Card, EmptyState, Input, Pill, PrimaryButton, SectionLabel, Select, StatBlock, Tile,
 } from './ui';
 import { monthlyInterest, sortByAvalanche, totalLoanBalance, num, monthlyEssentials, simulatePayoff } from '../utils/finance';
+import { newId } from '../utils/id';
 
 interface DebtsProps {
   loans: Loan[];
@@ -33,7 +34,7 @@ export const Debts: React.FC<DebtsProps> = ({ loans, setLoans, netWorthData, exp
     const rate = parseFloat(newRate);
     if (!newName || isNaN(balance) || balance <= 0 || isNaN(rate) || rate < 0) return;
     const loan: Loan = {
-      id: crypto.randomUUID(),
+      id: newId(),
       name: newName,
       balance,
       interestRate: rate,

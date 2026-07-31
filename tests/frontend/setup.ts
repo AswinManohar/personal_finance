@@ -6,8 +6,11 @@ import { vi } from 'vitest';
 // component imports recharts any more, so the dependency itself is dead weight
 // in package.json and can be dropped.
 
-// crypto.randomUUID is used by the expense form; ensure it exists in jsdom.
-if (!globalThis.crypto?.randomUUID) {
-  // @ts-ignore
-  globalThis.crypto = { ...globalThis.crypto, randomUUID: () => 'test-' + Math.random().toString(36).slice(2) };
-}
+// There used to be a crypto.randomUUID polyfill here. It was removed because it
+// was actively harmful: randomUUID is secure-context-only, so it is missing over
+// a plain-HTTP LAN origin (how the app gets opened from a phone), and every add
+// handler threw there. Polyfilling it globally meant the suite passed against
+// code that could not run in the browser it was being tested from.
+//
+// Id generation now goes through utils/id.ts, which falls back to
+// crypto.getRandomValues — not secure-context gated. See tests/frontend/id.test.ts.

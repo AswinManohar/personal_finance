@@ -1,5 +1,6 @@
 import { supabase } from './supabaseService';
 import { Expense } from '../types';
+import { newId } from '../utils/id';
 
 export interface StatementTransaction {
   date: string;
@@ -94,7 +95,7 @@ export const importTransaction = async (tx: StatementTransaction): Promise<Expen
   // (services/supabaseService.ts) so an imported row looks identical to one
   // that came back from a cloud pull.
   return {
-    id: row.id || crypto.randomUUID(),
+    id: row.id || newId(),
     name: row.name,
     amount: parseFloat(row.amount) || 0,
     category: row.category,

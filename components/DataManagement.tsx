@@ -14,6 +14,7 @@ import {
 import {
   Card, DangerButton, FieldLabel, GhostButton, IconBox, Pill, ScreenTitle, Tile,
 } from './ui';
+import { newId } from '../utils/id';
 
 interface DataManagementProps {
   expenses: Expense[];
@@ -195,7 +196,7 @@ export const DataManagement: React.FC<DataManagementProps> = ({
         const parsed: Expense[] = dataRows.map((row) => {
           const parts = row.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || [];
           return {
-            id: crypto.randomUUID(),
+            id: newId(),
             name: parts[0]?.replace(/"/g, '') || 'Imported',
             category: (parts[1]?.replace(/"/g, '') || 'Other') as ExpenseCategory,
             amount: parseFloat(parts[2]) || 0,
@@ -208,7 +209,7 @@ export const DataManagement: React.FC<DataManagementProps> = ({
         const parsed: PortfolioAsset[] = dataRows.map((row) => {
           const parts = row.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || [];
           return {
-            id: crypto.randomUUID(),
+            id: newId(),
             name: parts[0]?.replace(/"/g, '') || 'Imported',
             type: (parts[1]?.replace(/"/g, '') || 'OTHER') as AssetType,
             currentValue: parseFloat(parts[2]) || 0,
@@ -224,7 +225,7 @@ export const DataManagement: React.FC<DataManagementProps> = ({
         const parsed: Stock[] = dataRows.map((row) => {
           const parts = row.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || [];
           return {
-            id: crypto.randomUUID(),
+            id: newId(),
             symbol: parts[0]?.replace(/"/g, '') || 'UNKNOWN',
             quantity: parseFloat(parts[1]) || 0,
             buyPrice: parseFloat(parts[2]) || 0,

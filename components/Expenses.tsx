@@ -5,6 +5,7 @@ import {
   Card, ChipGroup, ColumnChart, Donut, Dot, EmptyState, Field, FieldLabel, IconBox, Input,
   ListRow, Pill, PrimaryButton, SectionLabel, Select, ToggleButton,
 } from './ui';
+import { newId } from '../utils/id';
 
 interface ExpensesProps {
   expenses: Expense[];
@@ -53,7 +54,7 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
     if (isNaN(amount) || amount <= 0) return;
 
     const newExpense: Expense = {
-      id: crypto.randomUUID(),
+      id: newId(),
       name: newName,
       amount: amount,
       category: newCategory,
