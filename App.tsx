@@ -18,7 +18,8 @@ import { Toast, useToast } from './components/shell/Toast';
 import { ALL_DESTINATIONS } from './components/shell/navigation';
 import { mergePulledExpenses } from './utils/mergeExpenses';
 import { AlertTriangle } from 'lucide-react';
-import { pullFromCloud, pushToCloud, isNetworkError, supabase, signOut } from './services/supabaseService';
+import { pullFromCloud, pushToCloud, isNetworkError, supabase } from './services/supabaseService';
+import { signOut, initAuth } from './services/auth';
 
 // Global Error Boundary
 class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean, error: Error | null }> {
@@ -254,6 +255,12 @@ const AppMain: React.FC = () => {
     window.localStorage.clear();
     window.location.reload();
   };
+
+  useEffect(() => {
+    // Native Google Sign-In needs the plugin initialised before the first tap.
+    // A no-op on the web.
+    void initAuth().catch(err => console.error('[Cashflow] auth init failed:', err));
+  }, []);
 
   useEffect(() => {
     // Check active session

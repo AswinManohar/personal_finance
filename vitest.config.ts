@@ -10,5 +10,8 @@ export default defineConfig({
     include: ['tests/frontend/**/*.test.{ts,tsx}'],
     // The threads pool hangs in sandboxed/CI containers; forks is reliable.
     pool: 'forks',
+    // The native sign-in branch refuses to run without a client id; give the
+    // suite a dummy so the branching itself is testable.
+    env: { VITE_GOOGLE_WEB_CLIENT_ID: 'test-web-client-id' },
   },
 });

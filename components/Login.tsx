@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Key, Copy, Check } from 'lucide-react';
-import { signInWithGoogle } from '../services/supabaseService';
+import { signInWithGoogle } from '../services/auth';
 import { Card, FieldLabel, GhostButton, Input, PrimaryButton } from './ui';
 
 interface LoginProps {

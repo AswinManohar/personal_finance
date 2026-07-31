@@ -76,6 +76,13 @@ Standing preferences for this effort:
   **Blocked on a JDK 21** — AGP's floor is 17, but Capacitor 7's own library compiles at 21.
   Also fixed `native-run` failing to find the SDK: its Linux default is `~/Android/sdk`, lowercase.
 
+- [Native Google Sign-In into a Supabase session](issues/04-native-google-sign-in.md)
+  — `@capgo/capacitor-social-login` (the usual pick peers on Capacitor 6). Branch lives in
+  `services/auth.ts`; the native path is a 0.9KB dynamic chunk and the main bundle has zero
+  references to it. Uses the **web** client ID as the token audience, so Supabase needs no new
+  Authorized Client ID — one of ticket 03's steps disappears. Nonce deliberately off until the
+  plain flow is proven on a device. **Code complete but never run on hardware.**
+
 ## Not yet specified
 
 In-scope fog, not yet sharp enough to ticket:
