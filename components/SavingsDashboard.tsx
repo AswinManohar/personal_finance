@@ -4,7 +4,7 @@ import { ActiveTab, NetWorthState, PortfolioAsset, Stock, Expense, EmergencyFund
 import { monthlyEssentials, runwayMonths, emergencyFundTarget, monthsToTarget, monthlyAmount } from '../utils/finance';
 import {
   AreaChart, AxisLabels, Card, ChipGroup, Donut, Dot, EmptyState, FieldLabel, Input, ListRow,
-  Pill, PrimaryButton, ProgressBar, SectionLabel, StackedBar, StatBlock,
+  Pill, PrimaryButton, ProgressBar, SectionLabel, StackedBar, StatBlock, FormError,
 } from './ui';
 
 interface SavingsDashboardProps {
@@ -32,6 +32,7 @@ export const SavingsDashboard: React.FC<SavingsDashboardProps> = ({
   onNavigate,
 }) => {
   const [addAmount, setAddAmount] = useState('');
+  const [addError, setAddError] = useState<string | null>(null);
 
   // Coerce any value to a finite number; missing/invalid fields become 0 so a
   // single undefined never poisons an aggregate into NaN ("€NaN").
@@ -111,7 +112,11 @@ export const SavingsDashboard: React.FC<SavingsDashboardProps> = ({
 
   const handleQuickAdd = () => {
     const amount = parseFloat(addAmount);
-    if (isNaN(amount) || amount <= 0) return;
+    if (isNaN(amount) || amount <= 0) {
+      setAddError('Enter an amount greater than zero.');
+      return;
+    }
+    setAddError(null);
     const newData = {
       ...netWorthData,
       accumulatedSavings: cash + amount,
@@ -337,6 +342,7 @@ export const SavingsDashboard: React.FC<SavingsDashboardProps> = ({
                   ADD
                 </PrimaryButton>
               </div>
+              <FormError className="mt-2">{addError}</FormError>
             </div>
           </Card>
 

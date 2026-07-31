@@ -3,7 +3,7 @@ import { PortfolioAsset, AssetType, InvestmentFrequency } from '../types';
 import { Plus, Trash2, Download } from 'lucide-react';
 import {
   AreaChart as UiAreaChart, AxisLabels, Card, ChipGroup, Dot, EmptyState, Field, FieldLabel,
-  GhostButton, Input, PrimaryButton, ScreenTitle, SectionLabel, Select, StackedBar, StatBlock, Tile,
+  GhostButton, Input, PrimaryButton, ScreenTitle, SectionLabel, Select, StackedBar, StatBlock, Tile, FormError,
 } from './ui';
 import { newId } from '../utils/id';
 import { saveTextFile } from '../services/download';
@@ -22,6 +22,7 @@ const typeLabel: Record<AssetType, string> = {
 
 export const Portfolio: React.FC<PortfolioProps> = ({ assets, setAssets, onSync }) => {
   const [projectionYears, setProjectionYears] = useState(10);
+  const [formError, setFormError] = useState<string | null>(null);
 
   // Form State
   const [newName, setNewName] = useState('');
@@ -47,7 +48,14 @@ export const Portfolio: React.FC<PortfolioProps> = ({ assets, setAssets, onSync 
   };
 
   const handleAdd = async () => {
-    if (!newName) return;
+    if (!newName.trim()) { setFormError('Give the fund a name.'); return; }
+    const value = parseFloat(newCurrentValue) || 0;
+    const monthly = parseFloat(newMonthly) || 0;
+    if (value <= 0 && monthly <= 0) {
+      setFormError('Enter a current value, a monthly contribution, or both.');
+      return;
+    }
+    setFormError(null);
 
     const asset: PortfolioAsset = {
       id: newId(),
@@ -356,6 +364,8 @@ export const Portfolio: React.FC<PortfolioProps> = ({ assets, setAssets, onSync 
             </Select>
           </Field>
         </div>
+        <FormError>{formError}</FormError>
+
         <PrimaryButton onClick={handleAdd}>
           <Plus size={16} /> Add Fund
         </PrimaryButton>

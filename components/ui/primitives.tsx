@@ -251,3 +251,20 @@ export const EmptyState: React.FC<{ icon?: string; children: React.ReactNode }> 
     <p className="text-body text-secondary max-w-[26ch]">{children}</p>
   </div>
 );
+
+/**
+ * Inline failure message for a form.
+ *
+ * Exists because this codebase kept losing user actions to bare `return`s: the
+ * button did nothing, said nothing, and logged nothing. Every form that can
+ * refuse input should render one of these instead of failing silently.
+ */
+export const FormError: React.FC<{ children: React.ReactNode; className?: string }> = ({
+  children,
+  className = '',
+}) =>
+  children ? (
+    <p role="alert" className={`text-label font-semibold text-negative ${className}`}>
+      {children}
+    </p>
+  ) : null;

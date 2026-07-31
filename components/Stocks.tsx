@@ -3,7 +3,7 @@ import { Stock, InvestmentFrequency } from '../types';
 import { Plus, Trash2 } from 'lucide-react';
 import {
   Card, EmptyState, Field, IconBox, Input, PrimaryButton, ScreenTitle, SectionLabel, Select,
-  StatBlock, Tile,
+  StatBlock, Tile, FormError,
 } from './ui';
 import { newId } from '../utils/id';
 
@@ -18,16 +18,23 @@ export const Stocks: React.FC<StocksProps> = ({ stocks, setStocks, onSync }) => 
   const [newQuantity, setNewQuantity] = useState('');
   const [newBuyPrice, setNewBuyPrice] = useState('');
   const [newFrequency, setNewFrequency] = useState<InvestmentFrequency>('One-time');
+  const [formError, setFormError] = useState<string | null>(null);
 
   const handleAdd = async () => {
-    if (!newSymbol || !newQuantity || !newBuyPrice) return;
+    // Named errors rather than a bare `return`, which made the button look dead.
+    if (!newSymbol.trim()) { setFormError('Enter the ticker symbol.'); return; }
+    const qty = parseFloat(newQuantity);
+    if (isNaN(qty) || qty <= 0) { setFormError('Enter how many shares you hold.'); return; }
+    const price = parseFloat(newBuyPrice);
+    if (isNaN(price) || price <= 0) { setFormError('Enter the price you paid per share.'); return; }
+    setFormError(null);
 
     const stock: Stock = {
       id: newId(),
       symbol: newSymbol.toUpperCase(),
-      quantity: parseFloat(newQuantity),
-      buyPrice: parseFloat(newBuyPrice),
-      currentPrice: parseFloat(newBuyPrice),
+      quantity: qty,
+      buyPrice: price,
+      currentPrice: price,
       frequency: newFrequency,
     };
 
@@ -186,6 +193,8 @@ export const Stocks: React.FC<StocksProps> = ({ stocks, setStocks, onSync }) => 
             <option value="Yearly">Yearly</option>
           </Select>
         </Field>
+        <FormError>{formError}</FormError>
+
         <PrimaryButton onClick={handleAdd}>
           <Plus size={16} /> Add Position
         </PrimaryButton>

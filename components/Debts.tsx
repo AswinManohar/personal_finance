@@ -3,7 +3,7 @@ import { Loan, Expense, NetWorthState } from '../types';
 import { Trash2 } from 'lucide-react';
 import {
   Card, EmptyState, Field, FieldLabel, Input, Pill, PrimaryButton, SectionLabel, Select,
-  StatBlock, Tile,
+  StatBlock, Tile, FormError,
 } from './ui';
 import { monthlyInterest, sortByAvalanche, totalLoanBalance, num, monthlyEssentials, simulatePayoff, currentBalance, remainingBalance } from '../utils/finance';
 import { newId } from '../utils/id';
@@ -303,11 +303,7 @@ export const Debts: React.FC<DebtsProps> = ({ loans, setLoans, netWorthData, exp
           </span>
         </div>
 
-        {formError && (
-          <p role="alert" className="text-label font-semibold text-negative">
-            {formError}
-          </p>
-        )}
+        <FormError>{formError}</FormError>
 
         <PrimaryButton onClick={handleAdd}>Add Loan</PrimaryButton>
       </Card>

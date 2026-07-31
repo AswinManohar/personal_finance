@@ -130,14 +130,20 @@ export const pushToCloud = async (userKey: string, payload: any) => {
 
       if (existingIncome && existingIncome.length > 0) {
         const { error } = await supabase.from('user_income').update(incomePayload).eq('user_key', userKey);
-        if (error) { alert("Server Error (Income Update): " + error.message); throw error; }
+        if (error) throw error;
       } else {
         const { error } = await supabase.from('user_income').insert([incomePayload]);
-        if (error) { alert("Server Error (Income Insert): " + error.message); throw error; }
+        if (error) throw error;
       }
     } catch (err: any) {
-      alert("Local Error logic: " + err?.message);
-      logError("pushIncome", err);
+      // Deliberately non-fatal, and deliberately NOT an alert() — this used to
+      // pop three blocking dialogs, which freeze the Capacitor WebView outright.
+      //
+      // Swallowing is safe here only because income is dual-written: the
+      // authoritative copy goes into the user_finances blob above, and this
+      // relational table is a convenience for the integration feed. If that ever
+      // stops being true, this must start throwing.
+      logError("pushIncome (non-fatal; blob copy is authoritative)", err);
     }
   }
 

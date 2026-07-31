@@ -186,9 +186,16 @@ export const DataManagement: React.FC<DataManagementProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
+    // An unreadable file used to return silently, leaving the Import button
+    // looking like it had worked.
+    reader.onerror = () =>
+      setStatusMsg({ type: 'error', text: `Could not read ${file.name}.` });
     reader.onload = (event) => {
       const text = event.target?.result as string;
-      if (!text) return;
+      if (!text) {
+        setStatusMsg({ type: 'error', text: `${file.name} is empty.` });
+        return;
+      }
       const lines = text.split('\n');
       const dataRows = lines.slice(1).filter((line) => line.trim() !== '');
       if (type === 'expenses') {

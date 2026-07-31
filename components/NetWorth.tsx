@@ -3,7 +3,7 @@ import { NetWorthState, Stock, PortfolioAsset, SavingsHistoryRecord, Loan } from
 import { Camera, Check, Trash2 } from 'lucide-react';
 import {
   AreaChart, AxisLabels, Card, EmptyState, Field, FieldLabel, IconBox, Input, ListRow,
-  PrimaryButton, SectionLabel, StatBlock, Tile, Tone,
+  PrimaryButton, SectionLabel, StatBlock, Tile, Tone, FormError,
 } from './ui';
 import { recordSavingsHistory, getSavingsHistory, deleteHistoryRecord } from '../services/supabaseService';
 import { totalLoanBalance, num } from '../utils/finance';
@@ -26,6 +26,7 @@ export const NetWorth: React.FC<NetWorthProps> = ({
 }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
 
   const stockValue = stocks.reduce((sum, s) => sum + (s.quantity * (s.currentPrice || s.buyPrice)), 0);
   const portfolioValue = portfolio.reduce((sum, p) => sum + p.currentValue, 0);
@@ -47,7 +48,11 @@ export const NetWorth: React.FC<NetWorthProps> = ({
   };
 
   const handleRecordSnapshot = async () => {
-    if (!userKey) return;
+    if (!userKey) {
+      setHistoryError('Sign in to record snapshots — they are stored in the cloud.');
+      return;
+    }
+    setHistoryError(null);
     setIsRecording(true);
     try {
       await recordSavingsHistory(userKey, {
@@ -63,9 +68,10 @@ export const NetWorth: React.FC<NetWorthProps> = ({
       setHistory(updatedHistory);
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 3000);
-    } catch (err) {
+    } catch (err: any) {
+      // Was a blocking alert(), which freezes the WebView on Android.
       console.error(err);
-      alert("Failed to record snapshot.");
+      setHistoryError(`Could not save the snapshot: ${err?.message ?? 'unknown error'}`);
     } finally {
       setIsRecording(false);
     }
@@ -74,10 +80,14 @@ export const NetWorth: React.FC<NetWorthProps> = ({
   const handleDeleteRecord = async (id: string) => {
     if (!confirm("Delete this historical record?")) return;
     try {
+      setHistoryError(null);
       await deleteHistoryRecord(id);
       setHistory(history.filter(h => h.id !== id));
-    } catch (err) {
+    } catch (err: any) {
+      // Previously console-only: the row stayed on screen and the user had no
+      // way to know the delete had not happened.
       console.error(err);
+      setHistoryError(`Could not delete that snapshot: ${err?.message ?? 'unknown error'}`);
     }
   };
 
@@ -299,6 +309,8 @@ export const NetWorth: React.FC<NetWorthProps> = ({
             {showSuccess ? 'Saved!' : isRecording ? 'Saving…' : 'Snapshot'}
           </PrimaryButton>
         </div>
+
+        <FormError className="mt-3">{historyError}</FormError>
 
         {history.length > 0 && (
           <div className="mt-3 flex flex-col">

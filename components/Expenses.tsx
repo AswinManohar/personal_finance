@@ -3,7 +3,7 @@ import { Expense, ExpenseCategory, IncomeState, RecurringFrequency } from '../ty
 import { Trash2, Repeat } from 'lucide-react';
 import {
   Card, ChipGroup, ColumnChart, Donut, Dot, EmptyState, Field, FieldLabel, IconBox, Input,
-  ListRow, Pill, PrimaryButton, SectionLabel, Select, ToggleButton,
+  ListRow, Pill, PrimaryButton, SectionLabel, Select, ToggleButton, FormError,
 } from './ui';
 import { newId } from '../utils/id';
 
@@ -329,11 +329,7 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
           </Field>
         )}
 
-        {formError && (
-          <p role="alert" className="text-label font-semibold text-negative">
-            {formError}
-          </p>
-        )}
+        <FormError>{formError}</FormError>
 
         <PrimaryButton onClick={handleAdd}>Add Expense</PrimaryButton>
       </Card>
