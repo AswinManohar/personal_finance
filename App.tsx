@@ -16,6 +16,7 @@ import { BottomNav } from './components/shell/BottomNav';
 import { MoreSheet } from './components/shell/MoreSheet';
 import { Toast, useToast } from './components/shell/Toast';
 import { ALL_DESTINATIONS } from './components/shell/navigation';
+import { mergePulledExpenses } from './utils/mergeExpenses';
 import { AlertTriangle } from 'lucide-react';
 import { pullFromCloud, pushToCloud, isNetworkError, supabase, signOut } from './services/supabaseService';
 
@@ -113,10 +114,16 @@ const AppMain: React.FC = () => {
     setSyncStatus('syncing');
 
     try {
-      const { data, updatedAt } = await pullFromCloud(activeUserKey);
+      const { data, deletedExpenseIds: cloudTombstones, updatedAt } = await pullFromCloud(activeUserKey);
 
       if (data) {
-        if (data.expenses) setExpenses(data.expenses);
+        // Merge rather than replace. `data.expenses` being empty means the cloud
+        // holds nothing, not that this device should throw away what it has —
+        // anything added here and not yet pushed would be lost. Rows the cloud
+        // has positively tombstoned are dropped; rows it has never seen stay.
+        if (data.expenses) {
+          setExpenses(prev => mergePulledExpenses(prev, data.expenses, cloudTombstones));
+        }
         if (data.portfolio) setPortfolio(data.portfolio);
         if (data.stocks) setStocks(data.stocks);
         if (data.income) setIncome(data.income);

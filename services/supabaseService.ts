@@ -1,6 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
 import { Expense, SavingsHistoryRecord, IncomeState, PortfolioAsset, Stock } from '../types';
 import { newId } from '../utils/id';
+// SHA-256 with a software fallback: crypto.subtle is secure-context-only, so
+// token generation threw over a plain-HTTP origin.
+import { sha256Hex } from '../utils/sha256';
 
 // Supabase Configuration
 // Project ID: ognusjgoyvhihypbtgvl
@@ -213,10 +216,14 @@ export const pullFromCloud = async (userKey: string) => {
   if (!userKey) throw new Error("Sync ID missing");
 
   try {
-    const [financesRes, expensesRes, incomeRes, historyData] = await Promise.all([
+    const [financesRes, expensesRes, deletedRes, incomeRes, historyData] = await Promise.all([
       supabase.from('user_finances').select('data, updated_at').eq('user_key', userKey).limit(1),
       // MATCHING SCHEMA: id, name, amount, category, vendor, is_recurring, recurring_frequency, is_essential, created_at
       supabase.from('user_expenses').select('id, name, amount, category, vendor, is_recurring, recurring_frequency, is_essential, created_at').eq('user_key', userKey).eq('deleted', false),
+      // Tombstones, so the caller can tell "deleted upstream" from "never
+      // pushed from here". Without them a row missing from the active set is
+      // ambiguous, and treating it as a delete loses unsynced local work.
+      supabase.from('user_expenses').select('id').eq('user_key', userKey).eq('deleted', true),
       supabase.from('user_income').select('salary_me, salary_partner').eq('user_key', userKey).limit(1),
       getSavingsHistory(userKey)
     ]);
@@ -269,6 +276,10 @@ export const pullFromCloud = async (userKey: string) => {
       income = mainBlob.income;
     }
 
+    // A failed tombstone read is not fatal: the caller merges conservatively and
+    // simply keeps more rows than it strictly should, rather than dropping any.
+    const deletedExpenseIds: string[] = (deletedRes.data || []).map((r: any) => r.id);
+
     return {
       data: {
         ...mainBlob,
@@ -276,6 +287,7 @@ export const pullFromCloud = async (userKey: string) => {
         income,
         history: historyData
       },
+      deletedExpenseIds,
       updatedAt: updatedAt || new Date().toISOString()
     };
   } catch (err) {
@@ -309,15 +321,6 @@ export const signOut = async () => {
     logError("signOut", err);
     return { error: err };
   }
-};
-
-/** SHA-256 hex digest — must match the backend's hash_integration_token(). */
-const sha256Hex = async (input: string): Promise<string> => {
-  const bytes = new TextEncoder().encode(input);
-  const digest = await crypto.subtle.digest('SHA-256', bytes);
-  return Array.from(new Uint8Array(digest))
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('');
 };
 
 export const generateIntegrationToken = async (userKey: string, tokenName: string) => {
