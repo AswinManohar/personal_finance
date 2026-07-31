@@ -45,7 +45,14 @@ class FakeOpenAI:
 class FakeTable:
     def __init__(self, rows): self._rows = rows
     def select(self, *_a, **_k): return self
-    def eq(self, *_a, **_k): return self
+    def eq(self, key, value):
+        # Only "deleted" is really filtered; rows missing the key are treated
+        # as live (deleted=false) — mirrors the "no deleted=true means live"
+        # convention. Other columns stay unfiltered since existing fixtures
+        # don't set them (single-user fixtures throughout this module).
+        if key == "deleted":
+            self._rows = [r for r in self._rows if r.get("deleted", False) == value]
+        return self
     def gte(self, *_a, **_k): return self
     def limit(self, *_a, **_k): return self
     def execute(self):
@@ -202,3 +209,79 @@ def test_credit_transaction_excluded_from_debit_totals_and_crosscheck():
         assert body["totals"]["coverage_pct"] == 50.0
     finally:
         app.dependency_overrides[statements.get_openai_client] = lambda: statements._fake_llm_for_tests
+
+
+# --- Soft-deleted (tombstoned) user_expenses rows must not corrupt the review ---
+
+class FakeSupabaseWithTombstone:
+    """Same fixture as FakeSupabase, plus a soft-deleted row that would match
+    the Netflix statement transaction (same amount + date) if the tombstone
+    filter were missing — it would then wrongly count as matched, inflating
+    coverage_pct and dropping Netflix from missing_in_app."""
+    def table(self, name):
+        if name == "user_income":
+            return FakeTable([{"salary_me": 3000, "salary_partner": 0}])
+        return FakeTable([
+            {"id": "e1", "name": "Groceries", "amount": 54.30, "vendor": "REWE",
+             "category": "Food", "is_recurring": False,
+             "created_at": "2026-06-01T00:00:00+00:00", "deleted": False},
+            {"id": "e2", "name": "Netflix", "amount": 12.99, "vendor": None,
+             "category": "Entertainment", "is_recurring": False,
+             "created_at": "2026-06-15T00:00:00+00:00", "deleted": True},
+        ])
+
+
+def test_tombstoned_expense_excluded_from_crosscheck_and_coverage():
+    tombstone_supabase = FakeSupabaseWithTombstone()
+    real_get_supabase = statements.get_supabase_for_review
+    statements.get_supabase_for_review = lambda: tombstone_supabase
+    try:
+        resp = _post(redact="true", statement_type="bank")
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        missing = [m["description"] for m in body["crosscheck"]["missing_in_app"]]
+        # Netflix must still be reported missing — the tombstoned e2 row must
+        # not be allowed to "match" it.
+        assert "Netflix" in missing
+        assert body["totals"]["coverage_pct"] == 50.0
+    finally:
+        statements.get_supabase_for_review = real_get_supabase
+
+
+# --- redact_names form field: merges with env REDACT_NAMES, dedupes, masks ---
+
+NAME_PDF = make_pdf(["Statement June 2026", "Account holder: Jane Doe",
+                     "01.06.2026 REWE -54.30", "15.06.2026 Netflix -12.99"])
+
+
+def _post_name_pdf(**form):
+    files = {"file": ("stmt.pdf", NAME_PDF, "application/pdf")}
+    return client.post("/api/statements/review", files=files, data=form)
+
+
+def test_redact_names_field_masks_the_passed_name_before_llm(monkeypatch):
+    monkeypatch.delenv("REDACT_NAMES", raising=False)
+    resp = _post_name_pdf(redact="true", statement_type="bank", redact_names="Jane Doe")
+    assert resp.status_code == 200, resp.text
+    llm_input = str(statements._fake_llm_for_tests.responses.calls[-1]["input"])
+    assert "Jane Doe" not in llm_input
+    assert resp.json()["redaction_preview"]["masked_counts"].get("name") == 1
+
+
+def test_env_redact_names_still_works_without_the_form_field(monkeypatch):
+    monkeypatch.setenv("REDACT_NAMES", "Jane Doe")
+    resp = _post_name_pdf(redact="true", statement_type="bank")
+    assert resp.status_code == 200, resp.text
+    llm_input = str(statements._fake_llm_for_tests.responses.calls[-1]["input"])
+    assert "Jane Doe" not in llm_input
+    assert resp.json()["redaction_preview"]["masked_counts"].get("name") == 1
+
+
+def test_env_and_form_redact_names_both_get_applied(monkeypatch):
+    # Merge/dedupe of the two name lists is unit-tested directly in
+    # tests/test_statement_pipeline.py; this just checks the form field and
+    # the env var both reach the redaction step through the live endpoint.
+    monkeypatch.setenv("REDACT_NAMES", "Jane Doe")
+    resp = _post_name_pdf(redact="true", statement_type="bank", redact_names="Jane Doe, John Smith")
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["redaction_preview"]["masked_counts"].get("name") == 1

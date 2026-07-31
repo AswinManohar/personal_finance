@@ -4,7 +4,12 @@ vi.mock('../../services/supabaseService', () => ({
   supabase: {
     auth: {
       getSession: vi.fn().mockResolvedValue({
-        data: { session: { access_token: 'jwt-123' } },
+        data: {
+          session: {
+            access_token: 'jwt-123',
+            user: { user_metadata: { full_name: 'Jane Doe' } },
+          },
+        },
       }),
     },
   },
@@ -43,6 +48,22 @@ describe('reviewStatement', () => {
     const file = new File([new Uint8Array([1])], 'stmt.pdf', { type: 'application/pdf' });
     await expect(reviewStatement(file, true, 'bank')).rejects.toThrow('no text layer');
   });
+
+  it('sends the signed-in user full name as redact_names when redaction is on', async () => {
+    const file = new File([new Uint8Array([1])], 'stmt.pdf', { type: 'application/pdf' });
+    await reviewStatement(file, true, 'bank');
+    const [, init] = (global.fetch as any).mock.calls[0];
+    const form = init.body as FormData;
+    expect(form.get('redact_names')).toBe('Jane Doe');
+  });
+
+  it('omits redact_names when redaction is off', async () => {
+    const file = new File([new Uint8Array([1])], 'stmt.pdf', { type: 'application/pdf' });
+    await reviewStatement(file, false, 'bank');
+    const [, init] = (global.fetch as any).mock.calls[0];
+    const form = init.body as FormData;
+    expect(form.get('redact_names')).toBeNull();
+  });
 });
 
 describe('importTransaction', () => {
@@ -54,5 +75,22 @@ describe('importTransaction', () => {
     const body = JSON.parse(init.body);
     expect(body).toMatchObject({ name: 'REWE', amount: 54.3, category: 'Food',
                                  created_at: '2026-06-01' });
+  });
+
+  it('returns the created row mapped to the frontend Expense shape', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        id: 'e9', name: 'REWE', amount: '54.30', category: 'Food', vendor: 'REWE',
+        is_recurring: false, recurring_frequency: null, is_essential: false,
+        created_at: '2026-06-01T00:00:00+00:00',
+      }),
+    }) as any;
+    const created = await importTransaction(tx);
+    expect(created).toEqual({
+      id: 'e9', name: 'REWE', amount: 54.3, category: 'Food', vendor: 'REWE',
+      isRecurring: false, recurringFrequency: undefined, isEssential: false,
+      date: '2026-06-01',
+    });
   });
 });

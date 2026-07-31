@@ -3,7 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 
-const { tx, report } = vi.hoisted(() => {
+const { tx, report, importedExpense } = vi.hoisted(() => {
   const tx = { date: '2026-06-05', description: 'Lieferando', amount: 28.9,
                category: 'Food', direction: 'debit' as const };
   const report = {
@@ -14,12 +14,16 @@ const { tx, report } = vi.hoisted(() => {
     redaction_preview: { masked_counts: { iban: 1 } },
     totals: { statement_spend: 28.9, flagged_spend: 28.9, coverage_pct: 0 },
   };
-  return { tx, report };
+  const importedExpense = {
+    id: 'e-imported', name: 'Lieferando', amount: 28.9, category: 'Food',
+    isRecurring: false, date: '2026-06-05',
+  };
+  return { tx, report, importedExpense };
 });
 
 vi.mock('../../services/statementReview', () => ({
   reviewStatement: vi.fn().mockResolvedValue(report),
-  importTransaction: vi.fn().mockResolvedValue(undefined),
+  importTransaction: vi.fn().mockResolvedValue(importedExpense),
 }));
 
 import { reviewStatement, importTransaction } from '../../services/statementReview';
@@ -38,7 +42,7 @@ describe('StatementReview', () => {
     expect(screen.getByText(/missing in app/i)).toBeInTheDocument();
   });
 
-  it('one-click import calls the service then onImported', async () => {
+  it('one-click import calls the service then onImported with the created expense', async () => {
     const onImported = vi.fn();
     render(<StatementReview onImported={onImported} />);
     const file = new File([new Uint8Array([1])], 'stmt.pdf', { type: 'application/pdf' });
@@ -46,7 +50,7 @@ describe('StatementReview', () => {
     await userEvent.click(screen.getByRole('button', { name: /review statement/i }));
     await userEvent.click(await screen.findByRole('button', { name: /add to expenses/i }));
     await waitFor(() => expect(importTransaction).toHaveBeenCalledWith(tx));
-    expect(onImported).toHaveBeenCalled();
+    expect(onImported).toHaveBeenCalledWith(importedExpense);
   });
 
   it('shows a friendly error when review fails', async () => {
@@ -91,5 +95,23 @@ describe('StatementReview', () => {
     await waitFor(() => expect(importTransaction).toHaveBeenCalledTimes(1));
     expect(screen.getAllByText(/^added$/i)).toHaveLength(1);
     expect(screen.getAllByRole('button', { name: /add to expenses/i })).toHaveLength(1);
+  });
+
+  it('running a new review clears stale "Added" state from a previous report', async () => {
+    render(<StatementReview onImported={vi.fn()} />);
+    const file = new File([new Uint8Array([1])], 'stmt.pdf', { type: 'application/pdf' });
+    await userEvent.upload(screen.getByLabelText(/statement pdf/i), file);
+    await userEvent.click(screen.getByRole('button', { name: /review statement/i }));
+
+    // Import the only missing_in_app row -> index 0 marked Added.
+    await userEvent.click(await screen.findByRole('button', { name: /add to expenses/i }));
+    expect(await screen.findByText(/^added$/i)).toBeInTheDocument();
+
+    // Re-run the review (e.g. a fresh statement). Row 0 in the new report is
+    // a different, never-imported transaction — it must not inherit the
+    // stale "Added" mark from the previous report's index 0.
+    await userEvent.click(screen.getByRole('button', { name: /review statement/i }));
+    expect(await screen.findByRole('button', { name: /add to expenses/i })).toBeInTheDocument();
+    expect(screen.queryByText(/^added$/i)).not.toBeInTheDocument();
   });
 });

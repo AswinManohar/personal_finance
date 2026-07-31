@@ -302,7 +302,15 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
           </div>
         </section>
 
-        <StatementReview onImported={() => { void onSync?.(); }} />
+        <StatementReview onImported={(imported) => {
+          // Optimistically append so the imported row shows up immediately —
+          // mirrors handleAdd's setExpenses + onSync pattern instead of
+          // relying on a full reload to see it.
+          const updatedExpenses = [...expenses, imported]
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+          setExpenses(updatedExpenses);
+          void onSync?.({ expenses: updatedExpenses });
+        }} />
 
         {/* Recent Transactions */}
         <section className="bg-surface-container-low p-6 rounded-xl flex flex-col gap-4">

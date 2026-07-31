@@ -21,7 +21,14 @@ class FakeTable:
     def __init__(self, rows):
         self._rows = rows
     def select(self, *_a, **_k): return self
-    def eq(self, *_a, **_k): return self
+    def eq(self, key, value):
+        # Only "deleted" is actually filtered — rows missing the key are
+        # treated as live (deleted=false), matching the "no deleted=true
+        # means live" convention. Other columns (e.g. user_key) stay
+        # unfiltered here since existing fixtures don't set them.
+        if key == "deleted":
+            self._rows = [r for r in self._rows if r.get("deleted", False) == value]
+        return self
     def gte(self, *_a, **_k): return self
     def limit(self, *_a, **_k): return self
     def execute(self):
@@ -58,6 +65,22 @@ def test_build_context_reads_income_recurring_and_baseline():
     assert ctx.monthly_income == 4500
     assert ctx.recurring == [{"name": "Rent", "amount": 900, "category": "Housing"}]
     assert ctx.baseline["Food"] == 100.0  # 300 over 90 days → 100/month
+
+
+def test_build_context_excludes_soft_deleted_rows_from_baseline_and_recurring():
+    now = datetime.now(timezone.utc)
+    expenses = [
+        {"name": "Rent", "amount": 900, "category": "Housing", "is_recurring": True,
+         "created_at": (now - timedelta(days=10)).isoformat(), "deleted": False},
+        # Tombstoned row: huge amount that would blow up the baseline and
+        # falsely appear as a recurring bill if not filtered out.
+        {"name": "Ghost subscription", "amount": 10000, "category": "Housing",
+         "is_recurring": True, "created_at": (now - timedelta(days=5)).isoformat(),
+         "deleted": True},
+    ]
+    ctx = build_context(FakeSupabase([{"salary_me": 1000, "salary_partner": 0}], expenses), "u1")
+    assert ctx.baseline["Housing"] == 300.0  # 900 / 3 months, tombstone excluded
+    assert ctx.recurring == [{"name": "Rent", "amount": 900, "category": "Housing"}]
 
 
 def test_build_context_handles_missing_and_none_amounts():

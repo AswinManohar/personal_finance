@@ -3,9 +3,10 @@ import { FileScan, ShieldCheck, Plus, AlertTriangle } from 'lucide-react';
 import {
   reviewStatement, importTransaction, ReviewReport, StatementTransaction,
 } from '../services/statementReview';
+import { Expense } from '../types';
 
 interface StatementReviewProps {
-  onImported: () => void;
+  onImported: (expense: Expense) => void;
 }
 
 const SEVERITY_ORDER = { high: 0, medium: 1, low: 2 } as const;
@@ -21,7 +22,7 @@ export const StatementReview: React.FC<StatementReviewProps> = ({ onImported }) 
 
   const runReview = async () => {
     if (!file) return;
-    setBusy(true); setError(null); setReport(null);
+    setBusy(true); setError(null); setReport(null); setImportedIdx(new Set());
     try {
       setReport(await reviewStatement(file, redact, statementType));
     } catch (e: any) {
@@ -33,10 +34,10 @@ export const StatementReview: React.FC<StatementReviewProps> = ({ onImported }) 
 
   const handleImport = async (tx: StatementTransaction, i: number) => {
     try {
-      await importTransaction(tx);
+      const created = await importTransaction(tx);
       setError(null);
       setImportedIdx(prev => new Set(prev).add(i));
-      onImported();
+      onImported(created);
     } catch (e: any) {
       setError(`Import failed: ${e.message || 'unknown error'}`);
     }

@@ -1,4 +1,5 @@
 import { supabase } from './supabaseService';
+import { Expense } from '../types';
 
 export interface StatementTransaction {
   date: string;
@@ -40,6 +41,15 @@ const authHeader = async (): Promise<Record<string, string>> => {
   return { Authorization: `Bearer ${session.access_token}` };
 };
 
+// The account holder's own name in the statement text must never reach the
+// LLM. The server also masks names from its REDACT_NAMES env list, but that
+// can't know the signed-in user's name — only the client does, via the
+// Supabase session (same source App.tsx reads for user_metadata.avatar_url).
+const signedInUserFullName = async (): Promise<string> => {
+  const { data: { session } } = await supabase.auth.getSession();
+  return session?.user?.user_metadata?.full_name || '';
+};
+
 const errorMessage = async (res: Response): Promise<string> => {
   const body = await res.json().catch(() => null);
   return body?.detail?.message || body?.detail || `Request failed (${res.status})`;
@@ -54,6 +64,10 @@ export const reviewStatement = async (
   form.append('file', file);
   form.append('redact', String(redact));
   form.append('statement_type', statementType);
+  if (redact) {
+    const fullName = await signedInUserFullName();
+    if (fullName) form.append('redact_names', fullName);
+  }
   const res = await fetch('/api/statements/review', {
     method: 'POST',
     headers: await authHeader(),
@@ -63,7 +77,7 @@ export const reviewStatement = async (
   return res.json();
 };
 
-export const importTransaction = async (tx: StatementTransaction): Promise<void> => {
+export const importTransaction = async (tx: StatementTransaction): Promise<Expense> => {
   const res = await fetch('/api/expenses/', {
     method: 'POST',
     headers: { ...(await authHeader()), 'Content-Type': 'application/json' },
@@ -75,4 +89,19 @@ export const importTransaction = async (tx: StatementTransaction): Promise<void>
     }),
   });
   if (!res.ok) throw new Error(await errorMessage(res));
+  const row = await res.json();
+  // Mirrors the user_expenses -> Expense mapping in pullFromCloud
+  // (services/supabaseService.ts) so an imported row looks identical to one
+  // that came back from a cloud pull.
+  return {
+    id: row.id || crypto.randomUUID(),
+    name: row.name,
+    amount: parseFloat(row.amount) || 0,
+    category: row.category,
+    vendor: row.vendor || undefined,
+    isRecurring: !!row.is_recurring,
+    recurringFrequency: row.recurring_frequency || undefined,
+    isEssential: !!row.is_essential,
+    date: row.created_at ? new Date(row.created_at).toISOString().split('T')[0] : tx.date,
+  };
 };

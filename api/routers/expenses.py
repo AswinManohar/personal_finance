@@ -18,7 +18,13 @@ async def read_expenses(user_id: str = Depends(get_current_user_id)):
         supabase = get_supabase_client()
         if not supabase:
             raise HTTPException(status_code=500, detail="Supabase client is not configured")
-        response = supabase.table("user_expenses").select("*").eq("user_key", user_id).execute()
+        response = (
+            supabase.table("user_expenses")
+            .select("*")
+            .eq("user_key", user_id)
+            .eq("deleted", False)
+            .execute()
+        )
         return response.data
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -65,11 +71,15 @@ async def update_expense(
         if not updates:
             raise HTTPException(status_code=400, detail="No fields provided for update")
 
+        # `.eq("deleted", False)` makes a tombstoned row invisible to this
+        # update: it matches zero rows instead of resurrecting/editing a
+        # soft-deleted expense, so it falls straight into the 404 path below.
         response = (
             supabase.table("user_expenses")
             .update(updates)
             .eq("id", expense_id)
             .eq("user_key", user_id)
+            .eq("deleted", False)
             .execute()
         )
 

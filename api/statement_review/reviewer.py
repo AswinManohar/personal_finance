@@ -41,6 +41,7 @@ def build_context(supabase, user_id: str) -> ReviewContext:
         supabase.table("user_expenses")
         .select("name, amount, category, is_recurring, created_at")
         .eq("user_key", user_id)
+        .eq("deleted", False)
         .gte("created_at", since)
         .execute()
     ).data or []

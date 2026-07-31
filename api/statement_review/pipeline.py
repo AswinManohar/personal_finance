@@ -9,13 +9,17 @@ from api.statement_review.redactor import redact
 from api.statement_review.reviewer import build_context, review_transactions
 
 
-def run_review(pdf_bytes, *, redact_enabled, statement_type, user_id, supabase, client, model):
+def run_review(pdf_bytes, *, redact_enabled, statement_type, user_id, supabase, client, model,
+               extra_names=None):
     text = extract_text(pdf_bytes)
 
     masked_counts: dict[str, int] = {}
     if redact_enabled:
-        extra = [n for n in os.getenv("REDACT_NAMES", "").split(",") if n.strip()]
-        redaction = redact(text, extra_names=extra)
+        env_names = [n.strip() for n in os.getenv("REDACT_NAMES", "").split(",") if n.strip()]
+        passed_names = [n.strip() for n in (extra_names or []) if n.strip()]
+        # dedupe while preserving order; env names first for stable ordering
+        merged_names = list(dict.fromkeys(env_names + passed_names))
+        redaction = redact(text, extra_names=merged_names)
         text, masked_counts = redaction.text, redaction.masked_counts
 
     extraction = extract_transactions(text, statement_type, client, model)
@@ -26,6 +30,7 @@ def run_review(pdf_bytes, *, redact_enabled, statement_type, user_id, supabase, 
         supabase.table("user_expenses")
         .select("id, name, amount, vendor, created_at")
         .eq("user_key", user_id)
+        .eq("deleted", False)
         .execute()
     ).data or []
     check = crosscheck(extraction.transactions, rows)

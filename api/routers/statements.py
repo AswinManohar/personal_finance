@@ -1,8 +1,9 @@
 """Statement upload → review report. Ephemeral: nothing is persisted."""
 import os
-from typing import Literal
+from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi.concurrency import run_in_threadpool
 
 from api.dependencies import get_current_user_id, get_supabase_client
 from api.statement_review.errors import StatementReviewError
@@ -41,6 +42,9 @@ async def review_statement(
     file: UploadFile = File(...),
     redact: bool = Form(True),
     statement_type: Literal["bank", "credit_card"] = Form("bank"),
+    redact_names: Optional[str] = Form(
+        None, description="Comma-separated names to mask before any LLM call, "
+                           "merged with the server-side REDACT_NAMES env list"),
     user_id: str = Depends(get_current_user_id),
     llm=Depends(get_openai_client),
 ):
@@ -52,8 +56,13 @@ async def review_statement(
     if not supabase:
         raise HTTPException(status_code=500, detail={
             "code": "STATEMENT_REVIEW_ERROR", "message": "Supabase client is not configured"})
+    extra_names = [n.strip() for n in (redact_names or "").split(",") if n.strip()]
     try:
-        return run_review(
+        # run_review does synchronous PDF parsing + two OpenAI calls; running it
+        # inline would block the event loop for the duration of both LLM round
+        # trips, so hand it off to the threadpool instead.
+        return await run_in_threadpool(
+            run_review,
             pdf_bytes,
             redact_enabled=redact,
             statement_type=statement_type,
@@ -61,6 +70,7 @@ async def review_statement(
             supabase=supabase,
             client=llm,
             model=os.getenv("OPENAI_MODEL", "gpt-5.1"),
+            extra_names=extra_names,
         )
     except StatementReviewError as exc:
         raise HTTPException(
