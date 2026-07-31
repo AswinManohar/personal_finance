@@ -86,6 +86,37 @@ def test_bare_unlabeled_account_numbers_are_masked():
     assert result.masked_counts["long_number"] == 3
 
 
+def test_address_header_lines_are_masked():
+    # The account holder's address is printed as standalone header lines:
+    # a street+number line and a postal-code+city line. Both must go.
+    text = ("Herrn\nMax Mustermann\nReichsstr. 106\n53125 Bonn\n\n"
+            "01.06.2026 REWE  -54.30")
+    result = redact(text, extra_names=["Max Mustermann"])
+    assert "Reichsstr. 106" not in result.text
+    assert "53125 Bonn" not in result.text
+    assert "-54.30" in result.text
+    assert result.masked_counts["address"] == 2
+
+
+def test_single_line_street_with_postal_city_is_masked():
+    # Footer form: "Hahnenstraße 57, 50667 Köln" on one line.
+    result = redact("Hahnenstraße 57, 50667 Köln\nnext line")
+    assert "Hahnenstraße" not in result.text
+    assert "50667" not in result.text
+    assert "next line" in result.text
+
+
+def test_merchant_streets_inside_transaction_lines_survive():
+    # Merchant locations are embedded in longer transaction lines — they
+    # identify the merchant, not the user, and matter for crosscheck.
+    text = ("02.06.2026Debitkartenzahlung\n"
+            "DM Drogerie/Landsberger Allee 117/B erlin/DE 2026-06-01T15:42 Debitk.1\n"
+            "               -8,55")
+    result = redact(text)
+    assert "Landsberger Allee 117" in result.text
+    assert "-8,55" in result.text
+
+
 def test_german_kontostand_balance_lines_are_masked():
     # Sparkasse statements say "Kontostand", not "balance"/"saldo" — real
     # document showed opening/closing balances (i.e. account wealth)

@@ -33,8 +33,22 @@ _PHONE_INTL = r"(?:\+|00)\d{1,3}[\s\-/]?(?:\d[\s\-/]?){6,12}\d"
 # card-length run fails to match here at all and falls through intact to
 # the card pattern instead of being truncated.
 _PHONE_LOCAL = r"(?<!\d)0(?:[\s\-/]?\d){8,13}(?![\s\-/]?\d)"
+# Address masking is line-anchored on purpose: the account holder's address
+# is printed as standalone header/footer lines (street+number, then postal
+# code+city, or both on one line), while merchant locations are embedded
+# inside longer transaction lines ("DM Drogerie/Sternstraße 56/Bonn/DE ...")
+# that these patterns cannot match — merchant streets identify the shop, not
+# the user, and the crosscheck needs them intact.
+_STREET_WORD = r"(?:str(?:aße|asse)?\.?|weg|platz|allee|gasse|ring|damm|ufer)"
+_ADDR_STREET_LINE = (
+    rf"^[^\S\n]*[A-Za-zÄÖÜäöüß.\- ]+{_STREET_WORD}[^\S\n]*\d+[a-zA-Z]?"
+    rf"(?:[^\S\n]*,[^\S\n]*\d{{5}}[^\S\n]+[A-Za-zÄÖÜäöüß.\- ]+)?[^\S\n]*$"
+)
+_ADDR_POSTAL_LINE = r"^[^\S\n]*\d{5}[^\S\n]+[A-Za-zÄÖÜäöüß.\- ]+[^\S\n]*$"
+
 _PATTERNS: list[tuple[str, re.Pattern]] = [
     ("balance_line", re.compile(r"(?im)^.*\b(?:balance|saldo|kontostand)\b.*$")),
+    ("address", re.compile(rf"(?im){_ADDR_STREET_LINE}|{_ADDR_POSTAL_LINE}")),
     ("iban", re.compile(r"\b[A-Z]{2}\d{2}(?:\s?[A-Z0-9]{4}){2,8}(?:\s?[A-Z0-9]{1,3})?\b")),
     ("phone", re.compile(rf"{_PHONE_INTL}|{_PHONE_LOCAL}")),
     ("card", re.compile(r"\b(?:\d[ -]?){12,18}\d\b")),
