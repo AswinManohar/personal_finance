@@ -247,3 +247,48 @@ describe('Automatic sync', () => {
     );
   });
 });
+
+describe('Cloud is the source of truth', () => {
+  // "I want all data and data visualization to be pulled from cloud and I don't
+  // want local data. So when I cleared recent expense cache, all the data viz
+  // disappeared." localStorage is a cache of the last pull, never a source —
+  // rendering it before the cloud answers is what made an empty cache look
+  // like total data loss.
+  it('does not render cached figures before the cloud has answered', async () => {
+    window.localStorage.setItem('expenses', JSON.stringify([
+      { id: 'cached', name: 'Stale cached row', amount: 999, category: 'Food', isRecurring: false, date: '2026-07-01' },
+    ]));
+    let release!: (v: any) => void;
+    pullFromCloud.mockReturnValueOnce(new Promise(res => { release = res; }));
+
+    render(<App />);
+
+    expect(await screen.findByText(/loading your data/i)).toBeInTheDocument();
+    expect(screen.queryByText('Stale cached row')).not.toBeInTheDocument();
+
+    release({ data: {}, deletedExpenseIds: [], updatedAt: '2026-07-31T00:00:00.000Z' });
+    await screen.findByRole('navigation', { name: 'Primary' });
+  });
+
+  it('offers a retry instead of showing zeroes when the pull fails', async () => {
+    pullFromCloud.mockRejectedValueOnce(new Error('column user_expenses.is_essential does not exist'));
+
+    render(<App />);
+
+    expect(await screen.findByText(/could not reach the cloud/i)).toBeInTheDocument();
+    expect(screen.getByText(/nothing has been lost/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument();
+    // Critically: no dashboard behind it presenting €0 as a real figure.
+    expect(screen.queryByRole('navigation', { name: 'Primary' })).not.toBeInTheDocument();
+  });
+
+  it('recovers when the retry succeeds', async () => {
+    const user = userEvent.setup();
+    pullFromCloud.mockRejectedValueOnce(new Error('network down'));
+
+    render(<App />);
+    await user.click(await screen.findByRole('button', { name: /try again/i }));
+
+    expect(await screen.findByRole('navigation', { name: 'Primary' })).toBeInTheDocument();
+  });
+});

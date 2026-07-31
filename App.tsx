@@ -112,6 +112,10 @@ const AppMain: React.FC = () => {
   const syncInProgressRef = useRef(false);
   // Bumped after each successful pull; the effect below pushes once per bump.
   const [autoPushQueued, setAutoPushQueued] = useState(0);
+  // The cloud is the source of truth. Until the first pull lands we do not know
+  // what the numbers are, and localStorage is only a cache of the last pull —
+  // rendering it as fact is how "cleared cache" turned into "everything gone".
+  const [firstPull, setFirstPull] = useState<'pending' | 'done' | 'failed'>('pending');
 
   const activeUserKey = sessionUserId;
 
@@ -153,13 +157,19 @@ const AppMain: React.FC = () => {
       // one render so the payload carries the merged state, not the pre-pull
       // closure.
       setAutoPushQueued(q => q + 1);
+      setFirstPull('done');
     } catch (err: any) {
       if (isNetworkError(err)) {
         setSyncStatus('offline');
-        toast('Offline — showing local data');
+        // Offline still shows the cache, but only once something has been
+        // pulled at least once in this install — otherwise there is nothing
+        // trustworthy to show.
+        setFirstPull(prev => (prev === 'done' ? 'done' : 'failed'));
+        toast('Offline — showing last synced data');
       } else {
         console.error("Cloud pull error:", err);
         setSyncStatus('error');
+        setFirstPull(prev => (prev === 'done' ? 'done' : 'failed'));
         // Say it out loud. A silent failed pull is indistinguishable from
         // "you have no data", which on a fresh phone install reads as loss.
         toast(`Sync failed: ${err?.message ?? 'unknown error'}`);
@@ -354,6 +364,49 @@ const AppMain: React.FC = () => {
 
   if (!sessionUserId && !isGuest) {
     return <Login onGuestEnter={handleEnterAsGuest} />;
+  }
+
+  // Signed in but the cloud has not answered yet. Showing the cache here would
+  // present stale or empty figures as if they were real.
+  if (sessionUserId && firstPull !== 'done') {
+    return (
+      <div className="app-shell md:min-h-screen bg-background text-on-surface font-body flex flex-col items-center justify-center gap-4 p-6 text-center">
+        {firstPull === 'pending' ? (
+          <>
+            <span
+              className="material-symbols-outlined animate-spin text-primary"
+              aria-hidden="true"
+              style={{ fontSize: 32 }}
+            >
+              sync
+            </span>
+            <p className="text-body text-secondary" role="status">Loading your data…</p>
+          </>
+        ) : (
+          <>
+            <span
+              className="material-symbols-outlined text-negative"
+              aria-hidden="true"
+              style={{ fontSize: 32 }}
+            >
+              cloud_off
+            </span>
+            <p className="text-body-lg font-bold">Could not reach the cloud</p>
+            <p className="text-body text-secondary max-w-[32ch]">
+              Your data lives in the cloud, so it is not shown until it can be loaded.
+              Nothing has been lost.
+            </p>
+            <button
+              onClick={() => { setFirstPull('pending'); void performCloudPull(); }}
+              className="mt-2 h-12 px-6 rounded-xl bg-gradient-to-br from-primary to-primary-container
+                text-background text-body-lg font-bold active:scale-[.98]"
+            >
+              Try again
+            </button>
+          </>
+        )}
+      </div>
+    );
   }
 
   const renderContent = () => {

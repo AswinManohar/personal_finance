@@ -91,12 +91,6 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
     setNewIsEssential(false);
   };
 
-  const handleClearLocalHistory = () => {
-    if (!confirm('Clear all transactions from local browser cache? This does NOT delete data from the cloud.')) return;
-    setExpenses([]);
-    window.localStorage.removeItem('expenses');
-  };
-
   const handleDelete = async (id: string) => {
     const updatedExpenses = expenses.filter(e => e.id !== id);
     // Carry the deletion explicitly — the push no longer infers it from absence.
@@ -346,15 +340,10 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
 
       {/* ── Recent ── */}
       <Card>
-        <div className="flex justify-between items-center mb-2">
-          <SectionLabel>Recent</SectionLabel>
-          <button
-            onClick={handleClearLocalHistory}
-            className="text-micro font-bold tracking-[.08em] uppercase text-negative hover:underline px-2 py-2"
-          >
-            Clear Cache
-          </button>
-        </div>
+        {/* No "Clear Cache" here any more. The cloud is the source of truth, so
+            a button that emptied local state only ever produced a screen full
+            of zeroes until the next pull — it looked exactly like data loss. */}
+        <SectionLabel className="mb-2 block">Recent</SectionLabel>
         <div className="flex flex-col">
           {recentExpenses.length === 0 ? (
             <EmptyState icon="receipt_long">No transactions yet.</EmptyState>
