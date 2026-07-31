@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 import { signInWithGoogle } from '../services/auth';
 
@@ -7,6 +7,22 @@ interface LoginProps {
 }
 
 export const Login: React.FC<LoginProps> = ({ onGuestEnter }) => {
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  // Surface failures. This used to discard the result, so a misconfigured
+  // build or OAuth client made the button look dead — "nothing happens".
+  const handleGoogle = async () => {
+    setBusy(true);
+    setAuthError(null);
+    const { error } = await signInWithGoogle();
+    setBusy(false);
+    if (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      setAuthError(msg || 'Sign-in failed. Please try again.');
+    }
+  };
+
   return (
     <div className="app-shell md:min-h-screen bg-background flex items-center justify-center relative overflow-hidden">
       {/* Gradient rather than a blurred circle — see the note in App.tsx. */}
@@ -30,7 +46,8 @@ export const Login: React.FC<LoginProps> = ({ onGuestEnter }) => {
 
         <div className="flex flex-col gap-3">
           <button
-            onClick={() => signInWithGoogle()}
+            onClick={handleGoogle}
+            disabled={busy}
             className="w-full h-12 px-4 flex items-center gap-3 rounded-field border border-outline-variant/20
               bg-transparent text-on-surface text-body font-medium hover:bg-surface-container-low transition-colors"
           >
@@ -40,8 +57,14 @@ export const Login: React.FC<LoginProps> = ({ onGuestEnter }) => {
               <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.26.81-.58z" />
               <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
             </svg>
-            Continue with Google
+            {busy ? 'Signing in…' : 'Continue with Google'}
           </button>
+
+          {authError && (
+            <p role="alert" className="text-label font-semibold text-negative break-words">
+              {authError}
+            </p>
+          )}
 
           <div className="flex items-center gap-3 py-1">
             <span className="flex-1 h-px bg-outline-variant/20" />
