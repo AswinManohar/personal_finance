@@ -17,9 +17,12 @@ _SYSTEM = (
     "received as a positive amount; European statements may use comma as "
     "the decimal separator. In your output, amount is ALWAYS the positive "
     "absolute value — encode the sign as direction=debit for money out, "
-    "credit for money in. Dates are ISO YYYY-MM-DD. If the statement "
-    "prints its own debit total, set total_debits. Categorize each "
-    "transaction (Food, Transport, Housing, Utilities, Entertainment, Other)."
+    "credit for money in. Dates are ISO YYYY-MM-DD. Set total_debits only "
+    "when the statement prints a single grand total of ALL money out for "
+    "the period; balances, fee summaries and attachment totals (e.g. "
+    "'Entgeltabschluss', 'Abrechnung') are NOT the debit total — when "
+    "unsure, leave total_debits null. Categorize each transaction "
+    "(Food, Transport, Housing, Utilities, Entertainment, Other)."
 )
 
 
@@ -41,7 +44,10 @@ def validate_extraction(result: ExtractionResult) -> list[str]:
         if abs(extracted - result.total_debits) > tolerance:
             problems.append(
                 f"extracted debits {extracted:.2f} do not reconcile with the "
-                f"statement total {result.total_debits:.2f} (tolerance {tolerance:.2f})"
+                f"statement total {result.total_debits:.2f} (tolerance {tolerance:.2f}); "
+                f"if {result.total_debits:.2f} is not a printed grand total of ALL "
+                f"money out (e.g. it is a fee summary or attachment total), set "
+                f"total_debits to null instead"
             )
     return problems
 

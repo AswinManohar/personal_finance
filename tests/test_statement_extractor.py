@@ -67,9 +67,12 @@ def test_invalid_then_valid_retries_with_error_feedback():
     result = extract_transactions("text", "bank", client, model="test-model")
     assert result.total_debits == 54.30
     assert len(client.responses.calls) == 2
-    # the retry prompt must carry the validation error back to the model
+    # the retry prompt must carry the validation error back to the model,
+    # including the escape hatch: a misidentified statement total (e.g. a
+    # fee-summary line) should be dropped, not fought over for 3 rounds
     retry_input = str(client.responses.calls[1]["input"])
     assert "reconcile" in retry_input
+    assert "null" in retry_input
 
 
 def test_exhausted_retries_raises_extraction_failed():
@@ -139,6 +142,10 @@ def test_system_prompt_teaches_statement_sign_convention():
     assert "negative" in system          # statement-side convention explained
     assert "absolute value" in system    # output-side contract explained
     assert "direction=debit" in system
+    # total_debits must be the grand total of money out — fee summaries and
+    # attachment totals ("Abrechnung 9,00-") must not be mistaken for it
+    assert "grand total" in system
+    assert "fee" in system
 
 
 def test_validate_flags_bad_dates_and_reconciliation():
