@@ -73,7 +73,8 @@ Standing preferences for this effort:
 - [Scaffold the Capacitor Android shell](issues/02-scaffold-capacitor-android-shell.md)
   — `com.aswinmanohar.cashflow` on Capacitor 7 (Cap 8 needs Node 22; this box has 20). Native
   project committed, web assets bundling, keystore ignores fixed before ticket 03 can create one.
-  **Blocked on a JDK 17+** — AGP refuses Java 11, and installing one needs sudo.
+  **Blocked on a JDK 21** — AGP's floor is 17, but Capacitor 7's own library compiles at 21.
+  Also fixed `native-run` failing to find the SDK: its Linux default is `~/Android/sdk`, lowercase.
 
 ## Not yet specified
 

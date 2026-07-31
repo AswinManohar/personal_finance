@@ -11,7 +11,7 @@
     "test:watch": "vitest",
     "android:sync": "npm run build && npx cap sync android",
     "android:open": "npx cap open android",
-    "android:run": "npm run android:sync && npx cap run android",
+    "android:run": "npm run android:sync && ANDROID_HOME=\"${ANDROID_HOME:-$HOME/Android/Sdk}\" npx cap run android",
     "android:apk": "npm run android:sync && cd android && ./gradlew assembleDebug",
     "icons:fetch": "./scripts/fetch-icon-font.sh"
   },

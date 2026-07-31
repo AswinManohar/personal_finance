@@ -61,15 +61,32 @@ cannot be removed by deleting the file later.
 
 ### Blocked on
 
-**A JDK 17+.** The Android Gradle plugin refuses Java 11:
+**A JDK 21.** Two separate floors, discovered one after the other:
 
-```
-Android Gradle plugin requires Java 17 to run. You are currently using Java 11.
-```
+1. AGP refuses Java 11 — *"Android Gradle plugin requires Java 17 to run"*. That message is AGP's
+   own minimum and is easy to mistake for the whole requirement.
+2. With JDK 17 installed, the build gets further and then fails on
+   `:capacitor-android:compileDebugJavaWithJavac > error: invalid source release: 21`. Capacitor 7
+   generates `android/app/capacitor.build.gradle` with
+   `sourceCompatibility JavaVersion.VERSION_21`, so its own library needs a 21 toolchain.
 
-Only OpenJDK 8 and 11 are installed. `openjdk-17-jdk-headless` is available from apt but installing
-it needs sudo, so it is left to a human. Everything else is in place: Android SDK at
-`~/Android/Sdk` with platform 35, `local.properties` written, Gradle 8.11.1 downloaded and running.
+So: `sudo apt install openjdk-21-jdk-headless` (21.0.11 is in the Ubuntu 22.04 repos), then
+`sudo update-alternatives --config java`. Dropping to Capacitor 6 would work on JDK 17 but is a
+generation behind and would need redoing.
+
+Everything else is in place: Android SDK at `~/Android/Sdk` with platform 35, `local.properties`
+written, Gradle 8.11.1 running, an AVD (`Medium_Phone_API_36`) already defined.
+
+### native-run cannot find the SDK
+
+`npx cap run android` shells out to `native-run`, which resolves the SDK from `$ANDROID_HOME`, then
+`$ANDROID_SDK_ROOT`, then a per-platform default — and on Linux that default is `~/Android/sdk`,
+**lowercase** (`native-run/dist/android/utils/sdk/index.js:15`). Android Studio installs to
+`~/Android/Sdk`, and Linux is case-sensitive, so the default never matches and it throws
+`ERR_SDK_NOT_FOUND`. It does not read `android/local.properties` — that is Gradle-only.
+
+The `android:run` script now sets `ANDROID_HOME="${ANDROID_HOME:-$HOME/Android/Sdk}"`, respecting an
+existing value if one is exported.
 
 Once the JDK is there, `npm run android:apk` should produce
 `android/app/build/outputs/apk/debug/app-debug.apk`.
