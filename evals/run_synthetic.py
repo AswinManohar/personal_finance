@@ -67,31 +67,60 @@ async def main() -> int:
             merchant = parse.get("merchant")
             amount = parse.get("amount")
 
-            print("\n" + "─" * 78)
-            print(f"{item['id']}")
-            print(f"  {item['note']}")
-            print(f"  notification : {item['body']}")
-            print(f"  gate         : {item['gate']}")
-            print(f"  parsed       : tier={parse.get('kind', '—')} "
-                  f"amount={amount if amount is not None else '—'} "
-                  f"merchant={merchant or '—'}")
-            print(f"  outcome      : {outcome(item)}")
+            # One span per notification, carrying the *inference* step — the
+            # gate and the parse tier. Without this Logfire only ever showed the
+            # merchant guess, which is the least dangerous decision in the
+            # chain: rejecting a decline and dropping to the flagged tier are
+            # what actually protect the numbers, and they were invisible.
+            # The agent call below nests inside this span, so a trace reads
+            # notification → tier → guess.
+            with logfire.span(
+                "infer expense from {notification_id}",
+                notification_id=item["id"],
+                gate=item["gate"],
+                tier=parse.get("kind", "not_parsed"),
+                amount=amount,
+                merchant=merchant,
+                card_ending=parse.get("cardEnding"),
+                reject_marker=parse.get("marker"),
+                outcome=outcome(item),
+                becomes_expense=item["gate"] != "ignored" and parse.get("kind") != "rejected",
+                body=item["body"],
+            ):
+                print("\n" + "─" * 78)
+                print(f"{item['id']}")
+                print(f"  {item['note']}")
+                print(f"  notification : {item['body']}")
+                print(f"  gate         : {item['gate']}")
+                print(f"  parsed       : tier={parse.get('kind', '—')} "
+                      f"amount={amount if amount is not None else '—'} "
+                      f"merchant={merchant or '—'}")
+                print(f"  outcome      : {outcome(item)}")
 
-            # Only descriptors that could actually become an expense reach the
-            # agent. A rejected capture must never cost a model call — if one
-            # shows up here, the parser let a decline through.
-            if not merchant or parse.get("kind") == "rejected":
-                print("  guess        : not called")
-                continue
+                # Only descriptors that could actually become an expense reach
+                # the agent. A rejected capture must never cost a model call —
+                # if one shows up here, the parser let a decline through.
+                if not merchant or parse.get("kind") == "rejected":
+                    logfire.info(
+                        "no guess needed for {notification_id}: {reason}",
+                        notification_id=item["id"],
+                        reason="rejected" if parse.get("kind") == "rejected" else "no merchant",
+                    )
+                    print("  guess        : not called")
+                    continue
 
-            try:
-                guess = (await merchant_agent.run(merchant)).output
-                print(f"  guess        : name={guess.name!r} category={guess.category}")
-                shown = amount if amount is not None else "you fill it in"
-                print(f"  review sheet : “{guess.name}” · {guess.category} · {shown}")
-            except Exception as exc:
-                print(f"  guess        : FAILED ({type(exc).__name__}) → falls back to "
-                      f"“{merchant}” · Other")
+                try:
+                    guess = (await merchant_agent.run(merchant)).output
+                    print(f"  guess        : name={guess.name!r} category={guess.category}")
+                    shown = amount if amount is not None else "you fill it in"
+                    print(f"  review sheet : “{guess.name}” · {guess.category} · {shown}")
+                except Exception as exc:
+                    logfire.warn(
+                        "guess failed for {merchant}, falling back to Other",
+                        merchant=merchant, error=str(exc),
+                    )
+                    print(f"  guess        : FAILED ({type(exc).__name__}) → falls back to "
+                          f"“{merchant}” · Other")
 
     print("\n" + "─" * 78)
     return 0

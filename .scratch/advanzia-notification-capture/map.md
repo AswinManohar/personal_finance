@@ -84,3 +84,11 @@ Standing preferences for this effort:
   sync is a possible later comfort, not this effort.
 - **iOS** — no iOS notification-listener equivalent exists anyway.
 - **Tasker/MacroDroid webhook path** — rejected at charting in favour of in-app capture.
+- **Device telemetry to Logfire** — ruled out 2026-08-06. Logfire traces the backend, so the only
+  production event it can see is a first-sighting merchant guess; every on-device decision
+  (a decline rejected, a drop to the flagged tier, a Guard-2 fire, a merchant recalled from the
+  learned map) never contacts the server and is therefore dark. Closing that would mean the phone
+  reporting capture outcomes to a new endpoint — which cuts against "phone-local, only confirmed
+  expenses reach the cloud" and would put spending history in a trace store. Declined; the
+  synthetic runner (`evals/run_synthetic.py`) spans the inference step instead, so the parsing
+  behaviour is observable where it is being exercised deliberately rather than continuously.
