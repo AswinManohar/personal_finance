@@ -47,10 +47,19 @@ export const SparkasseInbox: React.FC<{
   const [pending, setPending] = useState<SparkasseItem[]>(() => readSparkassePending());
   const [status, setStatus] = useState<SparkasseStatus>(() => readSparkasseStatus());
   const [reviewing, setReviewing] = useState<SparkasseItem | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
 
+  // A poll that throws — network gone mid-session — must still leave the
+  // component with fresh state. An escaping rejection would skip both setters
+  // and freeze the card on whatever it last showed.
   const refresh = useCallback(async () => {
-    const authorized = await isAuthorized();
-    if (authorized) await pollSparkasse();
+    let authorized = false;
+    try {
+      authorized = await isAuthorized();
+      if (authorized) await pollSparkasse();
+    } catch {
+      // Swallowed deliberately: the status below carries the failure.
+    }
     setPending(readSparkassePending());
     setStatus({ ...readSparkasseStatus(), authorized });
   }, []);
@@ -59,8 +68,26 @@ export const SparkasseInbox: React.FC<{
     void refresh();
   }, [refresh]);
 
+  // Mail arrives while the app is away, so coming back to the foreground is the
+  // moment to poll. Without this the Expenses tab stays mounted across a
+  // backgrounding and never checks again.
+  useEffect(() => {
+    const onVisible = () => { if (!document.hidden) void refresh(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [refresh]);
+
   const connect = async () => {
-    if (await authorize()) await refresh();
+    let granted = false;
+    try {
+      granted = await authorize();
+    } catch {
+      granted = false;
+    }
+    // authorize() also returns false when the OAuth client id is missing, which
+    // would otherwise make the button a silent dead end.
+    setAuthError(granted ? null : 'Verbindung zu Gmail fehlgeschlagen. Bitte erneut versuchen.');
+    if (granted) await refresh();
   };
 
   const dismiss = (key: string) => {
@@ -74,7 +101,12 @@ export const SparkasseInbox: React.FC<{
     setReviewing(null);
   };
 
-  const needsAttention = !status.authorized || status.lastSuspiciousAt > 0;
+  // A suspicious mail more recent than the last real capture is the signal that
+  // the wording changed; one older than it has already been outlived by working
+  // capture, so the warning clears itself instead of pinning forever.
+  const suspicious = status.lastSuspiciousAt > status.lastCaptureAt;
+  const pollFailed = status.lastPollFailedAt > 0;
+  const needsAttention = !status.authorized || suspicious || pollFailed;
   if (pending.length === 0 && !needsAttention) return null;
 
   return (
@@ -95,7 +127,17 @@ export const SparkasseInbox: React.FC<{
           </GhostButton>
         )}
 
-        {status.lastSuspiciousAt > 0 && (
+        {authError && <span className="text-label text-negative">{authError}</span>}
+
+        {pollFailed && (
+          <div className="p-3 rounded-field bg-surface-container-highest/30">
+            <span className="text-label text-negative">
+              Die letzte Prüfung ist fehlgeschlagen — es werden zurzeit keine Umsätze erfasst.
+            </span>
+          </div>
+        )}
+
+        {suspicious && (
           <div className="p-3 rounded-field bg-surface-container-highest/30">
             <span className="text-label text-negative">
               Eine Kontowecker-Mail wurde nicht gelesen — der Wortlaut hat sich

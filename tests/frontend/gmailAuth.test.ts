@@ -99,6 +99,18 @@ describe('gmailFetch', () => {
     expect(init.headers.Authorization).toBe('Bearer fresh2');
   });
 
+  // The contract is that callers branch on a value. A network that disappears
+  // mid-session makes fetch throw, and an escaping rejection wedges the inbox
+  // component instead of showing it a failed poll.
+  it('returns null when the Gmail call itself throws', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ access_token: 'fresh', expires_in: 3600 }) })
+      .mockRejectedValueOnce(new Error('network unreachable'));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(gmailFetch('/messages')).resolves.toBeNull();
+  });
+
   it('drops the stored token when the grant is revoked', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: false,
@@ -109,6 +121,36 @@ describe('gmailFetch', () => {
 
     await expect(gmailFetch('/messages')).resolves.toBeNull();
     expect(secureStore.remove).toHaveBeenCalled();
+  });
+});
+
+describe('authorize', () => {
+  /**
+   * Both parameters are load-bearing and silent when lost. Without
+   * `prompt=consent` Google withholds the refresh token on any
+   * re-authorization, leaving a session that dies in an hour with no error to
+   * explain it; without S256 the PKCE exchange is not the one this client is
+   * registered for.
+   *
+   * The client id is read at module load, so the module is re-imported here
+   * with one stubbed in — the project has none configured yet.
+   */
+  it('asks for consent and PKCE S256 in the authorization URL', async () => {
+    vi.stubEnv('VITE_GOOGLE_ANDROID_CLIENT_ID', 'test-android-client-id');
+    vi.resetModules();
+
+    const { authorize } = await import('../../services/gmailAuth');
+    // Never resolves: the consent flow waits for a callback that never arrives.
+    void authorize();
+
+    const { Browser } = await import('@capacitor/browser');
+    await vi.waitFor(() => expect(Browser.open).toHaveBeenCalled());
+
+    const { url } = vi.mocked(Browser.open).mock.calls[0][0] as { url: string };
+    expect(url).toContain('prompt=consent');
+    expect(url).toContain('code_challenge_method=S256');
+
+    vi.unstubAllEnvs();
   });
 });
 

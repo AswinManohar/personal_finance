@@ -160,11 +160,21 @@ export const gmailFetch = async (path: string): Promise<Response | null> => {
   let token = await accessToken();
   if (!token) return null;
 
-  const call = (bearer: string) =>
-    fetch(`${GMAIL_BASE}${path}`, { headers: { Authorization: `Bearer ${bearer}` } });
+  // A dropped network throws rather than resolving, and the contract above is
+  // that callers branch on a value. Letting it escape would reject pollSparkasse
+  // and leave the inbox component wedged mid-refresh.
+  const call = async (bearer: string): Promise<Response | null> => {
+    try {
+      return await fetch(`${GMAIL_BASE}${path}`, {
+        headers: { Authorization: `Bearer ${bearer}` },
+      });
+    } catch {
+      return null;
+    }
+  };
 
   let response = await call(token);
-  if (response.status === 401) {
+  if (response?.status === 401) {
     cachedAccess = null;
     token = await refresh();
     if (!token) return null;

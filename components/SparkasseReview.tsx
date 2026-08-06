@@ -48,7 +48,10 @@ export const SparkasseReview: React.FC<{
   const addable = isAddable(line.kind);
 
   const save = async () => {
-    const value = Number(amount);
+    // Same parsing as the Advanzia sheet: this UI is German, so a comma decimal
+    // separator is the ordinary way to type an amount and `Number` would make
+    // NaN of it. Non-finite and non-positive are still refused.
+    const value = parseFloat(amount.replace(',', '.'));
     if (!Number.isFinite(value) || value <= 0) {
       setError('Bitte einen gültigen Betrag eingeben.');
       return;

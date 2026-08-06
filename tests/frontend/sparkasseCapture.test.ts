@@ -165,6 +165,30 @@ describe('pollSparkasse', () => {
     expect(readSparkassePending()).toHaveLength(0);
   });
 
+  // The envelope gate is not the only way a mail can go unread. Sender and
+  // subject can still match while the body's line shape has changed, and that
+  // yields an EMPTY LIST rather than a rejection — no pending item, and the
+  // message marked seen, so it is never fetched again. Silent and permanent
+  // unless it raises the same alarm as a rejected one.
+  it('raises the suspicious flag when a gate-passing mail parses no lines', async () => {
+    respondWith([
+      message('m13', ['Pravallik. -1,00 EUR'], 'Ihr Umsatzwecker: 1 neuer Umsatz', '1786027523000'),
+    ]);
+    await pollSparkasse();
+    expect(readSparkasseStatus().lastSuspiciousAt).toBeGreaterThan(0);
+    expect(readSparkassePending()).toHaveLength(0);
+  });
+
+  it('records a poll that cannot reach the mailbox, and clears it once one does', async () => {
+    gmailFetch.mockResolvedValue(null);
+    await pollSparkasse();
+    expect(readSparkasseStatus().lastPollFailedAt).toBeGreaterThan(0);
+
+    respondWith([message('m14', ['EDEKA: -20,00 EUR'], 'Ihr Umsatzwecker: 1 neuer Umsatz', '1786027523000')]);
+    await pollSparkasse();
+    expect(readSparkasseStatus().lastPollFailedAt).toBe(0);
+  });
+
   it('returns the existing inbox untouched when Gmail is unreachable', async () => {
     respondWith([message('m11', ['EDEKA: -20,00 EUR'], 'Ihr Umsatzwecker: 1 neuer Umsatz', '1786027523000')]);
     await pollSparkasse();

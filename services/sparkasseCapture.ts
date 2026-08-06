@@ -58,6 +58,14 @@ export interface SparkasseStatus {
   lastCaptureAt: number;
   /** Kontowecker mail quoting a euro amount that failed the gate — the tell that wording changed. */
   lastSuspiciousAt: number;
+  /**
+   * Last poll that could not reach the mailbox. Zero once one does.
+   *
+   * Without it a still-authorized but permanently failing poller is
+   * indistinguishable from a quiet month: pending stays empty, nothing is
+   * suspicious, and the card renders nothing at all.
+   */
+  lastPollFailedAt: number;
   pending: number;
 }
 
@@ -89,6 +97,7 @@ export const readSparkasseStatus = (): SparkasseStatus => ({
   lastPolledAt: 0,
   lastCaptureAt: 0,
   lastSuspiciousAt: 0,
+  lastPollFailedAt: 0,
   ...read<Partial<SparkasseStatus>>(STATUS_KEY, {}),
   pending: readSparkassePending().length,
 });
@@ -115,12 +124,17 @@ export const pollSparkasse = async (): Promise<SparkasseItem[]> => {
   );
 
   const listResponse = await gmailFetch(`/messages?q=${query}&maxResults=50`);
-  if (!listResponse?.ok) return readSparkassePending();
+  if (!listResponse?.ok) {
+    // No authorization, no network, or Gmail refusing us. Recorded because the
+    // inbox is empty either way and only this tells the two apart.
+    patchStatus({ lastPollFailedAt: Date.now() });
+    return readSparkassePending();
+  }
 
   const list = await listResponse.json().catch(() => null);
   const ids: string[] = (list?.messages ?? []).map((m: { id: string }) => m.id);
 
-  patchStatus({ lastPolledAt: Date.now() });
+  patchStatus({ lastPolledAt: Date.now(), lastPollFailedAt: 0 });
   if (ids.length === 0) return readSparkassePending();
 
   const pending = readSparkassePending();
@@ -153,10 +167,15 @@ export const pollSparkasse = async (): Promise<SparkasseItem[]> => {
     if (!body) continue;
 
     const lines = parseKontoweckerEmail(sender, subject, body);
-    if (lines === null) {
-      // Failed the envelope gate. If it quotes a euro amount, the wording has
-      // probably changed and capture has gone quietly deaf — the one failure
-      // mode that looks exactly like "no transactions this week".
+    // Two ways a mail can yield no transactions, and both are the same deafness:
+    // null failed the envelope gate, [] passed it and no line inside parsed. The
+    // empty array is the more dangerous of the two — `seen.add` has already run
+    // and the watermark is about to advance, so an unflagged [] means the mail
+    // is never fetched again and its transactions are gone for good. If it
+    // quotes a euro amount, the wording has probably changed and capture has
+    // gone quietly deaf — the one failure mode that looks exactly like "no
+    // transactions this week".
+    if (lines === null || lines.length === 0) {
       if (looksTransactional(body)) suspicious = true;
       continue;
     }
