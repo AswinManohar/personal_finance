@@ -34,6 +34,18 @@
                 <data android:scheme="cashflow" android:host="review" />
             </intent-filter>
 
+            <!-- OAuth redirect for Gmail authorization. A filter of its own, not
+                 another <data> in the block above: Android combines every <data>
+                 element inside one filter across its attributes, so adding this
+                 scheme there would inherit android:host="review" and the
+                 hostless redirect would never match. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="com.aswinmanohar.cashflow" />
+            </intent-filter>
+
         </activity>
 
         <!-- Reads Advanzia's transaction notifications. Bound by the system, not

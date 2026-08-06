@@ -7,6 +7,7 @@ import {
 } from './ui';
 import { newId } from '../utils/id';
 import { AdvanziaInbox } from './AdvanziaInbox';
+import { SparkasseInbox } from './SparkasseInbox';
 
 interface ExpensesProps {
   expenses: Expense[];
@@ -209,6 +210,7 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
         focusKey={captureFocusKey}
         onFocusHandled={onCaptureFocusHandled}
       />
+      <SparkasseInbox onAddExpense={handleAddCaptured} />
 
       {/* ── Breakdown ── */}
       <Card>
