@@ -208,6 +208,38 @@ describe('AdvanziaInbox', () => {
     expect(screen.getByRole('button', { name: /add expense/i })).toBeEnabled();
   });
 
+  /**
+   * Regression, found on the device: the deep-link listener used to live in
+   * this component, so tapping a capture notification did nothing unless the
+   * Expenses tab already happened to be mounted — Capacitor logged
+   * "No listeners found for event appUrlOpen" and the tap was swallowed. App
+   * now owns the listener and hands the key down through this prop.
+   */
+  it('opens the review sheet for a key handed down from a notification tap', async () => {
+    state.pending = [item()];
+    const onFocusHandled = vi.fn();
+    render(
+      <AdvanziaInbox
+        onAddExpense={vi.fn()}
+        focusKey={item().key}
+        onFocusHandled={onFocusHandled}
+      />,
+    );
+
+    // The sheet, not just the list row — the raw notification body only renders
+    // inside the review sheet.
+    expect(await screen.findByText(/wurde erfolgreich ausgeführt/i)).toBeInTheDocument();
+    expect(onFocusHandled).toHaveBeenCalled();
+  });
+
+  it('ignores a focus key whose capture is not in the inbox', async () => {
+    state.pending = [item()];
+    render(<AdvanziaInbox onAddExpense={vi.fn()} focusKey="no-such-key" />);
+
+    await screen.findByText('MEGA LIMITED');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
   it('dismisses a capture without creating an expense', async () => {
     state.pending = [item()];
     const onAddExpense = vi.fn();

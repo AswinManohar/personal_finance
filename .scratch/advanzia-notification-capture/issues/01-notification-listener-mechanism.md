@@ -211,6 +211,20 @@ which governs Do Not Disturb policy access, a different special permission entir
 on every app resume/onboarding-screen mount to reflect revocation, since the user can turn the
 toggle off at any time from system settings with no callback to the app.
 
+> **CORRECTION from the device, 2026-08-06.** The paragraph below is wrong in its central
+> claim. Sideloading does not remove obstacles here — it *adds* the biggest one. Because the APK
+> is installed by `adb` with `installerPackageName=null`, Android 13+ classes notification-listener
+> access as a **restricted setting** and greys the toggle out entirely; the grant is impossible
+> until the user does:
+>
+>     Settings → Apps → Cashflow → ⋮ (three dots) → Allow restricted settings
+>
+> Restricted settings exists specifically to stop sideloaded apps silently gaining
+> notification-listener and accessibility access, so it targets exactly this install path.
+> Anyone reinstalling the app will hit this again. Confirmed on-device: the toggle would not
+> turn on, and `settings get secure enabled_notification_listeners` showed only Google services
+> until restricted settings were unlocked.
+
 Play-store caveats: none apply — this is explicitly a sideloaded app per the ticket. The only
 things worth flagging as *not* Play-policy issues but still real Android behavior: (a) notification
 access is a sensitive permission Android surfaces with an extra confirmation dialog/warning copy in

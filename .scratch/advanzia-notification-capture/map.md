@@ -66,10 +66,16 @@ Standing preferences for this effort:
 
 ## Not yet specified
 
-- **On-device verification** — everything is built, tested and the APK assembles, but nothing has
-  run on the phone. Unproven: that the listener receives Advanzia notifications once access is
-  granted, that the deep link opens the review sheet, that the listener survives being killed,
-  and that the nag alarm fires. This is the only work left before the destination is reached.
+- **On-device verification** — partially done 2026-08-06 on the Pixel 6 Pro. **Verified:**
+  notification access granted and the service *bound* (`INotificationListener$Stub$Proxy`);
+  `POST_NOTIFICATIONS` granted; all three channels created with the intended importances
+  (health 4, captured 3, reminders 2); the plugin registers and `getPending`/`getStatus` answer;
+  the `cashflow://` deep link resolves to MainActivity, reaches a listener, and switches to the
+  Expenses tab; the inbox correctly renders *nothing* when idle and healthy. Two real defects
+  found and fixed — the restricted-settings gate (ticket 01) and the dead deep link (ticket 03).
+  **Still unproven, and only a real card payment can prove it:** that an actual Advanzia
+  notification is captured, parsed and queued; that the "tap to review" notification opens the
+  sheet on a live capture; that the listener survives being killed; that the 4-hour nag fires.
 
 <!-- The learned merchant-map schema and guess prompt graduated during the build: utils/merchantMemory.ts
      and api/routers/merchants.py. Not a decision that needed its own ticket in the end. -->

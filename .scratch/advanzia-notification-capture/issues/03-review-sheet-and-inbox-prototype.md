@@ -80,3 +80,23 @@ because the failure mode is silence, an empty inbox proves nothing — so the he
 
 Deviation from the ticket as written: no `?variant=` switcher and no throwaway branch — the user
 retyped this from `prototype` to `task` mid-session.
+
+### Bug found on the device: the deep link was dead
+
+The first build put the `appUrlOpen` listener inside `AdvanziaInbox`, to avoid touching
+`App.tsx`. That was a bad trade and the phone proved it: the app opens on the **Savings** tab, so
+the inbox was not mounted, no listener was ever registered, and firing
+`cashflow://review?key=…` produced
+
+    Capacitor/AppPlugin: Notifying listeners for event appUrlOpen
+    Capacitor/AppPlugin: No listeners found for event appUrlOpen
+
+i.e. tapping a capture notification did **nothing at all** unless you already happened to be
+looking at the Expenses tab. No test caught it, because in jsdom the component under test is
+always mounted.
+
+Fixed by moving the listener to `App.tsx`, which owns tab state: it parses the key, calls
+`navigate('expenses')`, and passes the key down through `Expenses` to the inbox as `focusKey`.
+Verified on-device — with the inbox unmounted, the listener is registered, the event is
+delivered to it, and `AdvanziaCapture` plugin calls appear as the Expenses tab mounts.
+Regression covered by two tests in `tests/frontend/AdvanziaInbox.test.tsx`.

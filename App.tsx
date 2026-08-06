@@ -17,6 +17,8 @@ import { MoreSheet } from './components/shell/MoreSheet';
 import { Toast, useToast } from './components/shell/Toast';
 import { ALL_DESTINATIONS } from './components/shell/navigation';
 import { mergePulledExpenses } from './utils/mergeExpenses';
+import { captureKeyFromUrl } from './services/advanziaCapture';
+import { Capacitor } from '@capacitor/core';
 import { AlertTriangle } from 'lucide-react';
 import { pullFromCloud, pushToCloud, isNetworkError, supabase } from './services/supabaseService';
 import { signOut, initAuth } from './services/auth';
@@ -264,6 +266,41 @@ const AppMain: React.FC = () => {
     return () => document.removeEventListener('visibilitychange', onVisible);
   }, [performCloudPull]);
 
+  /**
+   * Tapping a captured-transaction notification opens `cashflow://review?key=…`.
+   *
+   * This has to live at app level, not inside the Expenses tab. It was in
+   * AdvanziaInbox originally, and on-device testing showed the consequence: the
+   * app opens on the Savings tab, so the inbox was not mounted, no listener was
+   * registered, and Capacitor logged "No listeners found for event appUrlOpen"
+   * — the notification tap did nothing at all unless you happened to already be
+   * looking at Expenses.
+   *
+   * `getLaunchUrl` covers the cold-start case, where the event has already
+   * fired by the time React mounts.
+   */
+  const [captureFocusKey, setCaptureFocusKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    let remove: (() => void) | undefined;
+
+    const focus = (url: string | undefined) => {
+      const key = url ? captureKeyFromUrl(url) : null;
+      if (!key) return;
+      setCaptureFocusKey(key);
+      navigate('expenses');
+    };
+
+    void import('@capacitor/app').then(async ({ App }) => {
+      const handle = await App.addListener('appUrlOpen', ({ url }) => focus(url));
+      remove = () => void handle.remove();
+      focus((await App.getLaunchUrl())?.url);
+    });
+
+    return () => remove?.();
+  }, [navigate]);
+
   // Android/browser back: close the More sheet, then fall back to the Savings
   // Hub, then let the platform have the event (which exits the app).
   //
@@ -412,7 +449,7 @@ const AppMain: React.FC = () => {
   const renderContent = () => {
     const syncCallback = activeUserKey ? triggerSync : undefined;
     switch (activeTab) {
-      case 'expenses': return <Expenses expenses={expenses} setExpenses={setExpenses} income={income} setIncome={setIncome} onSync={syncCallback} onExpenseDeleted={recordExpenseDeletion} />;
+      case 'expenses': return <Expenses expenses={expenses} setExpenses={setExpenses} income={income} setIncome={setIncome} onSync={syncCallback} onExpenseDeleted={recordExpenseDeletion} captureFocusKey={captureFocusKey} onCaptureFocusHandled={() => setCaptureFocusKey(null)} />;
       case 'savings': return <SavingsDashboard portfolio={portfolio} stocks={stocks} netWorthData={netWorthData} setNetWorthData={setNetWorthData} onSync={syncCallback || (async () => { })} expenses={expenses} emergencyFund={emergencyFund} setEmergencyFund={setEmergencyFund} onNavigate={navigate} />;
       case 'investment': return <InvestmentCalculator investment={investment} setInvestment={setInvestment} onSync={syncCallback} />;
       case 'goal': return <SavingsGoal goal={goal} setGoal={setGoal} onSync={syncCallback} />;

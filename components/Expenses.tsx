@@ -16,6 +16,9 @@ interface ExpensesProps {
   onSync?: (overrides?: any) => Promise<void>;
   /** Records an explicit deletion and returns the resulting tombstone log. */
   onExpenseDeleted?: (id: string) => string[];
+  /** Capture key from a notification tap, routed down from App's deep-link handler. */
+  captureFocusKey?: string | null;
+  onCaptureFocusHandled?: () => void;
 }
 
 type TimeSpan = '7d' | '30d' | '90d' | 'all';
@@ -29,7 +32,7 @@ const CATEGORY_COLORS: Record<string, { stroke: string; bg: string; text: string
   [ExpenseCategory.OTHER]:         { stroke: '#ccc5c0', bg: 'bg-secondary',     text: 'text-secondary' },
 };
 
-export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, income, setIncome, onSync, onExpenseDeleted }) => {
+export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, income, setIncome, onSync, onExpenseDeleted, captureFocusKey, onCaptureFocusHandled }) => {
   const [newName, setNewName] = useState('');
   const [newAmount, setNewAmount] = useState('');
   const [newCategory, setNewCategory] = useState<ExpenseCategory>(ExpenseCategory.FOOD);
@@ -201,7 +204,11 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
       {/* ── Captured from notifications ──
           Renders nothing at all when there is nothing waiting and capture is
           healthy, so the tab is unchanged for anyone not using it. */}
-      <AdvanziaInbox onAddExpense={handleAddCaptured} />
+      <AdvanziaInbox
+        onAddExpense={handleAddCaptured}
+        focusKey={captureFocusKey}
+        onFocusHandled={onCaptureFocusHandled}
+      />
 
       {/* ── Breakdown ── */}
       <Card>

@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Capacitor } from '@capacitor/core';
 import { Expense, ExpenseCategory } from '../types';
 import {
   Card, EmptyState, Field, FormError, GhostButton, Input, ListRow, Pill,
@@ -7,7 +6,7 @@ import {
 } from './ui';
 import { newId } from '../utils/id';
 import {
-  captureKeyFromUrl, drainPending, getCaptureStatus, guessMerchant, learnMerchant,
+  drainPending, getCaptureStatus, guessMerchant, learnMerchant,
   openBatterySettings, openListenerSettings, readPending, recallLocalMerchant,
   requestNotificationPermission, resolvePending,
   type CaptureStatus, type PendingItem,
@@ -59,11 +58,17 @@ const parsedMerchant = (item: PendingItem): string | null =>
 
 export const AdvanziaInbox: React.FC<{
   onAddExpense: (expense: Expense) => Promise<void>;
-}> = ({ onAddExpense }) => {
+  /**
+   * Capture key from a notification tap. Owned by App, not by this component:
+   * the deep-link listener has to be registered even when this tab is not
+   * mounted, which it usually is not — the app opens on Savings.
+   */
+  focusKey?: string | null;
+  onFocusHandled?: () => void;
+}> = ({ onAddExpense, focusKey, onFocusHandled }) => {
   const [pending, setPending] = useState<PendingItem[]>(() => readPending());
   const [status, setStatus] = useState<CaptureStatus | null>(null);
   const [reviewing, setReviewing] = useState<PendingItem | null>(null);
-  const [focusKey, setFocusKey] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setPending(await drainPending());
@@ -82,44 +87,18 @@ export const AdvanziaInbox: React.FC<{
     return () => document.removeEventListener('visibilitychange', onVisible);
   }, [refresh]);
 
-  /**
-   * A notification tap arrives as `cashflow://review?key=…`, which Capacitor's
-   * Bridge turns into `appUrlOpen` on its own — no custom plugin event in the
-   * tap path. `getLaunchUrl` covers the cold-start case, where the app was not
-   * running when the notification was tapped and the event has already fired.
-   */
-  useEffect(() => {
-    if (!Capacitor.isNativePlatform()) return;
-    let remove: (() => void) | undefined;
-
-    void import('@capacitor/app').then(async ({ App }) => {
-      const handle = await App.addListener('appUrlOpen', ({ url }) => {
-        const key = captureKeyFromUrl(url);
-        if (key) {
-          setFocusKey(key);
-          void refresh();
-        }
-      });
-      remove = () => void handle.remove();
-
-      const launch = await App.getLaunchUrl();
-      const key = launch?.url ? captureKeyFromUrl(launch.url) : null;
-      if (key) setFocusKey(key);
-    });
-
-    return () => remove?.();
-  }, [refresh]);
-
-  // Opening the sheet waits for the drain: on a cold start the deep link is
-  // known before the capture it points at has been read out of the native queue.
+  // A tap arrives while this tab may not even be mounted, so App owns the
+  // listener and hands the key down. Opening the sheet still waits for the
+  // drain: on a cold start the key is known before the capture it points at has
+  // been read out of the native queue.
   useEffect(() => {
     if (!focusKey) return;
     const match = pending.find(p => p.key === focusKey);
     if (match) {
       setReviewing(match);
-      setFocusKey(null);
+      onFocusHandled?.();
     }
-  }, [focusKey, pending]);
+  }, [focusKey, pending, onFocusHandled]);
 
   const dismiss = (key: string) => {
     setPending(resolvePending(key));
