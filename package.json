@@ -18,6 +18,7 @@
   "dependencies": {
     "@capacitor/android": "^7.6.8",
     "@capacitor/app": "^7.1.2",
+    "@capacitor/browser": "^7.0.5",
     "@capacitor/core": "^7.6.8",
     "@capacitor/filesystem": "^7.1.8",
     "@capacitor/keyboard": "^7.0.6",
