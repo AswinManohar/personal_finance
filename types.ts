@@ -122,7 +122,10 @@ export interface Loan {
 }
 
 export interface EmergencyFundState {
-  targetMonths: number; // 3–6 months of essential costs
+  /** What the fund should hold, in €. Entered by hand. */
+  targetAmount: number;
+  /** What the fund holds today, in €. Entered by hand; a slice of accumulatedSavings. */
+  currentAmount: number;
 }
 
 // 'stmt' is Statement Review. It used to render inside the Expenses screen; the

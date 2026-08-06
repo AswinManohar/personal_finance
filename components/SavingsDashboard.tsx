@@ -1,9 +1,9 @@
 
 import React, { useMemo, useState } from 'react';
 import { ActiveTab, NetWorthState, PortfolioAsset, Stock, Expense, EmergencyFundState } from '../types';
-import { monthlyEssentials, runwayMonths, emergencyFundTarget, monthsToTarget, monthlyAmount } from '../utils/finance';
+import { monthlyAmount } from '../utils/finance';
 import {
-  AreaChart, AxisLabels, Card, ChipGroup, Donut, Dot, EmptyState, FieldLabel, Input, ListRow,
+  AreaChart, AxisLabels, Card, Donut, Dot, EmptyState, FieldLabel, Input, ListRow,
   Pill, PrimaryButton, ProgressBar, SectionLabel, StackedBar, StatBlock, FormError,
 } from './ui';
 
@@ -57,17 +57,24 @@ export const SavingsDashboard: React.FC<SavingsDashboardProps> = ({
   const otherAssets = num(netWorthData.otherAssets);
   const monthlySavings = num(netWorthData.monthlyRecurringSavings);
 
-  // Emergency fund & runway
-  const targetMonths = emergencyFund?.targetMonths ?? 3;
-  const essentials = monthlyEssentials(expenses);
-  const runway = runwayMonths(cash, essentials);
-  const target = emergencyFundTarget(essentials, targetMonths);
-  const etaMonths = monthsToTarget(cash, target, monthlySavings);
+  // Emergency fund. Both figures are typed in; nothing is inferred from the
+  // expense list. The fund is a carve-out of accumulatedSavings rather than a
+  // separate asset, so totalAssets below is deliberately untouched.
+  const efCurrent = num(emergencyFund?.currentAmount);
+  const efTarget = num(emergencyFund?.targetAmount);
 
-  const runwayLabel =
-    runway === null ? '—'
-    : runway < 1 ? `~${Math.round(runway * 4.345)} weeks`
-    : `${runway.toFixed(1)} months`;
+  const handleEmergencyFund = (
+    field: 'currentAmount' | 'targetAmount',
+    value: string
+  ) => {
+    const next: EmergencyFundState = {
+      targetAmount: efTarget,
+      currentAmount: efCurrent,
+      [field]: parseFloat(value) || 0,
+    };
+    setEmergencyFund?.(next);
+    onSync({ emergencyFund: next });
+  };
 
   // Active subscriptions = recurring expenses, most expensive (per month) first
   const subscriptions = useMemo(
@@ -75,27 +82,6 @@ export const SavingsDashboard: React.FC<SavingsDashboardProps> = ({
     [expenses]
   );
   const subscriptionTotal = subscriptions.reduce((s, e) => s + monthlyAmount(e), 0);
-
-  // Split across the figure and its caption: the design gives "Fully Funded" a
-  // 25px slot, which "~2 months (Sep 2026)" would overflow on a phone.
-  const etaLabel =
-    etaMonths === null ? '—'
-    : etaMonths === 0 ? 'Funded'
-    : `~${etaMonths} month${etaMonths === 1 ? '' : 's'}`;
-
-  const etaSub = (() => {
-    if (etaMonths === null) return monthlySavings > 0 ? 'target not set' : 'set a monthly savings target';
-    if (etaMonths === 0) return 'target reached';
-    const d = new Date();
-    d.setMonth(d.getMonth() + etaMonths);
-    return `by ${d.toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}`;
-  })();
-
-  const handleTargetMonths = (m: number) => {
-    const next: EmergencyFundState = { targetMonths: m };
-    setEmergencyFund?.(next);
-    onSync({ emergencyFund: next });
-  };
 
   // Total assets = Mutual Funds + Stocks + Gold + Cash + Other Assets
   const totalAssets = portfolioValue + stockValue + gold + cash + otherAssets;
@@ -167,7 +153,7 @@ export const SavingsDashboard: React.FC<SavingsDashboardProps> = ({
 
 
   const pct = (value: number, total: number) => (total > 0 ? (value / total) * 100 : 0);
-  const efPct = pct(cash, target);
+  const efPct = pct(efCurrent, efTarget);
 
   return (
     <>
@@ -188,50 +174,44 @@ export const SavingsDashboard: React.FC<SavingsDashboardProps> = ({
         </div>
       </Card>
 
-      {/* ── Emergency fund & runway ── */}
+      {/* ── Emergency fund ── */}
       <Card>
-        <div className="flex justify-between items-center gap-2 mb-4">
-          <SectionLabel>Emergency Fund</SectionLabel>
-          <ChipGroup
-            aria-label="Emergency fund target in months"
-            value={targetMonths}
-            onChange={handleTargetMonths}
-            options={[3, 4, 5, 6].map(m => ({ value: m, label: `${m}M` }))}
-          />
+        <SectionLabel className="mb-4">Emergency Fund</SectionLabel>
+
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <div>
+            <FieldLabel className="mb-2">Current In Fund</FieldLabel>
+            <Input
+              type="number"
+              prefix="€"
+              aria-label="Current emergency fund amount"
+              value={emergencyFund?.currentAmount || ''}
+              onChange={e => handleEmergencyFund('currentAmount', e.target.value)}
+              placeholder="0"
+            />
+          </div>
+          <div>
+            <FieldLabel className="mb-2">Target</FieldLabel>
+            <Input
+              type="number"
+              prefix="€"
+              aria-label="Emergency fund target amount"
+              value={emergencyFund?.targetAmount || ''}
+              onChange={e => handleEmergencyFund('targetAmount', e.target.value)}
+              placeholder="0"
+            />
+          </div>
         </div>
 
-        {essentials <= 0 ? (
+        {efCurrent === 0 && efTarget === 0 ? (
           <EmptyState icon="shield">
-            Mark your recurring expenses as "Essential" in the Expenses tab to track your runway and
-            emergency fund target.
+            Enter what your emergency fund holds today and what you want it to hold.
           </EmptyState>
         ) : (
           <>
-            {runway !== null && runway < 1 && (
-              <div className="mb-4 p-3 rounded-field bg-[rgba(242,107,107,0.1)] border border-negative/20">
-                <p className="text-label font-bold text-negative">
-                  Critical: less than one month of essential costs in cash.
-                </p>
-              </div>
-            )}
-            <div className="grid grid-cols-2 gap-3 mb-4">
-              <StatBlock
-                label="Runway"
-                size="num-sm"
-                value={runwayLabel}
-                sub={`${fmt(essentials)} essentials / mo`}
-              />
-              <StatBlock
-                label="Fully Funded"
-                size="num-sm"
-                tone={etaMonths === null ? 'neutral' : 'positive'}
-                value={etaLabel}
-                sub={etaSub}
-              />
-            </div>
             <ProgressBar percent={efPct} className="mb-2" />
             <p className="text-label text-secondary tabular-nums">
-              {fmt(cash)} of {fmt(target)} ({Math.min(100, Math.round(efPct))}%)
+              {fmt(efCurrent)} of {fmt(efTarget)} ({Math.min(100, Math.round(efPct))}%)
             </p>
           </>
         )}

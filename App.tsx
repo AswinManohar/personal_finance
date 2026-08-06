@@ -100,7 +100,7 @@ const AppMain: React.FC = () => {
   const [netWorthData, setNetWorthData] = usePersistedState<NetWorthState>('networth', { goldInvestment: 0, otherAssets: 0, remainingLoan: 0, monthlyRecurringSavings: 0, accumulatedSavings: 0 });
   const [history, setHistory] = usePersistedState<SavingsHistoryRecord[]>('savings_history', []);
   const [fire, setFire] = usePersistedState<FIREState>('fire', { currentAge: 30, annualExpenses: 30000, currentNetWorth: 50000, annualSavings: 12000, annualReturn: 7, withdrawalRate: 4 });
-  const [emergencyFund, setEmergencyFund] = usePersistedState<EmergencyFundState>('emergency_fund', { targetMonths: 3 });
+  const [emergencyFund, setEmergencyFund] = usePersistedState<EmergencyFundState>('emergency_fund', { targetAmount: 0, currentAmount: 0 });
   const [loans, setLoans] = usePersistedState<Loan[]>('loans', []);
   // Deletions must be carried explicitly to the cloud. Absence from `expenses`
   // is not proof of deletion — the Telegram bot writes rows this client has not

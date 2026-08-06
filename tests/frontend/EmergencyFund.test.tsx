@@ -2,52 +2,62 @@ import React from 'react';
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { SavingsDashboard } from '../../components/SavingsDashboard';
-import { Expense, ExpenseCategory, NetWorthState } from '../../types';
+import { NetWorthState, EmergencyFundState } from '../../types';
 
 const noopSync = async () => {};
 
-const essentialExpenses: Expense[] = [
-  { id: '1', name: 'Rent', amount: 1500, category: ExpenseCategory.HOUSING, isRecurring: true, recurringFrequency: 'monthly', date: '2026-07-01', isEssential: true },
-  { id: '2', name: 'Home loans', amount: 745, category: ExpenseCategory.HOUSING, isRecurring: true, recurringFrequency: 'monthly', date: '2026-07-01', isEssential: true },
-  { id: '3', name: 'Streaming', amount: 30, category: ExpenseCategory.ENTERTAINMENT, isRecurring: true, recurringFrequency: 'monthly', date: '2026-07-01' },
-];
-
-const renderHub = (expenses: Expense[] = essentialExpenses) =>
+const renderHub = (
+  emergencyFund: EmergencyFundState = { currentAmount: 2192, targetAmount: 6735 },
+  netWorthData: Partial<NetWorthState> = { accumulatedSavings: 5000 }
+) =>
   render(
     <SavingsDashboard
       portfolio={[]}
       stocks={[]}
-      netWorthData={{ accumulatedSavings: 2192, monthlyRecurringSavings: 2900 } as NetWorthState}
+      netWorthData={netWorthData as NetWorthState}
       setNetWorthData={() => {}}
       onSync={noopSync}
-      expenses={expenses}
-      emergencyFund={{ targetMonths: 3 }}
+      expenses={[]}
+      emergencyFund={emergencyFund}
       setEmergencyFund={() => {}}
     />
   );
 
-describe('Emergency fund & runway card', () => {
-  it('shows runway in weeks and a critical warning when below one month', () => {
+describe('Emergency fund card', () => {
+  it('renders both amounts as editable fields', () => {
     renderHub();
-    // €2,192 / €2,245 ≈ 0.98 months → ~4 weeks
-    expect(screen.getByText('~4 weeks')).toBeTruthy();
-    expect(screen.getByText(/Critical: less than one month/)).toBeTruthy();
+    const current = screen.getByLabelText('Current emergency fund amount') as HTMLInputElement;
+    const target = screen.getByLabelText('Emergency fund target amount') as HTMLInputElement;
+    expect(current.value).toBe('2192');
+    expect(target.value).toBe('6735');
   });
 
-  it('computes the target from essential expenses only (3 × €2,245 = €6,735)', () => {
+  it('shows progress toward the manual target (2192 / 6735 = 33%)', () => {
     renderHub();
-    expect(document.body.textContent).toContain('€6,735');
+    expect(document.body.textContent).toContain('€2,192 of €6,735');
+    expect(document.body.textContent).toContain('33%');
   });
 
-  it('projects the funded ETA from the monthly savings target', () => {
+  it('no longer asks the user to tag essential expenses', () => {
     renderHub();
-    // ceil((6,735 − 2,192) / 2,900) = 2
-    expect(document.body.textContent).toContain('~2 months');
+    expect(document.body.textContent).not.toContain('Essential');
   });
 
-  it('shows guidance instead of NaN when no essentials are marked', () => {
-    renderHub([]);
-    expect(screen.getByText(/Mark your recurring expenses/)).toBeTruthy();
+  it('shows an empty state when neither amount is set', () => {
+    renderHub({ currentAmount: 0, targetAmount: 0 });
+    expect(screen.getByText(/Enter what your emergency fund holds/)).toBeTruthy();
+    expect(document.body.textContent).not.toContain('NaN');
+  });
+
+  it('does not divide by zero when only the current amount is set', () => {
+    renderHub({ currentAmount: 2192, targetAmount: 0 });
+    expect(document.body.textContent).not.toContain('NaN');
+    expect(document.body.textContent).toContain('0%');
+  });
+
+  it('degrades to zeros on legacy { targetMonths } state without migration code', () => {
+    renderHub({ targetMonths: 3 } as unknown as EmergencyFundState);
+    expect(screen.getByText(/Enter what your emergency fund holds/)).toBeTruthy();
     expect(document.body.textContent).not.toContain('NaN');
   });
 
