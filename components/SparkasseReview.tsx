@@ -4,6 +4,7 @@ import { isAddable } from '../utils/sparkasseEmail';
 import { recallLocalMerchant, learnMerchant } from '../services/advanziaCapture';
 import { newId } from '../utils/id';
 import type { SparkasseItem } from '../services/sparkasseCapture';
+import { Field, FormError, GhostButton, Input, PrimaryButton, SectionLabel, Select } from './ui';
 
 /**
  * Turning a captured Kartenumsatz into an expense.
@@ -75,103 +76,93 @@ export const SparkasseReview: React.FC<{
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center bg-black/50">
-      <div className="w-full sm:max-w-md bg-white dark:bg-slate-900 rounded-t-2xl sm:rounded-2xl p-5 max-h-[90vh] overflow-y-auto">
-        <h2 className="text-lg font-semibold mb-1">
-          {addable ? 'Umsatz prüfen' : 'Nur zur Information'}
-        </h2>
+    <>
+      <div aria-hidden="true" className="fixed inset-0 bg-[rgba(13,14,18,0.6)] z-40" />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={addable ? 'Umsatz prüfen' : 'Nur zur Information'}
+        className="fixed left-0 right-0 bottom-0 md:left-1/2 md:right-auto md:bottom-auto md:top-1/2 md:w-[420px] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-card z-50 bg-surface-container rounded-t-sheet px-4 pt-4 pb-6 app-sheet-safe shadow-[0_-8px_32px_rgba(0,0,0,0.4)] max-h-[85%] overflow-y-auto app-scroll flex flex-col gap-3"
+      >
+        <div className="w-9 h-1 rounded-full bg-outline-variant mx-auto md:hidden" aria-hidden="true" />
+
+        <SectionLabel>{addable ? 'Umsatz prüfen' : 'Nur zur Information'}</SectionLabel>
 
         {line.kind === 'incoming' && (
-          <p className="text-sm text-slate-500 mb-3">
+          <p className="text-label text-secondary opacity-70">
             Geldeingang — wird nicht als Ausgabe erfasst.
           </p>
         )}
         {line.kind === 'settlement' && (
-          <p className="text-sm text-slate-500 mb-3">
+          <p className="text-label text-secondary opacity-70">
             Abrechnung der Advanzia-Kreditkarte. Die einzelnen Zahlungen wurden bereits
             über die Benachrichtigungen erfasst — nicht noch einmal hinzufügen.
           </p>
         )}
         {line.kind === 'flagged' && line.reason && (
-          <p className="text-sm text-amber-600 dark:text-amber-500 mb-3">
-            Bitte prüfen: {line.reason}
-          </p>
+          <p className="text-label text-negative">Bitte prüfen: {line.reason}</p>
         )}
         {item.possibleDuplicateOf && (
-          <p className="text-sm text-amber-600 dark:text-amber-500 mb-3">
-            Möglicherweise doppelt.
-          </p>
+          <p className="text-label text-negative">Möglicherweise doppelt.</p>
         )}
 
         {/* The raw line is always visible — the parser is never the last word. */}
-        <pre className="text-xs bg-slate-100 dark:bg-slate-800 rounded p-2 mb-4 whitespace-pre-wrap">
+        <p className="text-label text-secondary p-3 rounded-field bg-surface-container-highest/30 whitespace-pre-wrap">
           {line.raw}
-        </pre>
+        </p>
 
         {addable && (
-          <div className="flex flex-col gap-3">
-            <label className="text-sm">
-              Name
-              <input
-                className="mt-1 w-full rounded border px-2 py-1 bg-transparent"
+          <>
+            <Field label="Name" htmlFor="sparkasse-name">
+              <Input
+                id="sparkasse-name"
+                type="text"
                 value={name}
                 onChange={e => setName(e.target.value)}
               />
-            </label>
-            <label className="text-sm">
-              Betrag (EUR)
-              <input
-                className="mt-1 w-full rounded border px-2 py-1 bg-transparent"
+            </Field>
+            <Field label="Betrag (EUR)" htmlFor="sparkasse-amount">
+              <Input
+                id="sparkasse-amount"
                 inputMode="decimal"
                 value={amount}
                 onChange={e => setAmount(e.target.value)}
               />
-            </label>
-            <label className="text-sm">
-              Kategorie
-              <select
-                className="mt-1 w-full rounded border px-2 py-1 bg-transparent"
+            </Field>
+            <Field label="Kategorie" htmlFor="sparkasse-category">
+              <Select
+                id="sparkasse-category"
                 value={category}
                 onChange={e => setCategory(e.target.value as ExpenseCategory)}
               >
                 {Object.values(ExpenseCategory).map(c => (
                   <option key={c} value={c}>{c}</option>
                 ))}
-              </select>
-            </label>
-            <label className="text-sm">
-              Datum
-              <input
+              </Select>
+            </Field>
+            <Field label="Datum" htmlFor="sparkasse-date">
+              <Input
+                id="sparkasse-date"
                 type="date"
-                className="mt-1 w-full rounded border px-2 py-1 bg-transparent"
                 value={date}
                 onChange={e => setDate(e.target.value)}
               />
-            </label>
-          </div>
+            </Field>
+
+            <FormError>{error}</FormError>
+
+            {/* Absent, not disabled, for incoming and settlement. */}
+            <PrimaryButton onClick={save} disabled={saving}>
+              {saving ? 'Speichern…' : 'Hinzufügen'}
+            </PrimaryButton>
+          </>
         )}
 
-        {error && <p className="text-sm text-red-600 mt-3">{error}</p>}
-
-        <div className="flex gap-2 mt-5">
-          <button className="flex-1 py-2 rounded border" onClick={onCancel}>
-            Abbrechen
-          </button>
-          <button className="flex-1 py-2 rounded border" onClick={onDismiss}>
-            Verwerfen
-          </button>
-          {/* Absent, not disabled, for incoming and settlement. */}
-          {addable && (
-            <button
-              className="flex-1 py-2 rounded bg-blue-600 text-white disabled:opacity-50"
-              onClick={save}
-              disabled={saving}
-            >
-              {saving ? 'Speichern…' : 'Hinzufügen'}
-            </button>
-          )}
+        <div className="grid grid-cols-2 gap-3">
+          <GhostButton onClick={onCancel}>Abbrechen</GhostButton>
+          <GhostButton onClick={onDismiss}>Verwerfen</GhostButton>
         </div>
       </div>
-    </div>
+    </>
   );
 };
