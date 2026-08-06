@@ -29,17 +29,6 @@ export const monthlyEssentials = (expenses: Expense[]): number =>
 export const runwayMonths = (liquidCash: number, essentialsPerMonth: number): number | null =>
   essentialsPerMonth > 0 ? num(liquidCash) / essentialsPerMonth : null;
 
-export const emergencyFundTarget = (essentialsPerMonth: number, targetMonths: number): number =>
-  num(essentialsPerMonth) * num(targetMonths);
-
-/** Whole months until target at the given contribution; 0 if funded, null if no contribution. */
-export const monthsToTarget = (current: number, target: number, monthlyContribution: number): number | null => {
-  const gap = num(target) - num(current);
-  if (gap <= 0) return 0;
-  if (num(monthlyContribution) <= 0) return null;
-  return Math.ceil(gap / num(monthlyContribution));
-};
-
 /** Interest a loan accrues per month at its current balance. */
 /**
  * What a loan currently owes.

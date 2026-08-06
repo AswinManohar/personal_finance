@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest';
 import { Expense, ExpenseCategory, Loan } from '../../types';
 import {
   monthlyAmount, monthlyEssentials, runwayMonths,
-  emergencyFundTarget, monthsToTarget,
   monthlyInterest, totalLoanBalance, sortByAvalanche, simulatePayoff,
   remainingBalance, currentBalance,
 } from '../../utils/finance';
@@ -53,25 +52,6 @@ describe('runwayMonths', () => {
   });
   it('returns null when essentials are unknown/zero', () => {
     expect(runwayMonths(2192, 0)).toBeNull();
-  });
-});
-
-describe('emergencyFundTarget', () => {
-  it('multiplies essentials by target months (6 × €2,245 = €13,470)', () => {
-    expect(emergencyFundTarget(2245, 6)).toBe(13470);
-  });
-});
-
-describe('monthsToTarget', () => {
-  it('rounds up the months needed at the given contribution', () => {
-    // (13470 - 2192) / 2900 = 3.89 → 4 months, matching the advisory conversation
-    expect(monthsToTarget(2192, 13470, 2900)).toBe(4);
-  });
-  it('returns 0 when already funded', () => {
-    expect(monthsToTarget(15000, 13470, 2900)).toBe(0);
-  });
-  it('returns null when there is no contribution', () => {
-    expect(monthsToTarget(2192, 13470, 0)).toBeNull();
   });
 });
 
