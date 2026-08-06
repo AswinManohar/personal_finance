@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Debts } from '../../components/Debts';
-import { Loan, NetWorthState, Expense, ExpenseCategory } from '../../types';
+import { Loan, NetWorthState, Expense, ExpenseCategory, EmergencyFundState } from '../../types';
 
 const loans: Loan[] = [
   { id: 'l1', name: 'Sparkasse Loan', balance: 36000, interestRate: 7.5, monthlyPayment: 500 },
@@ -82,6 +82,65 @@ describe('Payoff simulator', () => {
     expect(document.body.textContent).toContain('€206');    // interest saved / month
     expect(document.body.textContent).toContain('€5,000');  // cash after payoff
     expect(document.body.textContent).toContain('2.2 months'); // new runway
+  });
+});
+
+describe('Payoff simulator with an emergency fund reserved', () => {
+  // The fund is a carve-out of accumulatedSavings, so cash the simulator may
+  // spend is €38,000 − €3,000 = €35,000.
+  const fund: EmergencyFundState = { currentAmount: 3000, targetAmount: 10000 };
+
+  const setup = () => {
+    render(
+      <Debts
+        loans={loans} setLoans={() => {}} netWorthData={nw}
+        expenses={essentials} emergencyFund={fund}
+      />
+    );
+    fireEvent.change(screen.getByTestId('payoff-loan-select'), { target: { value: 'l1' } });
+  };
+
+  it('shows liquid cash net of the fund, and says how much is reserved', () => {
+    setup();
+    expect(document.body.textContent).toContain('Liquid cash: €35,000');
+    expect(document.body.textContent).toContain('€3,000 reserved for the emergency fund');
+  });
+
+  it('warns on a payoff that is safe only if the fund is spent', () => {
+    setup();
+    // €33,000 clears the buffer against the full €38,000 (see above) but not
+    // against the €35,000 that is actually free: €2,000 < €2,245 essentials.
+    fireEvent.change(screen.getByTestId('payoff-amount-input'), { target: { value: '33000' } });
+    expect(screen.getByText(/Leaves less than one month of essentials/)).toBeTruthy();
+    expect(document.body.textContent).toContain('€32,755'); // max safe payoff, fund reserved
+  });
+
+  it('leaves the fund untouched in the cash-after figure', () => {
+    setup();
+    fireEvent.change(screen.getByTestId('payoff-amount-input'), { target: { value: '30000' } });
+    expect(screen.queryByText(/Leaves less than one month/)).toBeNull();
+    expect(document.body.textContent).toContain('€5,000'); // 35,000 − 30,000
+  });
+
+  it('reserves nothing when the fund is empty', () => {
+    render(
+      <Debts
+        loans={loans} setLoans={() => {}} netWorthData={nw}
+        expenses={essentials} emergencyFund={{ currentAmount: 0, targetAmount: 0 }}
+      />
+    );
+    expect(document.body.textContent).toContain('Liquid cash: €38,000');
+    expect(document.body.textContent).not.toContain('reserved for the emergency fund');
+  });
+
+  it('floors liquid cash at zero when the fund exceeds tracked cash', () => {
+    render(
+      <Debts
+        loans={loans} setLoans={() => {}} netWorthData={{ accumulatedSavings: 1000 } as NetWorthState}
+        expenses={essentials} emergencyFund={{ currentAmount: 4000, targetAmount: 10000 }}
+      />
+    );
+    expect(document.body.textContent).toContain('Liquid cash: €0');
   });
 });
 

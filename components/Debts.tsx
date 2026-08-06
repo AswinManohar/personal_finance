@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Loan, Expense, NetWorthState } from '../types';
+import { Loan, Expense, NetWorthState, EmergencyFundState } from '../types';
 import { Trash2 } from 'lucide-react';
 import {
   Card, EmptyState, Field, FieldLabel, Input, Pill, PrimaryButton, SectionLabel, Select,
@@ -13,10 +13,13 @@ interface DebtsProps {
   setLoans: React.Dispatch<React.SetStateAction<Loan[]>>;
   netWorthData: NetWorthState;
   expenses?: Expense[];
+  /** Reserved cash. Optional, like `expenses` — an older caller that omits it
+   *  simulates against the full cash balance exactly as before. */
+  emergencyFund?: EmergencyFundState;
   onSync?: (overrides?: any) => Promise<void>;
 }
 
-export const Debts: React.FC<DebtsProps> = ({ loans, setLoans, netWorthData, expenses = [], onSync }) => {
+export const Debts: React.FC<DebtsProps> = ({ loans, setLoans, netWorthData, expenses = [], emergencyFund, onSync }) => {
   const [newName, setNewName] = useState('');
   const [newBalance, setNewBalance] = useState('');
   const [newRate, setNewRate] = useState('');
@@ -102,7 +105,13 @@ export const Debts: React.FC<DebtsProps> = ({ loans, setLoans, netWorthData, exp
   const [payoffLoanId, setPayoffLoanId] = useState('');
   const [payoffAmount, setPayoffAmount] = useState('');
 
-  const liquidCash = num(netWorthData.accumulatedSavings);
+  // The emergency fund is a carve-out of the cash balance, not a separate
+  // asset — so it is spendable-looking money the simulator must not offer up.
+  // Without this the buffer check would greenlight a payoff that empties the
+  // fund. Floored at zero so a fund larger than tracked cash reads as "nothing
+  // spare" rather than negative cash.
+  const reservedCash = num(emergencyFund?.currentAmount);
+  const liquidCash = Math.max(0, num(netWorthData.accumulatedSavings) - reservedCash);
   const essentialsPerMonth = monthlyEssentials(expenses);
   const selectedLoan = loans.find(l => l.id === payoffLoanId) || sorted[0];
   const payAmount = parseFloat(payoffAmount);
@@ -173,6 +182,7 @@ export const Debts: React.FC<DebtsProps> = ({ loans, setLoans, netWorthData, exp
           <SectionLabel className="mb-1">Lump-Sum Payoff Simulator</SectionLabel>
           <p className="mb-4 text-label text-secondary tabular-nums">
             Liquid cash: {fmt(liquidCash)}
+            {reservedCash > 0 ? ` · ${fmt(reservedCash)} reserved for the emergency fund` : ''}
             {essentialsPerMonth > 0 ? ` · essentials ${fmt(essentialsPerMonth)}/mo` : ''}
           </p>
 
