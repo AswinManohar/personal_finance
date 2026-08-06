@@ -173,4 +173,24 @@ describe('pollSparkasse', () => {
     const pending = await pollSparkasse();
     expect(pending).toHaveLength(1);
   });
+
+  it('does not advance the seen-set or watermark when the inbox write fails', async () => {
+    respondWith([message('m12', ['EDEKA: -20,00 EUR'], 'Ihr Umsatzwecker: 1 neuer Umsatz', '1786027523000')]);
+
+    const originalSetItem = localStorage.setItem.bind(localStorage);
+    const setItemSpy = vi.spyOn(localStorage, 'setItem').mockImplementation((key, value) => {
+      if (key === 'sparkasse.pending') {
+        throw new Error('quota exceeded');
+      }
+      return originalSetItem(key, value);
+    });
+
+    try {
+      await pollSparkasse();
+      expect(localStorage.getItem('sparkasse.seen')).toBeNull();
+      expect(localStorage.getItem('sparkasse.watermark')).toBeNull();
+    } finally {
+      setItemSpy.mockRestore();
+    }
+  });
 });

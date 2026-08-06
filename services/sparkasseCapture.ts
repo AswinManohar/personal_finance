@@ -70,11 +70,13 @@ const read = <T,>(key: string, fallback: T): T => {
   }
 };
 
-const write = (key: string, value: unknown): void => {
+const write = (key: string, value: unknown): boolean => {
   try {
     localStorage.setItem(key, JSON.stringify(value));
+    return true;
   } catch {
     // A full localStorage costs the inbox, not the mail — Gmail still has it.
+    return false;
   }
 };
 
@@ -180,13 +182,19 @@ export const pollSparkasse = async (): Promise<SparkasseItem[]> => {
   }
 
   pending.sort((a, b) => b.postedAt - a.postedAt);
-  write(PENDING_KEY, pending);
-  write(SEEN_KEY, [...seen].slice(-SEEN_LIMIT));
-  write(WATERMARK_KEY, newestSeen);
-  patchStatus({
-    ...(captured ? { lastCaptureAt: Date.now() } : {}),
-    ...(suspicious ? { lastSuspiciousAt: Date.now() } : {}),
-  });
+
+  // The seen-set and watermark are what stop a message being re-read. Advancing
+  // them when the inbox write failed would mark these transactions handled while
+  // nothing holds them — they would never be fetched again. Losing a poll is
+  // recoverable; losing a transaction is not.
+  if (write(PENDING_KEY, pending)) {
+    write(SEEN_KEY, [...seen].slice(-SEEN_LIMIT));
+    write(WATERMARK_KEY, newestSeen);
+    patchStatus({
+      ...(captured ? { lastCaptureAt: Date.now() } : {}),
+      ...(suspicious ? { lastSuspiciousAt: Date.now() } : {}),
+    });
+  }
 
   return pending;
 };
