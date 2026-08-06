@@ -321,11 +321,19 @@ when idle and healthy.
 Deliberately modelled on the Advanzia inbox's behaviour rather than sharing its
 code, since decision 6 rules out extracting anything:
 
-- Four item states, of which **three are non-convertible and have no Add button
-  at all**: `incoming` (positive amount), `settlement` (Advanzia direct debit),
-  and `flagged` (count mismatch or unparseable line, which opens but warns).
-  Only a clean outgoing line is directly addable. The "no Add button" rule is
-  enforced structurally, not by disabling a button.
+- Four item states, mirroring the Advanzia flag tiers:
+
+  | State | Add button | Behaviour |
+  |---|---|---|
+  | `clean` — an outgoing line that parsed strictly | **yes, one tap** | prefilled name, amount, date, category; the everyday case |
+  | `flagged` — count mismatch or a loose line | yes, **after opening** | must be reviewed in the sheet before it can be saved, never addable straight from the list |
+  | `incoming` — positive amount | **none** | read-and-dismiss only |
+  | `settlement` — Advanzia direct debit | **none** | read-and-dismiss only |
+
+  For the two non-convertible states the Add button is **absent, not disabled** —
+  the same structural enforcement the Advanzia inbox uses for a rejected capture.
+- Nothing ever saves itself. Every state, including `clean`, requires a tap.
+  This matches the Advanzia rule that no capture auto-becomes an expense.
 - No `guessMerchant` call, per decision 4: `recallLocalMerchant` against the shared
   map, else raw counterparty with category `Other`.
 - Raw text always visible — matched line prominent, full email body collapsed.
