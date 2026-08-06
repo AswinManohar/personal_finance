@@ -2,13 +2,18 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from api.routers import expenses, integrations, statements
+from api.observability import configure_observability
+from api.routers import expenses, integrations, merchants, statements
 from dotenv import load_dotenv
 import os
 
 load_dotenv()
 
 app = FastAPI(title="FinanceFlow API")
+
+# Tracing for the API and every LLM call it makes. A no-op without LOGFIRE_TOKEN,
+# so dev and CI are unaffected.
+configure_observability(app)
 
 # CORS Configuration
 origins = [
@@ -33,6 +38,7 @@ app.add_middleware(
 
 app.include_router(expenses.router, prefix="/api")
 app.include_router(statements.router, prefix="/api")
+app.include_router(merchants.router, prefix="/api")
 # Read-only service-to-service feeds (e.g. Life OS). Registered before the SPA
 # catch-all below so /v1/* resolves to the API, not index.html.
 app.include_router(integrations.router)

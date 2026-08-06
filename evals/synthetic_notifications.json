@@ -1,0 +1,62 @@
+[
+  {
+    "id": "01-supermarket",
+    "note": "The ordinary case. Strict tier, clean merchant.",
+    "title": "Kartentransaktion",
+    "body": "Eine Zahlung über 32,17 € der Mastercard mit der Kartenendung 9520 an EDEKA Koeln Neumarkt wurde erfolgreich ausgeführt."
+  },
+  {
+    "id": "02-truncated-with-comma",
+    "note": "Acquirer truncation plus a comma inside the merchant — the trap that breaks punctuation-delimited parsing.",
+    "title": "Kartentransaktion",
+    "body": "Eine Zahlung über 49,54 € der Mastercard mit der Kartenendung 9520 an REWE Bonn, Friedenspla wurde erfolgreich ausgeführt."
+  },
+  {
+    "id": "03-thousands-separator",
+    "note": "Four-figure amount. German grouping was never observed on-device, so this is the untested branch.",
+    "title": "Kartentransaktion",
+    "body": "Eine Zahlung über 1.499,00 € der Mastercard mit der Kartenendung 9520 an MEDIA MARKT ONLINE wurde erfolgreich ausgeführt."
+  },
+  {
+    "id": "04-payment-processor-prefix",
+    "note": "Aggregator prefix hiding the real merchant.",
+    "title": "Kartentransaktion",
+    "body": "Eine Zahlung über 10,99 € der Mastercard mit der Kartenendung 9520 an PAYPAL *SPOTIFY wurde erfolgreich ausgeführt."
+  },
+  {
+    "id": "05-marketing-filler",
+    "note": "Merchant padded with marketing words.",
+    "title": "Kartentransaktion",
+    "body": "Eine Zahlung über 1,95 € der Mastercard mit der Kartenendung 9520 an DM DROGERIE SAGT DANKE wurde erfolgreich ausgeführt."
+  },
+  {
+    "id": "06-declined",
+    "note": "MUST be rejected. Booking this as an expense would invent a payment that never happened.",
+    "title": "Kartentransaktion",
+    "body": "Eine Zahlung über 89,00 € der Mastercard mit der Kartenendung 9520 an AIRBNB PAYMENTS wurde abgelehnt."
+  },
+  {
+    "id": "07-refund",
+    "note": "MUST be rejected. Booking this as a charge flips the sign on money coming back.",
+    "title": "Kartentransaktion",
+    "body": "Eine Gutschrift über 24,90 € der Mastercard mit der Kartenendung 9520 an ZALANDO SE wurde erfolgreich ausgeführt."
+  },
+  {
+    "id": "08-foreign-currency",
+    "note": "Non-EUR. Must NOT be coerced into a euro amount — drops to the flagged tier with no amount.",
+    "title": "Kartentransaktion",
+    "body": "Eine Zahlung über 25,00 USD der Mastercard mit der Kartenendung 9520 an UBER TRIP HELP.UBER.COM wurde erfolgreich ausgeführt."
+  },
+  {
+    "id": "09-reworded",
+    "note": "Advanzia changes their copy. Should still extract, but flagged as needing a check.",
+    "title": "Kartentransaktion",
+    "body": "Zahlung über 7,40 € mit Kartenendung 9520 an BACKWERK HBF durchgeführt."
+  },
+  {
+    "id": "10-marketing-push",
+    "note": "Not a transaction at all, and quotes a price — the known Guard 2 false positive.",
+    "title": "Ihre Advanzia Mastercard",
+    "body": "Sichern Sie sich jetzt Ihren Reiseschutz für nur 4,99 € pro Monat!"
+  }
+]

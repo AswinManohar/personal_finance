@@ -6,6 +6,7 @@ import {
   ListRow, Pill, PrimaryButton, SectionLabel, Select, ToggleButton, FormError,
 } from './ui';
 import { newId } from '../utils/id';
+import { AdvanziaInbox } from './AdvanziaInbox';
 
 interface ExpensesProps {
   expenses: Expense[];
@@ -89,6 +90,20 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
     setNewIsRecurring(false);
     setNewRecurringFrequency('monthly');
     setNewIsEssential(false);
+  };
+
+  /**
+   * Confirming a captured notification. Same path as a manual add — a capture is
+   * an ordinary expense once a human has agreed to it, and only then does it
+   * reach the cloud.
+   */
+  const handleAddCaptured = async (expense: Expense) => {
+    const updatedExpenses = [...expenses, expense]
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    setExpenses(updatedExpenses);
+    if (onSync) {
+      await onSync({ expenses: updatedExpenses });
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -183,6 +198,11 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
 
   return (
     <div className="flex flex-col gap-3 lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">
+      {/* ── Captured from notifications ──
+          Renders nothing at all when there is nothing waiting and capture is
+          healthy, so the tab is unchanged for anyone not using it. */}
+      <AdvanziaInbox onAddExpense={handleAddCaptured} />
+
       {/* ── Breakdown ── */}
       <Card>
         <div className="flex justify-between items-center gap-2 mb-5">
