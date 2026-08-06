@@ -266,7 +266,9 @@ Self-contained PKCE flow, so the auth mess never leaks into polling.
   Android-type OAuth client must be confirmed against their docs during
   implementation.*
 - **Token storage: `EncryptedSharedPreferences`, in a new standalone
-  `SecureStorePlugin` Kotlin class.** The refresh token grants read access to the
+  `SecureStorePlugin` **Java** class (the existing native sources are Java, not
+  Kotlin — `android/app/src/main/java/com/aswinmanohar/cashflow/`).** The refresh
+  token grants read access to the
   whole mailbox; `localStorage` survives in backups and is readable by anything
   in the WebView. Decision 6 rules out adding methods to the existing
   `AdvanziaCapture` plugin, so this is a new file plus the one `registerPlugin`
