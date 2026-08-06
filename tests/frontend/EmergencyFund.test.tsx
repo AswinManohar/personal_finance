@@ -72,3 +72,30 @@ describe('Emergency fund card', () => {
     expect(document.body.textContent).not.toContain('NaN');
   });
 });
+
+describe('Emergency fund as a carve-out of cash', () => {
+  it('shows free cash as the remainder of tracked cash', () => {
+    renderHub({ currentAmount: 2192, targetAmount: 6735 }, { accumulatedSavings: 5000 });
+    expect(document.body.textContent).toContain('€2,808 free cash outside the fund');
+  });
+
+  it('warns and floors free cash at zero when the fund exceeds tracked cash', () => {
+    renderHub({ currentAmount: 2192, targetAmount: 6735 }, { accumulatedSavings: 1000 });
+    expect(screen.getByText(/larger than your tracked cash/)).toBeTruthy();
+    expect(document.body.textContent).toContain('€1,000');
+    expect(document.body.textContent).toContain('€0 free cash outside the fund');
+  });
+
+  it('stays quiet when the fund fits inside tracked cash', () => {
+    renderHub({ currentAmount: 2192, targetAmount: 6735 }, { accumulatedSavings: 5000 });
+    expect(screen.queryByText(/larger than your tracked cash/)).toBeNull();
+  });
+
+  it('does not touch total tracked assets', () => {
+    renderHub({ currentAmount: 2192, targetAmount: 6735 }, { accumulatedSavings: 5000 });
+    // Cash is the only asset here, so the hero total is the cash figure itself —
+    // the fund is a slice of it, never an addition to it.
+    expect(document.body.textContent).toContain('€5,000');
+    expect(document.body.textContent).not.toContain('€7,192');
+  });
+});

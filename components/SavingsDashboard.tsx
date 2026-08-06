@@ -154,6 +154,11 @@ export const SavingsDashboard: React.FC<SavingsDashboardProps> = ({
 
   const pct = (value: number, total: number) => (total > 0 ? (value / total) * 100 : 0);
   const efPct = pct(efCurrent, efTarget);
+  // Free cash floors at zero: the fund is allowed to exceed tracked cash (the
+  // usual cause is a stale Cash figure, not a wrong fund), and a negative
+  // remainder would be a stranger reading than a warned zero.
+  const freeCash = Math.max(0, cash - efCurrent);
+  const efOverCash = efCurrent > cash;
 
   return (
     <>
@@ -209,9 +214,20 @@ export const SavingsDashboard: React.FC<SavingsDashboardProps> = ({
           </EmptyState>
         ) : (
           <>
+            {efOverCash && (
+              <div className="mb-4 p-3 rounded-field bg-[rgba(242,107,107,0.1)] border border-negative/20">
+                <p className="text-label font-bold text-negative">
+                  Your emergency fund is larger than your tracked cash ({fmt(cash)}). Update Cash
+                  Savings Balance.
+                </p>
+              </div>
+            )}
             <ProgressBar percent={efPct} className="mb-2" />
             <p className="text-label text-secondary tabular-nums">
               {fmt(efCurrent)} of {fmt(efTarget)} ({Math.min(100, Math.round(efPct))}%)
+            </p>
+            <p className="mt-1 text-label text-secondary tabular-nums">
+              {fmt(freeCash)} free cash outside the fund
             </p>
           </>
         )}
