@@ -257,7 +257,7 @@ Expected: PASS, 7 tests.
 
 Run: `npm test`
 
-Expected: PASS except `tests/frontend/finance.test.ts`, which still exercises `emergencyFundTarget` and `monthsToTarget`. Those helpers are still present at this point, so it should pass too. If anything else fails, it is a real regression — stop and investigate rather than adjusting the test.
+Expected: PASS, whole suite. `tests/frontend/finance.test.ts` still exercises `emergencyFundTarget` and `monthsToTarget`, and those helpers are untouched until Task 3, so it passes unchanged. Any failure here is a real regression — stop and investigate rather than adjusting the test.
 
 - [ ] **Step 10: Commit**
 
