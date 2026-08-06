@@ -222,7 +222,7 @@ EOF
 Pure refactor. The rendered numbers must not move — the existing test files are the proof.
 
 **Files:**
-- Modify: `components/SavingsDashboard.tsx:37-42` (delete local `num`), `:44-58` (asset sums), `:87` (total)
+- Modify: `components/SavingsDashboard.tsx:37-42` (delete local `num`), `:44-58` (asset sums), `:91` (total)
 
 **Interfaces:**
 - Consumes: `assetBreakdown`, `totalAssets`, `num` from Task 1.
@@ -241,7 +241,7 @@ Replace line 4:
 import { assetBreakdown, monthlyAmount, num, totalAssets as sumAssets } from '../utils/finance';
 ```
 
-`sumAssets` is aliased because the component already has a local `totalAssets` const at line 87 that stays.
+`sumAssets` is aliased because the component already has a local `totalAssets` const at line 91 that stays.
 
 - [ ] **Step 3: Replace the local `num` and the five sums**
 
@@ -260,7 +260,7 @@ Delete lines 37-51 (the local `num` helper and the `stockValue` / `portfolioValu
   const monthlySavings = num(netWorthData.monthlyRecurringSavings);
 ```
 
-- [ ] **Step 4: Replace the total at line 87**
+- [ ] **Step 4: Replace the total at line 91**
 
 ```ts
   const totalAssets = sumAssets(breakdown);
@@ -294,7 +294,7 @@ The behaviour change. Net Worth's cash line becomes `accumulatedSavings`.
 
 **Files:**
 - Modify: `components/NetWorth.tsx:1` (import `useMemo`), `:9` (imports), `:11-25` (props), `:31-34` (sums), `:62` (snapshot), `:122-126` (asset row)
-- Modify: `App.tsx:456` (stop passing `currentSavings`)
+- Modify: `App.tsx:463` (stop passing `currentSavings`)
 - Modify: `tests/frontend/NetWorthLiabilities.test.tsx` (the prop it passes no longer exists)
 - Test: `tests/frontend/NetWorthAssets.test.tsx` (create)
 
@@ -394,7 +394,7 @@ Lines 122-126 become:
 
 - [ ] **Step 4: Stop passing the prop from `App.tsx`**
 
-At line 456, delete `currentSavings={goal.currentSavings}` from the `<NetWorth …>` element. Leave every other prop alone.
+At line 463, delete `currentSavings={goal.currentSavings}` from the `<NetWorth …>` element. Leave every other prop alone.
 
 - [ ] **Step 5: Update the one existing test that passes the dead prop**
 
@@ -437,7 +437,7 @@ EOF
 **Files:**
 - Modify: `types.ts` (`SavingsGoal` interface, line 36-40)
 - Modify: `components/SavingsGoal.tsx:1-54` (props, derivation), `:118-136` (the saved-so-far field), insert after `:146`
-- Modify: `App.tsx:99` (default), `:455` (props)
+- Modify: `App.tsx:100` (default), `:462` (props)
 - Test: `tests/frontend/SavingsGoal.test.tsx` (create)
 
 **Interfaces:**
@@ -731,13 +731,13 @@ Wrapping the `<input>` in the `<label>` makes the label text the checkbox's acce
 
 - [ ] **Step 7: Wire it from `App.tsx`**
 
-Line 99 — the default drops the typed figure:
+Line 100 — the default drops the typed figure:
 
 ```ts
   const [goal, setGoal] = usePersistedState<SavingsGoalType>('goal', { targetAmount: 10000, targetDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0] });
 ```
 
-Add a memo beside the other derived values, after the `usePersistedState` block (after line 104):
+Add a memo beside the other derived values, after the `usePersistedState` block (after line 105):
 
 ```ts
   // The Goal screen holds none of the asset state, so the sum is computed here
@@ -751,7 +751,7 @@ Add a memo beside the other derived values, after the `usePersistedState` block 
 
 Import it: add `assetBreakdown` to the existing `utils/finance` import in `App.tsx`, or add `import { assetBreakdown } from './utils/finance';` if there is none.
 
-Line 455 becomes:
+Line 462 becomes:
 
 ```tsx
       case 'goal': return <SavingsGoal goal={goal} setGoal={setGoal} breakdown={breakdown} monthlySavings={netWorthData.monthlyRecurringSavings || 0} onNavigate={navigate} onSync={syncCallback} />;
@@ -1135,7 +1135,7 @@ Expected: PASS, all six.
 
 - [ ] **Step 5: Call it from `App.tsx`**
 
-Add `migrateLegacyGoalSavings` to the `utils/finance` import, and add this effect immediately after the auto-push effect (after line 257):
+Add `migrateLegacyGoalSavings` to the `utils/finance` import, and add this effect immediately after the auto-push effect (after line 264):
 
 ```tsx
   // A goal from before saved-so-far was derived carries a hand-typed figure. For
