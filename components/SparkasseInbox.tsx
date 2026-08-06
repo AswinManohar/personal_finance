@@ -101,10 +101,18 @@ export const SparkasseInbox: React.FC<{
     setReviewing(null);
   };
 
-  // A suspicious mail more recent than the last real capture is the signal that
-  // the wording changed; one older than it has already been outlived by working
-  // capture, so the warning clears itself instead of pinning forever.
-  const suspicious = status.lastSuspiciousAt > status.lastCaptureAt;
+  // A suspicious mail no older than the last real capture is the signal that the
+  // wording changed; one genuinely older has been outlived by working capture,
+  // so the warning clears itself instead of pinning forever.
+  //
+  // The comparison must NOT be strict, unlike the Advanzia sibling's. Advanzia
+  // captures arrive one notification at a time; a Gmail poll reads a BATCH, so a
+  // single poll carrying one good mail and one unparseable one stamps both
+  // timestamps in the same millisecond. A strict `>` would read that tie as
+  // healthy and swallow the alarm for transactions that are already in the
+  // seen-set and will never be re-fetched.
+  const suspicious =
+    status.lastSuspiciousAt > 0 && status.lastSuspiciousAt >= status.lastCaptureAt;
   const pollFailed = status.lastPollFailedAt > 0;
   const needsAttention = !status.authorized || suspicious || pollFailed;
   if (pending.length === 0 && !needsAttention) return null;

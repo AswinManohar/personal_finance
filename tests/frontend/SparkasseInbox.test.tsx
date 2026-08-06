@@ -150,6 +150,21 @@ describe('SparkasseInbox', () => {
     await waitFor(() => expect(container).toBeEmptyDOMElement());
   });
 
+  // One poll reads a BATCH: a mail that parsed cleanly and a mail that yielded
+  // nothing arrive together and stamp both timestamps on the same millisecond.
+  // A strict `>` reads that tie as healthy, and the lost transactions are
+  // already in the seen-set — the alarm never gets a second chance to fire.
+  it('still warns when a batch poll captured and lost in the same millisecond', async () => {
+    const now = Date.now();
+    readSparkasseStatus.mockReturnValue({
+      ...healthy,
+      lastSuspiciousAt: now,
+      lastCaptureAt: now,
+    });
+    render(<SparkasseInbox onAddExpense={async () => {}} />);
+    expect(await screen.findByText(/nicht gelesen/i)).toBeInTheDocument();
+  });
+
   // An authorized poller that always fails leaves pending empty and nothing
   // flagged, so without this the component renders nothing and capture dies
   // unannounced.
