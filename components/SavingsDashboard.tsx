@@ -3,7 +3,7 @@ import React, { useMemo, useState } from 'react';
 import { ActiveTab, NetWorthState, PortfolioAsset, Stock, Expense, EmergencyFundState } from '../types';
 import { monthlyAmount } from '../utils/finance';
 import {
-  AreaChart, AxisLabels, Card, Donut, Dot, EmptyState, FieldLabel, Input, ListRow,
+  AreaChart, AxisLabels, Card, Donut, Dot, EmptyState, Field, FieldLabel, Input, ListRow,
   Pill, PrimaryButton, ProgressBar, SectionLabel, StackedBar, StatBlock, FormError,
 } from './ui';
 
@@ -67,10 +67,14 @@ export const SavingsDashboard: React.FC<SavingsDashboardProps> = ({
     field: 'currentAmount' | 'targetAmount',
     value: string
   ) => {
+    // Floored at zero: a negative fund is not a thing, and letting one through
+    // (pasted, or set programmatically past the input's min) turns the
+    // carve-out readouts into nonsense — free cash above tracked cash, a
+    // negative percentage of target.
     const next: EmergencyFundState = {
       targetAmount: efTarget,
       currentAmount: efCurrent,
-      [field]: parseFloat(value) || 0,
+      [field]: Math.max(0, parseFloat(value) || 0),
     };
     setEmergencyFund?.(next);
     onSync({ emergencyFund: next });
@@ -184,28 +188,30 @@ export const SavingsDashboard: React.FC<SavingsDashboardProps> = ({
         <SectionLabel className="mb-4">Emergency Fund</SectionLabel>
 
         <div className="grid grid-cols-2 gap-3 mb-4">
-          <div>
-            <FieldLabel className="mb-2">Current In Fund</FieldLabel>
+          {/* Field, not FieldLabel + aria-label: the visible text is the
+              accessible name, so speech input can reach the control. */}
+          <Field label="Current in fund" htmlFor="ef-current">
             <Input
+              id="ef-current"
               type="number"
+              min="0"
               prefix="€"
-              aria-label="Current emergency fund amount"
               value={emergencyFund?.currentAmount || ''}
               onChange={e => handleEmergencyFund('currentAmount', e.target.value)}
               placeholder="0"
             />
-          </div>
-          <div>
-            <FieldLabel className="mb-2">Target</FieldLabel>
+          </Field>
+          <Field label="Target" htmlFor="ef-target">
             <Input
+              id="ef-target"
               type="number"
+              min="0"
               prefix="€"
-              aria-label="Emergency fund target amount"
               value={emergencyFund?.targetAmount || ''}
               onChange={e => handleEmergencyFund('targetAmount', e.target.value)}
               placeholder="0"
             />
-          </div>
+          </Field>
         </div>
 
         {efCurrent === 0 && efTarget === 0 ? (
@@ -217,8 +223,8 @@ export const SavingsDashboard: React.FC<SavingsDashboardProps> = ({
             {efOverCash && (
               <div className="mb-4 p-3 rounded-field bg-[rgba(242,107,107,0.1)] border border-negative/20">
                 <p className="text-label font-bold text-negative">
-                  Your emergency fund is larger than your tracked cash ({fmt(cash)}). Update Cash
-                  Savings Balance.
+                  Your emergency fund is larger than your tracked cash ({fmt(cash)}). Check your
+                  Cash Savings Balance or the fund amount.
                 </p>
               </div>
             )}

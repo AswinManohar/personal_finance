@@ -15,6 +15,7 @@ import {
   Card, DangerButton, FieldLabel, GhostButton, IconBox, Pill, ScreenTitle, Tile,
 } from './ui';
 import { newId } from '../utils/id';
+import { num } from '../utils/finance';
 import { saveTextFile } from '../services/download';
 
 interface DataManagementProps {
@@ -136,7 +137,12 @@ export const DataManagement: React.FC<DataManagementProps> = ({
       if (data.goal) setGoal(data.goal);
       if (data.fire) setFire(data.fire);
       if (data.netWorthData) setNetWorthData(data.netWorthData);
-      if (data.emergencyFund) setEmergencyFund(data.emergencyFund);
+      // Normalised on the way in so the state matches its declared shape. Not
+      // migration: legacy { targetMonths } payloads degrade to zeros.
+      if (data.emergencyFund) setEmergencyFund({
+        targetAmount: num(data.emergencyFund.targetAmount),
+        currentAmount: num(data.emergencyFund.currentAmount),
+      });
       if (data.loans) setLoans(data.loans);
 
       setStatusMsg({ type: 'success', text: 'Data restored from cloud!' });

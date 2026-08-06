@@ -17,6 +17,7 @@ import { MoreSheet } from './components/shell/MoreSheet';
 import { Toast, useToast } from './components/shell/Toast';
 import { ALL_DESTINATIONS } from './components/shell/navigation';
 import { mergePulledExpenses } from './utils/mergeExpenses';
+import { num } from './utils/finance';
 import { captureKeyFromUrl } from './services/advanziaCapture';
 import { Capacitor } from '@capacitor/core';
 import { AlertTriangle } from 'lucide-react';
@@ -146,7 +147,13 @@ const AppMain: React.FC = () => {
         if (data.fire) setFire(data.fire);
         if (data.netWorthData) setNetWorthData(data.netWorthData);
         if (data.history) setHistory(data.history);
-        if (data.emergencyFund) setEmergencyFund(data.emergencyFund);
+        // Normalised on the way in, so the state always matches the declared
+        // shape. This is not migration: a legacy { targetMonths } payload
+        // carries nothing forward — it degrades to zeros, by design.
+        if (data.emergencyFund) setEmergencyFund({
+          targetAmount: num(data.emergencyFund.targetAmount),
+          currentAmount: num(data.emergencyFund.currentAmount),
+        });
         if (data.loans) setLoans(data.loans);
       }
 
