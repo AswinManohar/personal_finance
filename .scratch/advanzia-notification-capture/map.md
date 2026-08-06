@@ -7,6 +7,11 @@ Label: `wayfinder:map`
 Advanzia card-transaction notifications are captured on the Android phone and turn into
 confirmed expenses in Cashflow: parsed, queued, reviewed and saved.
 
+**REACHED 2026-08-06.** A real card payment was captured on the phone and reached the inbox —
+see the on-device entry below. Every ticket is resolved. What remains is the provisional
+reject-list (§7 of the parsing spec), which can only be corrected when a real decline or refund
+appears; it fails visibly by design until then.
+
 ## Notes
 
 **This map carries execution.** Wayfinder plans by default; this effort overrides that as of
@@ -66,7 +71,18 @@ Standing preferences for this effort:
 
 ## Not yet specified
 
-- **On-device verification** — partially done 2026-08-06 on the Pixel 6 Pro. **Verified:**
+- **On-device verification — DONE 2026-08-06. A real card payment was captured end to end.**
+  Evidence: Cashflow posted its own notification on `channel=advanzia_captured`, and the WebView
+  called `clearPending` with a genuine key
+  `0|com.advanzia.mobile|0|FCM-Notification:72346538|10286` — which only happens after the item
+  is safely in the inbox. So the whole chain ran: Advanzia push → listener → title gate → native
+  queue → capture notification → resume → drain → inbox → queue cleared.
+
+  Left untested, all low-risk and cheap to observe in normal use: tapping a *live* capture
+  notification to open the sheet (the deep-link plumbing itself is verified separately), the
+  listener surviving an OS kill, and the 4-hour nag firing.
+
+  Earlier partial verification, retained for the record. **Verified:**
   notification access granted and the service *bound* (`INotificationListener$Stub$Proxy`);
   `POST_NOTIFICATIONS` granted; all three channels created with the intended importances
   (health 4, captured 3, reminders 2); the plugin registers and `getPending`/`getStatus` answer;
