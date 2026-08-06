@@ -83,9 +83,16 @@ The default at `App.tsx:99` drops `currentSavings` and leaves `sources` unset.
 One helper in `utils/finance.ts`, beside `totalLoanBalance` and
 `monthlyEssentials`. Three screens consume it; none computes asset values itself.
 
-`App.tsx` calls it once inside a `useMemo` and passes the result to all three, so
-the sum happens once per render and `SavingsGoal` does not need `stocks`,
-`portfolio` and `netWorthData` handed to it just to add five numbers.
+`SavingsDashboard` and `NetWorth` call it themselves inside a `useMemo`, from the
+`netWorthData`, `stocks` and `portfolio` props they already receive. `App.tsx`
+computes it once for `SavingsGoal` alone, which holds none of those and should
+not gain three props just to add five numbers.
+
+Passing it down to all three from `App` was the first instinct and is wrong: it
+would force a new required prop onto two components whose existing test files
+construct them directly, and this spec's own regression requirement is that
+`SavingsDashboard.test.tsx` passes unmodified. Memoized, the duplicate sum is
+five additions over small arrays.
 
 ```ts
 export interface AssetBreakdown {
@@ -247,9 +254,16 @@ rather than **On track**; projection points.
 a second run changes nothing; a pull re-delivering the legacy field does not
 re-copy.
 
-**Regression** — `SavingsDashboard.test.tsx` passes **unmodified**. That is the
-proof the helper extraction is behaviour-preserving, and the reason to refactor
-the dashboard rather than leave it summing on its own.
+**Regression** — `SavingsDashboard.test.tsx` passes **unmodified**, as do
+`EmergencyFund.test.tsx`, `Subscriptions.test.tsx` and `silentFailures.test.tsx`.
+That is the proof the helper extraction is behaviour-preserving, and the reason
+to refactor the dashboard rather than leave it summing on its own.
+
+One test file must change, and its change is the point:
+`NetWorthLiabilities.test.tsx` passes `currentSavings={1000}` with
+`accumulatedSavings: 0`, then asserts assets of €1,000. Once the prop is gone
+that becomes `accumulatedSavings: 1000` — the same €1,000, sourced from the field
+that was always supposed to hold it.
 
 ## Out of scope
 
