@@ -836,18 +836,31 @@ describe('Monthly needed against what you actually save', () => {
   });
 
   it('refuses to print a year in the far future', () => {
-    // 38,000 remaining at 5/month = 7,600 months.
+    // 38,000 remaining at 5/month = 7,600 months — an arrival year of 2660.
     renderGoal({ targetAmount: 50000, targetDate: '2027-08-01', sources: ['cash'] }, 5);
-    expect(screen.getByText(/within 50 years/)).toBeTruthy();
-    expect(document.body.textContent).not.toMatch(/2[0-9]{3}$/m);
+    expect(screen.getByText(/within 50 years/).textContent).toContain('do not reach');
+    // 2026 and 2027 are legitimately on screen; anything past 2099 is not.
+    expect(document.body.textContent).not.toMatch(/2[1-9][0-9]{2}/);
   });
 });
 
 describe('The projection chart', () => {
+  const projectionPath = () =>
+    screen
+      .getByLabelText('12-month projection against target')
+      .querySelector('path')
+      ?.getAttribute('d') ?? '';
+
   it('projects from today at the monthly rate, against the target', () => {
     renderGoal({ targetAmount: 50000, sources: ['cash'] }, 1000);
-    const chart = screen.getByLabelText('12-month projection against target');
-    expect(chart).toBeTruthy();
+    expect(document.body.textContent).toContain('€50,000 target');
+    const rising = projectionPath();
+
+    // The same goal with nothing saved monthly draws a flat line. If the two
+    // paths match, the chart is ignoring the rate and is decorative again.
+    cleanup();
+    renderGoal({ targetAmount: 50000, sources: ['cash'] }, 0);
+    expect(projectionPath()).not.toBe(rising);
   });
 
   it('no longer renders the twelve hardcoded bars', () => {
@@ -857,7 +870,9 @@ describe('The projection chart', () => {
 });
 ```
 
-Add `beforeEach`, `afterEach` to the `vitest` import at the top of the file.
+Add `beforeEach`, `afterEach` to the `vitest` import at the top of the file, and
+`cleanup` to the `@testing-library/react` import — the chart test renders twice
+in one `it`, and without an explicit unmount `getByLabelText` finds two charts.
 
 - [ ] **Step 2: Run them to verify they fail**
 
