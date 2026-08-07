@@ -35,14 +35,16 @@ const TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token';
 const GMAIL_BASE = 'https://gmail.googleapis.com/gmail/v1/users/me';
 
 /**
- * Custom-scheme callback. Registered on the same intent-filter the capture deep
- * link uses.
+ * Custom-scheme callback, in the form Google documents for Android clients: the
+ * scheme is the package name, which is what the authorization endpoint checks
+ * against the client's registration. An Android client has no configurable
+ * redirect list, so this is validated by convention rather than by lookup — get
+ * the scheme wrong and it fails as `redirect_uri_mismatch`.
  *
- * NOTE: confirm the exact form Google requires for an Android-type client
- * before first run — it is validated at the authorization endpoint, and a
- * mismatch fails as `redirect_uri_mismatch`.
+ * Caught by its own intent-filter in AndroidManifest.xml, not the capture deep
+ * link's — that one pins android:host="review" and would never match.
  */
-const REDIRECT_URI = 'com.aswinmanohar.cashflow:/gmail-auth';
+const REDIRECT_URI = 'com.aswinmanohar.cashflow:/oauth2redirect';
 
 /** In-memory only. Short-lived, and losing it on restart costs one refresh. */
 let cachedAccess: { token: string; expiresAt: number } | null = null;
