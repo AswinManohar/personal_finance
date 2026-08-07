@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { ActiveTab, NetWorthState, PortfolioAsset, Stock, Expense, EmergencyFundState } from '../types';
-import { monthlyAmount } from '../utils/finance';
+import { assetBreakdown, monthlyAmount, num, totalAssets as sumAssets } from '../utils/finance';
 import {
   AreaChart, AxisLabels, Card, Donut, Dot, EmptyState, Field, FieldLabel, Input, ListRow,
   Pill, PrimaryButton, ProgressBar, SectionLabel, StackedBar, StatBlock, FormError,
@@ -34,27 +34,15 @@ export const SavingsDashboard: React.FC<SavingsDashboardProps> = ({
   const [addAmount, setAddAmount] = useState('');
   const [addError, setAddError] = useState<string | null>(null);
 
-  // Coerce any value to a finite number; missing/invalid fields become 0 so a
-  // single undefined never poisons an aggregate into NaN ("€NaN").
-  const num = (v: any) => {
-    const n = Number(v);
-    return Number.isFinite(n) ? n : 0;
-  };
-
-  const stockValue = useMemo(
-    () => stocks.reduce((sum, s) => sum + num(s.quantity) * num(s.currentPrice || s.buyPrice), 0),
-    [stocks]
+  // One breakdown, shared with Net Worth and the Goal screen. Memoized because
+  // the stock and fund sums walk arrays on every keystroke otherwise.
+  const breakdown = useMemo(
+    () => assetBreakdown(netWorthData, stocks, portfolio),
+    [netWorthData, stocks, portfolio]
   );
-  const portfolioValue = useMemo(
-    () => portfolio.reduce((sum, p) => sum + num(p.currentValue), 0),
-    [portfolio]
-  );
-
-  // Net-worth scalars, coerced once so every downstream calc is NaN-safe even
-  // when the synced state omits a key.
-  const gold = num(netWorthData.goldInvestment);
-  const cash = num(netWorthData.accumulatedSavings);
-  const otherAssets = num(netWorthData.otherAssets);
+  const {
+    cash, gold, stocks: stockValue, mutualFunds: portfolioValue, other: otherAssets,
+  } = breakdown;
   const monthlySavings = num(netWorthData.monthlyRecurringSavings);
 
   // Emergency fund. Both figures are typed in; nothing is inferred from the
@@ -88,7 +76,7 @@ export const SavingsDashboard: React.FC<SavingsDashboardProps> = ({
   const subscriptionTotal = subscriptions.reduce((s, e) => s + monthlyAmount(e), 0);
 
   // Total assets = Mutual Funds + Stocks + Gold + Cash + Other Assets
-  const totalAssets = portfolioValue + stockValue + gold + cash + otherAssets;
+  const totalAssets = sumAssets(breakdown);
 
   const handleSavingsUpdate = (
     field: 'monthlyRecurringSavings' | 'accumulatedSavings',
