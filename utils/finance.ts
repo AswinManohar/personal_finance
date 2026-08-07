@@ -1,4 +1,4 @@
-import { Expense, Loan, RecurringFrequency } from '../types';
+import { Expense, GoalSource, Loan, NetWorthState, PortfolioAsset, RecurringFrequency, Stock } from '../types';
 
 /** Coerce any value to a finite number; invalid input becomes 0. */
 export const num = (v: unknown): number => {
@@ -120,3 +120,46 @@ export const remainingBalance = (
 
   return pmt * ((1 - Math.pow(1 + r, -left)) / r);
 };
+
+/**
+ * What you own, one slice per tracked asset line.
+ *
+ * The single definition of the asset side in this app. Net Worth and the Savings
+ * Hub each used to sum this themselves, and they disagreed: the Hub read cash
+ * from `accumulatedSavings` while Net Worth read it from `goal.currentSavings`.
+ */
+export interface AssetBreakdown {
+  cash: number;
+  stocks: number;
+  mutualFunds: number;
+  gold: number;
+  other: number;
+}
+
+/** Canonical order — display order and the meaning of an absent `sources`. */
+export const ALL_GOAL_SOURCES: GoalSource[] = ['cash', 'stocks', 'mutualFunds', 'gold', 'other'];
+
+export const assetBreakdown = (
+  netWorthData?: Partial<NetWorthState>,
+  stocks: Stock[] = [],
+  portfolio: PortfolioAsset[] = []
+): AssetBreakdown => ({
+  cash: num(netWorthData?.accumulatedSavings),
+  // `||` not `??`: a currentPrice of 0 means "never fetched", not "worthless".
+  stocks: stocks.reduce((s, x) => s + num(x.quantity) * num(x.currentPrice || x.buyPrice), 0),
+  mutualFunds: portfolio.reduce((s, p) => s + num(p.currentValue), 0),
+  gold: num(netWorthData?.goldInvestment),
+  other: num(netWorthData?.otherAssets),
+});
+
+export const totalAssets = (b: AssetBreakdown): number =>
+  b.cash + b.stocks + b.mutualFunds + b.gold + b.other;
+
+/**
+ * Saved-so-far for a goal: the slices it counts.
+ *
+ * An absent `sources` means all of them, so a goal synced from a device that
+ * predates the field reads as "everything" without a migration.
+ */
+export const goalSavings = (b: AssetBreakdown, sources?: GoalSource[]): number =>
+  (sources ?? ALL_GOAL_SOURCES).reduce((sum, k) => sum + b[k], 0);

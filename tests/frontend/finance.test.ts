@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { Expense, ExpenseCategory, Loan } from '../../types';
+import { Expense, ExpenseCategory, Loan, Stock, PortfolioAsset, NetWorthState } from '../../types';
 import {
   monthlyAmount, monthlyEssentials, runwayMonths,
   monthlyInterest, totalLoanBalance, sortByAvalanche, simulatePayoff,
   remainingBalance, currentBalance,
+  assetBreakdown, totalAssets, goalSavings, ALL_GOAL_SOURCES,
 } from '../../utils/finance';
 
 const exp = (over: Partial<Expense>): Expense => ({
@@ -156,5 +157,69 @@ describe('currentBalance', () => {
   it('falls back to the stored balance for loans without a schedule', () => {
     // Loans entered before the schedule fields existed must keep working.
     expect(currentBalance(base as any)).toBe(9999);
+  });
+});
+
+const stock = (over: Partial<Stock>): Stock => ({
+  id: 's', symbol: 'X', quantity: 0, buyPrice: 0, frequency: 'One-time', ...over,
+});
+
+const fund = (over: Partial<PortfolioAsset>): PortfolioAsset => ({
+  id: 'p', name: 'f', type: 'ETF_GLOBAL', currentValue: 0, monthlyInvestment: 0,
+  expectedReturn: 0, expenseRatio: 0, taxRate: 0, frequency: 'Monthly', ...over,
+});
+
+const nw = (over: Partial<NetWorthState>): Partial<NetWorthState> => ({ ...over });
+
+describe('assetBreakdown', () => {
+  it('maps each tracked asset onto its own slice', () => {
+    const b = assetBreakdown(
+      nw({ accumulatedSavings: 12000, goldInvestment: 5000, otherAssets: 2000 }),
+      [stock({ quantity: 10, buyPrice: 100, currentPrice: 830 })],
+      [fund({ currentValue: 15000 })]
+    );
+    expect(b).toEqual({ cash: 12000, stocks: 8300, mutualFunds: 15000, gold: 5000, other: 2000 });
+  });
+
+  it('falls back to buyPrice when currentPrice is 0 (never fetched, not worthless)', () => {
+    const b = assetBreakdown({}, [stock({ quantity: 4, buyPrice: 25, currentPrice: 0 })], []);
+    expect(b.stocks).toBe(100);
+  });
+
+  it('yields zeros, never NaN, for a partial netWorthData from a cloud pull', () => {
+    const b = assetBreakdown({ accumulatedSavings: 300 }, [], []);
+    expect(b).toEqual({ cash: 300, stocks: 0, mutualFunds: 0, gold: 0, other: 0 });
+    expect(Object.values(b).some(Number.isNaN)).toBe(false);
+  });
+
+  it('survives undefined inputs entirely', () => {
+    expect(assetBreakdown(undefined)).toEqual({
+      cash: 0, stocks: 0, mutualFunds: 0, gold: 0, other: 0,
+    });
+  });
+});
+
+describe('totalAssets', () => {
+  it('sums all five slices', () => {
+    expect(totalAssets({ cash: 12000, stocks: 8300, mutualFunds: 15000, gold: 5000, other: 2000 }))
+      .toBe(42300);
+  });
+});
+
+describe('goalSavings', () => {
+  const b = { cash: 12000, stocks: 8300, mutualFunds: 15000, gold: 5000, other: 2000 };
+
+  it('counts every source when sources is absent', () => {
+    expect(goalSavings(b, undefined)).toBe(42300);
+    expect(goalSavings(b, ALL_GOAL_SOURCES)).toBe(42300);
+  });
+
+  it('counts nothing when the list is empty', () => {
+    expect(goalSavings(b, [])).toBe(0);
+  });
+
+  it('counts only the ticked sources', () => {
+    expect(goalSavings(b, ['cash', 'gold'])).toBe(17000);
+    expect(goalSavings(b, ['stocks'])).toBe(8300);
   });
 });

@@ -39,6 +39,9 @@ export interface SavingsGoal {
   currentSavings: number;
 }
 
+/** A tracked asset line that a savings goal can count toward its progress. */
+export type GoalSource = 'cash' | 'stocks' | 'mutualFunds' | 'gold' | 'other';
+
 export interface NetWorthState {
   goldInvestment: number;
   otherAssets: number;
