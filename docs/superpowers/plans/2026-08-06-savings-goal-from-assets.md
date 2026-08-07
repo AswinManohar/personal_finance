@@ -404,7 +404,7 @@ In `tests/frontend/NetWorthLiabilities.test.tsx`, both render calls pass `curren
 const nw: NetWorthState = { goldInvestment: 0, otherAssets: 0, remainingLoan: 0, monthlyRecurringSavings: 0, accumulatedSavings: 1000 };
 ```
 
-and delete `currentSavings={1000}` from both `<NetWorth …>` elements (lines 14 and 33).
+and delete `currentSavings={1000}` from both `<NetWorth …>` elements (lines 14 and 32).
 
 - [ ] **Step 6: Run both files to verify they pass**
 
@@ -1017,7 +1017,7 @@ EOF
 ### Task 6: Migrate the legacy typed figure
 
 **Files:**
-- Modify: `App.tsx` (a new effect beside the sync effects, around line 250)
+- Modify: `App.tsx` (a new effect after the auto-push effect, which ends at line 264)
 - Test: `tests/frontend/goalMigration.test.tsx` (create)
 
 **Interfaces:**

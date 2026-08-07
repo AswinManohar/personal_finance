@@ -14,7 +14,7 @@ milestone" while `SavingsGoal.tsx:126` asks you to key the figure in by hand.
 Worse, the number has quietly become a second definition of *cash*:
 
 ```
-netWorthData.accumulatedSavings ──→ SavingsDashboard.tsx:87  totalAssets
+netWorthData.accumulatedSavings ──→ SavingsDashboard.tsx:91  totalAssets
                                     (portfolio + stocks + gold + CASH + other)
 
 goal.currentSavings ─────────────→ NetWorth.tsx:34           totalAssets
@@ -73,10 +73,10 @@ export interface SavingsGoal {
 }
 ```
 
-`sources` needs no sync work: `App.tsx:192` already pushes `goal` wholesale, and
-`App.tsx:145` already replaces it wholesale on pull.
+`sources` needs no sync work: `App.tsx:199` already pushes `goal` wholesale, and
+`App.tsx:146` already replaces it wholesale on pull.
 
-The default at `App.tsx:99` drops `currentSavings` and leaves `sources` unset.
+The default at `App.tsx:100` drops `currentSavings` and leaves `sources` unset.
 
 ## Derivation
 
@@ -196,7 +196,7 @@ baseline = new Array(13).fill(goal.targetAmount)   // the target reference line
 
 `charts.tsx:63-65` already folds `baseline` into the min/max, so the target line
 is always in frame with no change to the chart component. The series mirrors
-`outlookSeries` at `SavingsDashboard.tsx:134`, so the two screens project
+`outlookSeries` at `SavingsDashboard.tsx:138`, so the two screens project
 identically. With no monthly savings set the line is flat — the honest picture,
 not a broken chart.
 
@@ -204,7 +204,7 @@ not a broken chart.
 
 `line 34` becomes `totalAssets(assetBreakdown(netWorthData, stocks, portfolio))`,
 so its cash line stops being your goal and starts being your cash. The
-`currentSavings` prop is removed from the component and from `App.tsx:456`.
+`currentSavings` prop is removed from the component and from `App.tsx:463`.
 
 One consequence to accept: the snapshot at `line 62` records
 `savings_amount: currentSavings` today and becomes `breakdown.cash`. Existing
@@ -213,7 +213,7 @@ slightly different from rows recorded before.
 
 ### Savings dashboard (`components/SavingsDashboard.tsx`)
 
-Lines 44-57 and 87 are replaced by the helper. Pure refactor — same numbers, same
+Lines 37-58 and 91 are replaced by the helper. Pure refactor — same numbers, same
 render. Its `assetCategories` and `distCategories` read the breakdown's fields.
 
 ## Migration
@@ -231,7 +231,7 @@ if (num(goal.currentSavings) > 0) {
 
 A real Cash figure is never overwritten. Clearing the legacy field is what makes
 this idempotent — the condition cannot be true twice. That matters because
-`App.tsx:145` replaces `goal` wholesale on every pull, so a phone that has not
+`App.tsx:146` replaces `goal` wholesale on every pull, so a phone that has not
 opened the app yet will hand the old field back later; when it does, cash is
 already non-zero, the copy is skipped, and the field is cleared again.
 
