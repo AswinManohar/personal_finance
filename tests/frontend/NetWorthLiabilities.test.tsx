@@ -4,14 +4,14 @@ import { render, screen } from '@testing-library/react';
 import { NetWorth } from '../../components/NetWorth';
 import { Loan, NetWorthState } from '../../types';
 
-const nw: NetWorthState = { goldInvestment: 0, otherAssets: 0, remainingLoan: 0, monthlyRecurringSavings: 0, accumulatedSavings: 0 };
+const nw: NetWorthState = { goldInvestment: 0, otherAssets: 0, remainingLoan: 0, monthlyRecurringSavings: 0, accumulatedSavings: 1000 };
 const loans: Loan[] = [{ id: 'l1', name: 'Sparkasse Loan', balance: 36000, interestRate: 7.5, monthlyPayment: 500 }];
 
 const renderNetWorth = (loanList: Loan[] = loans) =>
   render(
     <NetWorth
       netWorthData={nw} setNetWorthData={() => {}}
-      currentSavings={1000} stocks={[]} portfolio={[]}
+      stocks={[]} portfolio={[]}
       history={[]} setHistory={() => {}}
       loans={loanList}
     />
@@ -29,7 +29,7 @@ describe('Net worth liabilities from loans', () => {
     render(
       <NetWorth
         netWorthData={{ ...nw, remainingLoan: 500 }} setNetWorthData={() => {}}
-        currentSavings={1000} stocks={[]} portfolio={[]}
+        stocks={[]} portfolio={[]}
         history={[]} setHistory={() => {}}
         loans={[]}
       />

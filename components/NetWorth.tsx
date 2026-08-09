@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { NetWorthState, Stock, PortfolioAsset, SavingsHistoryRecord, Loan } from '../types';
 import { Camera, Check, Trash2 } from 'lucide-react';
 import {
@@ -6,12 +6,11 @@ import {
   PrimaryButton, SectionLabel, StatBlock, Tile, Tone, FormError,
 } from './ui';
 import { recordSavingsHistory, getSavingsHistory, deleteHistoryRecord } from '../services/supabaseService';
-import { totalLoanBalance, num } from '../utils/finance';
+import { assetBreakdown, num, totalAssets as sumAssets, totalLoanBalance } from '../utils/finance';
 
 interface NetWorthProps {
   netWorthData: NetWorthState;
   setNetWorthData: React.Dispatch<React.SetStateAction<NetWorthState>>;
-  currentSavings: number;
   stocks: Stock[];
   portfolio: PortfolioAsset[];
   userKey?: string;
@@ -22,16 +21,19 @@ interface NetWorthProps {
 }
 
 export const NetWorth: React.FC<NetWorthProps> = ({
-  netWorthData, setNetWorthData, currentSavings, stocks, portfolio, userKey, history, setHistory, onSync, loans = []
+  netWorthData, setNetWorthData, stocks, portfolio, userKey, history, setHistory, onSync, loans = []
 }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
 
-  const stockValue = stocks.reduce((sum, s) => sum + (s.quantity * (s.currentPrice || s.buyPrice)), 0);
-  const portfolioValue = portfolio.reduce((sum, p) => sum + p.currentValue, 0);
+  const breakdown = useMemo(
+    () => assetBreakdown(netWorthData, stocks, portfolio),
+    [netWorthData, stocks, portfolio]
+  );
+  const { cash, stocks: stockValue, mutualFunds: portfolioValue } = breakdown;
 
-  const totalAssets = currentSavings + stockValue + portfolioValue + netWorthData.goldInvestment + (netWorthData.otherAssets || 0);
+  const totalAssets = sumAssets(breakdown);
   const totalLiabilities = loans.length > 0 ? totalLoanBalance(loans) : num(netWorthData.remainingLoan);
   const netWorth = totalAssets - totalLiabilities;
 
@@ -59,7 +61,7 @@ export const NetWorth: React.FC<NetWorthProps> = ({
         total_assets: totalAssets,
         total_liabilities: totalLiabilities,
         net_worth: netWorth,
-        savings_amount: currentSavings,
+        savings_amount: cash,
         investment_amount: portfolioValue,
         gold_amount: netWorthData.goldInvestment,
         stock_amount: stockValue
@@ -119,11 +121,11 @@ export const NetWorth: React.FC<NetWorthProps> = ({
   // so IconBox owns the tint and size instead of each row carrying its own SVG.
   type AssetRow = { icon: string; name: string; subtitle: string; value: number; tone: Tone };
   const assetRows: AssetRow[] = [
-    currentSavings > 0 && {
+    cash > 0 && {
       icon: 'account_balance_wallet',
       name: 'Cash & Savings',
       subtitle: 'Liquid savings',
-      value: currentSavings,
+      value: cash,
       tone: 'positive' as Tone,
     },
     portfolioValue > 0 && {
