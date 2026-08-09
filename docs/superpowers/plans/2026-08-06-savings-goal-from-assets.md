@@ -708,11 +708,11 @@ Insert a new block immediately after the closing `</div>` of the Progress sectio
           <FieldLabel className="!text-micro mb-2">Counts toward this goal</FieldLabel>
           <div className="flex flex-col">
             {ALL_GOAL_SOURCES.map(key => (
-              <label
+              <div
                 key={key}
-                className="flex items-center justify-between gap-3 py-2 cursor-pointer"
+                className="flex items-center justify-between gap-3 py-2"
               >
-                <span className="flex items-center gap-2.5">
+                <label className="flex items-center gap-2.5 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={activeSources.includes(key)}
@@ -720,17 +720,23 @@ Insert a new block immediately after the closing `</div>` of the Progress sectio
                     className="w-4 h-4 accent-[#8183ff] cursor-pointer"
                   />
                   <span className="text-label font-semibold">{SOURCE_LABELS[key]}</span>
-                </span>
+                </label>
                 <span className="text-label text-secondary tabular-nums">
                   {fmt(breakdown[key], 0)}
                 </span>
-              </label>
+              </div>
             ))}
           </div>
         </div>
 ```
 
-Wrapping the `<input>` in the `<label>` makes the label text the checkbox's accessible name, which is what `getByLabelText('Cash')` resolves.
+Wrapping the `<input>` in the `<label>` makes the label text the checkbox's
+accessible name, which is what `getByLabelText('Cash')` resolves.
+
+The `<label>` must wrap **only** the checkbox and the name. An earlier draft put
+the whole row in the `<label>`, which folded the amount into the accessible name
+— `getByLabelText('Cash')` then found nothing, because the checkbox was called
+"Cash€12,000". The row is a `<div>`; the value is its sibling.
 
 - [ ] **Step 7: Wire it from `App.tsx`**
 
@@ -763,7 +769,7 @@ Line 462 becomes:
 - [ ] **Step 8: Run the tests to verify they pass**
 
 Run: `npx vitest run tests/frontend/SavingsGoal.test.tsx`
-Expected: PASS, all twelve.
+Expected: PASS, all eleven.
 
 - [ ] **Step 9: Commit**
 
@@ -1007,7 +1013,7 @@ Swap the UI import on line 4: drop `ColumnChart`, add `AreaChart`.
 - [ ] **Step 6: Run the tests to verify they pass**
 
 Run: `npx vitest run tests/frontend/SavingsGoal.test.tsx`
-Expected: PASS, all twenty.
+Expected: PASS, all nineteen — the eleven from Task 4 plus these eight.
 
 - [ ] **Step 7: Commit**
 
