@@ -4,7 +4,7 @@ import {
   ALL_GOAL_SOURCES, AssetBreakdown, goalSavings, num,
 } from '../utils/finance';
 import {
-  AxisLabels, Card, ColumnChart, FieldLabel, Input, PrimaryButton, ProgressBar, ScreenTitle,
+  AreaChart, AxisLabels, Card, FieldLabel, Input, PrimaryButton, ProgressBar, ScreenTitle,
 } from './ui';
 
 interface SavingsGoalProps {
@@ -81,17 +81,54 @@ export const SavingsGoal: React.FC<SavingsGoalProps> = ({
 
   const progressPct = targetAmount > 0 ? Math.min(100, (saved / targetAmount) * 100) : 0;
 
-  const deadlineLabel = goal.targetDate
-    ? new Date(goal.targetDate).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
-    : '—';
-
-  // Mini chart: 12 fixed bar heights that animate toward goal
-  const miniBarHeights = [40, 45, 55, 50, 65, 70, 60, 75, 80, 85, 90, 40];
-
   const fmt = (v: number, dec = 2) =>
     '€' + Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec });
 
-  const currentMonth = new Date().getMonth();
+  const actualMonthly = num(monthlySavings);
+  const gap = monthlyNeeded - actualMonthly;
+
+  // Months to the target at the rate you actually save. Null past 50 years:
+  // at €5/month against €38,000, a year like 2438 is noise, not information.
+  const monthsAtCurrentRate =
+    actualMonthly > 0 && remaining > 0 ? Math.ceil(remaining / actualMonthly) : null;
+  const reachDate =
+    monthsAtCurrentRate !== null && monthsAtCurrentRate <= 600
+      ? new Date(new Date().setMonth(new Date().getMonth() + monthsAtCurrentRate))
+      : null;
+  const reachLabel = reachDate
+    ? reachDate.toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
+    : null;
+
+  // Exactly one of these renders, in this order. The monthsLeft check is
+  // load-bearing: a passed deadline forces monthlyNeeded to 0, which would
+  // otherwise make gap negative and read as "On track" while you sit short.
+  const verdict: { tone: 'positive' | 'warn' | 'neutral'; headline: string; detail: string } =
+    remaining === 0
+      ? { tone: 'positive', headline: 'Goal reached', detail: `${fmt(saved, 0)} against a ${fmt(targetAmount, 0)} target` }
+      : monthsLeft === 0
+        ? { tone: 'warn', headline: 'Deadline passed', detail: `${fmt(remaining, 0)} still to go` }
+        : actualMonthly === 0
+          ? { tone: 'neutral', headline: 'No monthly savings set', detail: 'Add what you put aside each month on the Savings Hub' }
+          : gap <= 0
+            ? { tone: 'positive', headline: 'On track', detail: `${fmt(-gap, 0)} a month spare` }
+            : {
+                tone: 'warn',
+                headline: `Short ${fmt(gap, 0)} a month`,
+                detail: reachLabel
+                  ? `At ${fmt(actualMonthly, 0)} a month you reach ${fmt(targetAmount, 0)} in ${reachLabel}`
+                  : `At ${fmt(actualMonthly, 0)} a month you do not reach ${fmt(targetAmount, 0)} within 50 years`,
+              };
+
+  // Same shape as the Hub's outlookSeries, so the two screens project alike.
+  const projectionPoints = Array.from({ length: 13 }, (_, i) => saved + actualMonthly * i);
+  const projectionLabels = [0, 6, 12].map(offset =>
+    new Date(new Date().setMonth(new Date().getMonth() + offset))
+      .toLocaleDateString(undefined, { month: 'short' })
+  );
+
+  const deadlineLabel = goal.targetDate
+    ? new Date(goal.targetDate).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
+    : '—';
 
   return (
     <>
@@ -191,38 +228,60 @@ export const SavingsGoal: React.FC<SavingsGoalProps> = ({
           </div>
         </div>
 
-        {/* Monthly needed */}
-        <div className="flex items-center justify-between gap-3 p-4 rounded-field bg-surface-container-highest/40 border border-outline-variant/12">
-          <div>
-            <FieldLabel className="!text-micro">Monthly needed</FieldLabel>
-            <p className="mt-0.5 text-label text-secondary">
-              {monthsLeft > 0
-                ? `to reach goal in ${monthsLeft} months`
-                : 'deadline has passed'}
-            </p>
-          </div>
-          <span className="text-num-sm font-bold text-primary tabular-nums flex-none">
-            {fmt(monthlyNeeded, 0)}
-          </span>
-        </div>
-
-        {/* 12-month accumulation */}
-        <div>
-          <div className="flex justify-between mb-3">
-            <FieldLabel className="!text-micro">12-Month Accumulation</FieldLabel>
-            <span className="text-micro font-bold tracking-[.08em] uppercase text-primary-container">
-              — Monthly Target
+        {/* Monthly needed vs. what you actually save */}
+        <div className="p-4 rounded-field bg-surface-container-highest/40 border border-outline-variant/12">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <FieldLabel className="!text-micro">Monthly needed</FieldLabel>
+              <p className="mt-0.5 text-label text-secondary">
+                {monthsLeft > 0 ? `to reach goal in ${monthsLeft} months` : 'deadline has passed'}
+              </p>
+            </div>
+            <span className="text-num-sm font-bold text-primary tabular-nums flex-none">
+              {fmt(monthlyNeeded, 0)}
             </span>
           </div>
-          <ColumnChart
-            height={88}
-            columns={miniBarHeights.map((h, i) => ({
-              label: '',
-              value: h,
-              highlight: i === currentMonth,
-            }))}
-          />
-          <AxisLabels labels={['Jan', 'Jun', 'Dec']} className="mt-2" />
+
+          <div className="flex items-center justify-between gap-3 mt-3">
+            <FieldLabel className="!text-micro">You save</FieldLabel>
+            <button
+              onClick={() => onNavigate?.('savings')}
+              className="text-body font-bold tabular-nums hover:underline"
+            >
+              {fmt(actualMonthly, 0)}
+            </button>
+          </div>
+
+          <p
+            className={`mt-3 pt-3 border-t border-outline-variant/12 text-label font-bold ${
+              verdict.tone === 'positive'
+                ? 'text-positive'
+                : verdict.tone === 'warn'
+                  ? 'text-tertiary'
+                  : 'text-secondary'
+            }`}
+          >
+            {verdict.headline}
+          </p>
+          <p className="mt-0.5 text-label text-secondary">{verdict.detail}</p>
+        </div>
+
+        {/* 12-month projection at your current rate */}
+        <div>
+          <div className="flex justify-between mb-3">
+            <FieldLabel className="!text-micro">12-Month Projection</FieldLabel>
+            <span className="text-micro font-bold tracking-[.08em] uppercase text-primary-container">
+              ╌ {fmt(targetAmount, 0)} target
+            </span>
+          </div>
+          <div className="h-[120px]">
+            <AreaChart
+              points={projectionPoints}
+              baseline={new Array(13).fill(targetAmount)}
+              label="12-month projection against target"
+            />
+          </div>
+          <AxisLabels labels={projectionLabels} className="mt-2" />
         </div>
 
         <PrimaryButton onClick={() => setIsEditing(!isEditing)}>
