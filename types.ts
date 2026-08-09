@@ -36,7 +36,16 @@ export interface InvestmentState {
 export interface SavingsGoal {
   targetAmount: number;
   targetDate: string; // ISO date string
-  currentSavings: number;
+  /**
+   * Which tracked assets count toward this goal. Absent means all of them, so a
+   * goal synced from a device that predates this field needs no migration.
+   */
+  sources?: GoalSource[];
+  /**
+   * @deprecated Was the hand-typed "saved so far". Read once by the migration in
+   * App.tsx, then cleared. Never displayed.
+   */
+  currentSavings?: number;
 }
 
 /** A tracked asset line that a savings goal can count toward its progress. */

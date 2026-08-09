@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef, Component, ErrorInfo, ReactNode } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, Component, ErrorInfo, ReactNode } from 'react';
 import { ActiveTab, Expense, InvestmentState, SavingsGoal as SavingsGoalType, FIREState, PortfolioAsset, IncomeState, Stock, NetWorthState, SavingsHistoryRecord, EmergencyFundState, Loan } from './types';
 import { Expenses } from './components/Expenses';
 import { InvestmentCalculator } from './components/InvestmentCalculator';
@@ -17,7 +17,7 @@ import { MoreSheet } from './components/shell/MoreSheet';
 import { Toast, useToast } from './components/shell/Toast';
 import { ALL_DESTINATIONS } from './components/shell/navigation';
 import { mergePulledExpenses } from './utils/mergeExpenses';
-import { num } from './utils/finance';
+import { assetBreakdown, num } from './utils/finance';
 import { captureKeyFromUrl } from './services/advanziaCapture';
 import { Capacitor } from '@capacitor/core';
 import { AlertTriangle } from 'lucide-react';
@@ -97,7 +97,7 @@ const AppMain: React.FC = () => {
   const [expenses, setExpenses] = usePersistedState<Expense[]>('expenses', []);
   const [income, setIncome] = usePersistedState<IncomeState>('income', { salaryMe: 0, salaryPartner: 0 });
   const [investment, setInvestment] = usePersistedState<InvestmentState>('investment', { initialPrincipal: 5000, monthlyContribution: 500, annualInterestRate: 7, yearsToGrow: 10 });
-  const [goal, setGoal] = usePersistedState<SavingsGoalType>('goal', { targetAmount: 10000, currentSavings: 1000, targetDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0] });
+  const [goal, setGoal] = usePersistedState<SavingsGoalType>('goal', { targetAmount: 10000, targetDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0] });
   const [netWorthData, setNetWorthData] = usePersistedState<NetWorthState>('networth', { goldInvestment: 0, otherAssets: 0, remainingLoan: 0, monthlyRecurringSavings: 0, accumulatedSavings: 0 });
   const [history, setHistory] = usePersistedState<SavingsHistoryRecord[]>('savings_history', []);
   const [fire, setFire] = usePersistedState<FIREState>('fire', { currentAge: 30, annualExpenses: 30000, currentNetWorth: 50000, annualSavings: 12000, annualReturn: 7, withdrawalRate: 4 });
@@ -110,6 +110,14 @@ const AppMain: React.FC = () => {
   const [portfolio, setPortfolio] = usePersistedState<PortfolioAsset[]>('portfolio', []);
   const [stocks, setStocks] = usePersistedState<Stock[]>('stocks', []);
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
+
+  // The Goal screen holds none of the asset state, so the sum is computed here
+  // rather than handing it three more props. The Hub and Net Worth compute their
+  // own from props they already carry.
+  const breakdown = useMemo(
+    () => assetBreakdown(netWorthData, stocks, portfolio),
+    [netWorthData, stocks, portfolio]
+  );
 
   const pullInProgressRef = useRef(false);
   const syncInProgressRef = useRef(false);
@@ -459,7 +467,7 @@ const AppMain: React.FC = () => {
       case 'expenses': return <Expenses expenses={expenses} setExpenses={setExpenses} income={income} setIncome={setIncome} onSync={syncCallback} onExpenseDeleted={recordExpenseDeletion} captureFocusKey={captureFocusKey} onCaptureFocusHandled={() => setCaptureFocusKey(null)} />;
       case 'savings': return <SavingsDashboard portfolio={portfolio} stocks={stocks} netWorthData={netWorthData} setNetWorthData={setNetWorthData} onSync={syncCallback || (async () => { })} expenses={expenses} emergencyFund={emergencyFund} setEmergencyFund={setEmergencyFund} onNavigate={navigate} />;
       case 'investment': return <InvestmentCalculator investment={investment} setInvestment={setInvestment} onSync={syncCallback} />;
-      case 'goal': return <SavingsGoal goal={goal} setGoal={setGoal} onSync={syncCallback} />;
+      case 'goal': return <SavingsGoal goal={goal} setGoal={setGoal} breakdown={breakdown} monthlySavings={netWorthData.monthlyRecurringSavings || 0} onNavigate={navigate} onSync={syncCallback} />;
       case 'networth': return <NetWorth netWorthData={netWorthData} setNetWorthData={setNetWorthData} stocks={stocks} portfolio={portfolio} userKey={activeUserKey || undefined} history={history} setHistory={setHistory} onSync={syncCallback} loans={loans} />;
       case 'debts': return <Debts loans={loans} setLoans={setLoans} netWorthData={netWorthData} expenses={expenses} emergencyFund={emergencyFund} onSync={syncCallback} />;
       case 'fire': return <FIRECalculator state={fire} setState={setFire} onSync={syncCallback} />;
