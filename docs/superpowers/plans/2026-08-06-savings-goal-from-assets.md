@@ -890,7 +890,11 @@ Expected: FAIL — the new verdicts and the labelled chart do not exist; the old
 
 - [ ] **Step 3: Compute the verdict**
 
-Add after `progressPct` in the component body:
+Add after `progressPct` in the component body — but **below `fmt`**. `verdict` is a
+const holding an evaluated ternary, not a function, so it calls `fmt` the moment
+the component body runs. Leaving `fmt` at its old position further down the file
+puts it in the temporal dead zone and throws `ReferenceError` on first render.
+Move the `fmt` declaration up to sit above this block; its body is unchanged.
 
 ```tsx
   const actualMonthly = num(monthlySavings);
