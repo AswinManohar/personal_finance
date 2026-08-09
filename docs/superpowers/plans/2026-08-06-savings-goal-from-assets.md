@@ -248,8 +248,11 @@ import { assetBreakdown, monthlyAmount, num, totalAssets as sumAssets } from '..
 Delete lines 37-51 (the local `num` helper and the `stockValue` / `portfolioValue` memos) and lines 55-58 (the four scalars), and put this in their place:
 
 ```ts
-  // One breakdown, shared with Net Worth and the Goal screen. Memoized because
-  // the stock and fund sums walk arrays on every keystroke otherwise.
+  // One breakdown, shared with Net Worth and the Goal screen. Recomputed when
+  // any asset input changes — including a keystroke in a netWorthData field,
+  // which rebuilds that object and so re-walks the stock and fund arrays too.
+  // Deliberate: the arrays hold a handful of rows, and one memo keeps the five
+  // slices impossible to compute out of step with each other.
   const breakdown = useMemo(
     () => assetBreakdown(netWorthData, stocks, portfolio),
     [netWorthData, stocks, portfolio]
