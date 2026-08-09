@@ -16,7 +16,7 @@ personal_finance/
 ├── 📄 index.tsx                   # React app bootstrap (ReactDOM.createRoot)
 ├── 📄 App.tsx                     # Main application component (336 lines)
 ├── 📄 types.ts                    # Shared TypeScript interfaces & enums (100 lines)
-├── 📄 vite.config.ts              # Vite config (port 3000, Gemini API key injection)
+├── 📄 vite.config.ts              # Vite config (port 5173, Gemini API key injection)
 ├── 📄 tsconfig.json               # TypeScript config (ES2022, bundler module resolution)
 ├── 📄 package.json                # Node dependencies & scripts
 ├── 📄 package-lock.json           # Lockfile
@@ -138,7 +138,7 @@ Based on the service code, the app uses these Supabase tables:
 ## 🔧 Scripts
 
 ```bash
-npm run dev      # Start Vite dev server on port 3000
+npm run dev      # Start Vite dev server on port 5173
 npm run build    # Production build → dist/
 npm run preview  # Preview production build
 ```

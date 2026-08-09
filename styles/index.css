@@ -1,0 +1,126 @@
+/* Everything the app needs to render, with no request to any external host —
+   the precondition for a Capacitor build that opens offline. */
+
+/* Inter, self-hosted. The variable build is one file across all weights, and
+   the app uses 400–900. */
+@import '@fontsource-variable/inter';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Material Symbols, subsetted to the icons this app actually renders.
+   Regenerate with scripts/fetch-icon-font.sh after adding an icon — the full
+   variable font is 3.8MB, this subset is 64KB.
+
+   Referenced relatively so Vite fingerprints it into dist/assets/ alongside
+   everything else. A public/ copy would land at dist/fonts/, which the FastAPI
+   app that serves the desktop build does not mount (it mounts dist/assets). */
+@font-face {
+  font-family: 'Material Symbols Outlined';
+  font-style: normal;
+  font-weight: 100 700;
+  font-display: block;
+  src: url('./fonts/material-symbols-outlined-subset.woff2') format('woff2');
+}
+
+@layer base {
+  html {
+    font-family: 'Inter Variable', 'Inter', system-ui, sans-serif;
+  }
+
+  body {
+    background-color: theme('colors.background');
+    color: theme('colors.on-surface');
+  }
+
+  /* Safe-area insets, read once so the shell classes below can reserve space
+     for a notch or a gesture bar rather than being painted over by them. */
+  :root {
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}
+
+@layer components {
+  .material-symbols-outlined {
+    font-family: 'Material Symbols Outlined';
+    font-weight: normal;
+    font-style: normal;
+    font-size: 24px;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    display: inline-block;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    vertical-align: middle;
+    /* `liga` is how a name like "receipt_long" resolves to a glyph. Without it
+       every icon renders as its own literal text. */
+    -webkit-font-feature-settings: 'liga';
+    font-feature-settings: 'liga';
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  /* ── Phone shell ──────────────────────────────────────────────────────────
+     The prototype is a fixed-viewport app: header and nav are flex-none
+     siblings of a scrolling main, not `fixed` overlays. That is what keeps a
+     mobile URL bar (and the Capacitor WebView) from jittering the layout, and
+     it is the only arrangement where safe-area insets can be reserved rather
+     than painted over. */
+
+  /* Phone only — desktop keeps normal document flow. */
+  @media (max-width: 767px) {
+    .app-shell {
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+    }
+  }
+
+  /* Chrome sits inside its nominal height; the inset is added on top so the
+     56/64px touch areas survive a notch or a gesture bar. */
+  .app-header-safe {
+    height: calc(56px + var(--safe-top));
+    padding-top: var(--safe-top);
+  }
+
+  .app-nav-safe {
+    height: calc(64px + var(--safe-bottom));
+    padding-bottom: var(--safe-bottom);
+  }
+
+  .app-sheet-safe {
+    padding-bottom: calc(24px + var(--safe-bottom));
+  }
+
+  .app-scroll {
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* The animate-* utilities themselves come from the `animation` key in
+   tailwind.config.js; this only opts them out for users who ask for less
+   motion. Outside @layer so it always wins over the generated utility. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-toast-in,
+  .animate-sheet-in,
+  .animate-scrim-in {
+    animation: none;
+  }
+}

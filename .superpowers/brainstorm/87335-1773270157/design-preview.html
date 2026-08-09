@@ -1,0 +1,171 @@
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+  * { font-family: 'Inter', sans-serif; box-sizing: border-box; margin: 0; padding: 0; }
+
+  .compare-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 16px; }
+  .panel { background: #f8fafc; border-radius: 16px; padding: 16px; border: 1px solid #e2e8f0; }
+  .panel-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b; margin-bottom: 14px; display: flex; align-items: center; gap: 6px; }
+  .panel-label .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .panel-label .dot.before { background: #94a3b8; }
+  .panel-label .dot.after { background: #6366f1; }
+
+  /* ====== BEFORE ====== */
+  .before .hero {
+    background: linear-gradient(135deg, #4f46e5, #1d4ed8);
+    border-radius: 12px; padding: 18px; color: white; margin-bottom: 10px;
+  }
+  .before .hero .eyebrow { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #c7d2fe; margin-bottom: 4px; }
+  .before .hero .amount { font-size: 34px; font-weight: 900; line-height: 1; }
+  .before .hero .sub-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); }
+  .before .hero .sub-label { font-size: 9px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #a5b4fc; margin-bottom: 2px; }
+  .before .hero .sub-val { font-size: 16px; font-weight: 700; }
+
+  .before .asset { background: white; border-radius: 10px; padding: 12px 14px; margin-bottom: 8px; border: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; }
+  .before .asset .a-icon { width: 32px; height: 32px; border-radius: 10px; background: #fef9c3; display: flex; align-items: center; justify-content: center; font-size: 14px; margin-right: 10px; flex-shrink: 0; }
+  .before .asset .a-label { font-size: 9px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.12em; }
+  .before .asset .a-val { font-size: 17px; font-weight: 900; color: #0f172a; }
+
+  .before .card { background: white; border-radius: 10px; padding: 14px; border: 1px solid #e2e8f0; margin-bottom: 10px; }
+  .before .card .c-title { font-size: 15px; font-weight: 600; color: #0f172a; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid #f1f5f9; }
+  .before .input-label { font-size: 11px; font-weight: 700; color: #334155; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; display: flex; align-items: center; gap-6px; }
+  .before .input-wrap { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 12px; display: flex; align-items: center; gap: 4px; }
+  .before .input-wrap .prefix { font-weight: 700; color: #94a3b8; font-size: 14px; }
+  .before .input-wrap .val { font-size: 22px; font-weight: 900; color: #0f172a; }
+
+  .before .outlook { background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 10px; padding: 12px; }
+  .before .outlook .o-title { font-size: 13px; font-weight: 700; color: #0f172a; margin-bottom: 8px; }
+  .before .outlook .o-row { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px; }
+  .before .outlook .o-label { color: #64748b; }
+  .before .outlook .o-val { font-weight: 700; color: #0f172a; }
+
+  /* ====== AFTER ====== */
+  .after .hero {
+    background: linear-gradient(135deg, #4f46e5, #7c3aed);
+    border-radius: 12px; padding: 18px; color: white; margin-bottom: 10px;
+  }
+  .after .hero .eyebrow { font-size: 10px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: rgba(255,255,255,0.55); margin-bottom: 6px; }
+  .after .hero .amount { font-size: 34px; font-weight: 800; line-height: 1; letter-spacing: -0.02em; }
+  .after .hero .sub-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.08); }
+  .after .hero .sub-label { font-size: 9px; font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase; color: rgba(255,255,255,0.45); margin-bottom: 2px; }
+  .after .hero .sub-val { font-size: 16px; font-weight: 600; }
+
+  .after .asset { background: white; border-radius: 10px; padding: 12px 14px; margin-bottom: 8px; border: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; }
+  .after .asset .a-icon { width: 32px; height: 32px; border-radius: 10px; background: #fef9c3; display: flex; align-items: center; justify-content: font-size: 14px; margin-right: 10px; flex-shrink: 0; font-size: 14px; align-items: center; justify-content: center; }
+  .after .asset .a-label { font-size: 10px; font-weight: 500; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.06em; }
+  .after .asset .a-val { font-size: 17px; font-weight: 700; color: #0f172a; }
+
+  .after .card { background: white; border-radius: 10px; padding: 14px; border: 1px solid #e2e8f0; margin-bottom: 10px; }
+  .after .card .c-title { font-size: 15px; font-weight: 600; color: #0f172a; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid #f1f5f9; }
+  .after .input-label { font-size: 10px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 4px; }
+  .after .input-wrap { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 12px; display: flex; align-items: center; gap: 4px; }
+  .after .input-wrap .prefix { font-weight: 500; color: #94a3b8; font-size: 14px; }
+  .after .input-wrap .val { font-size: 22px; font-weight: 700; color: #0f172a; }
+
+  .after .outlook { background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 10px; padding: 12px; }
+  .after .outlook .o-title { font-size: 13px; font-weight: 600; color: #0f172a; margin-bottom: 8px; }
+  .after .outlook .o-row { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px; }
+  .after .outlook .o-label { color: #64748b; font-weight: 400; }
+  .after .outlook .o-val { font-weight: 600; color: #0f172a; }
+
+  .change-tag {
+    display: inline-block; font-size: 9px; font-weight: 600; padding: 1px 6px;
+    border-radius: 4px; margin-left: 6px; vertical-align: middle;
+    background: #fef9c3; color: #854d0e; letter-spacing: 0.03em;
+  }
+  .section-title { font-size: 13px; font-weight: 700; color: #374151; margin: 14px 0 8px; text-transform: uppercase; letter-spacing: 0.06em; }
+</style>
+
+<h2>Before → After: Savings Hub Redesign</h2>
+<p class="subtitle">Option B applied — same layout, typography + color unified to indigo. Scroll to see all sections.</p>
+
+<div class="compare-wrap">
+  <div class="panel before">
+    <div class="panel-label"><span class="dot before"></span> Before</div>
+
+    <div class="section-title">Hero Card</div>
+    <div class="hero">
+      <div class="eyebrow">Total Money Saved</div>
+      <div class="amount">€24,850</div>
+      <div class="sub-grid">
+        <div><div class="sub-label">Market Equity</div><div class="sub-val">€18,200</div></div>
+        <div><div class="sub-label">Liquid Assets</div><div class="sub-val">€6,650</div></div>
+      </div>
+    </div>
+
+    <div class="section-title">Asset Cards</div>
+    <div class="asset">
+      <div style="display:flex;align-items:center">
+        <div class="a-icon">🏦</div>
+        <div><div class="a-label">Mutual Funds</div><div class="a-val">€12,400</div></div>
+      </div>
+      <span style="color:#e2e8f0;font-size:16px">↗</span>
+    </div>
+    <div class="asset">
+      <div style="display:flex;align-items:center">
+        <div class="a-icon" style="background:#dbeafe">📈</div>
+        <div><div class="a-label">Stock Equity</div><div class="a-val">€5,800</div></div>
+      </div>
+      <span style="color:#e2e8f0;font-size:16px">↗</span>
+    </div>
+
+    <div class="section-title">Manage Liquid Cash</div>
+    <div class="card">
+      <div class="c-title">Manage Liquid Cash</div>
+      <div class="input-label">Monthly Recurring Savings</div>
+      <div class="input-wrap" style="margin-bottom:10px">
+        <span class="prefix">€</span><span class="val">800</span>
+      </div>
+      <div class="outlook">
+        <div class="o-title">12-Month Outlook</div>
+        <div class="o-row"><span class="o-label">Projected Balance</span><span class="o-val">€13,600</span></div>
+        <div class="o-row"><span class="o-label">Net Growth</span><span style="font-weight:700;color:#059669">+€9,600</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel after">
+    <div class="panel-label"><span class="dot after"></span> After</div>
+
+    <div class="section-title">Hero Card <span class="change-tag">gradient: indigo→violet</span></div>
+    <div class="hero">
+      <div class="eyebrow">Total Money Saved</div>
+      <div class="amount">€24,850</div>
+      <div class="sub-grid">
+        <div><div class="sub-label">Market Equity</div><div class="sub-val">€18,200</div></div>
+        <div><div class="sub-label">Liquid Assets</div><div class="sub-val">€6,650</div></div>
+      </div>
+    </div>
+
+    <div class="section-title">Asset Cards <span class="change-tag">font-black → font-bold</span></div>
+    <div class="asset">
+      <div style="display:flex;align-items:center">
+        <div class="a-icon">🏦</div>
+        <div><div class="a-label">Mutual Funds</div><div class="a-val">€12,400</div></div>
+      </div>
+      <span style="color:#e2e8f0;font-size:16px">↗</span>
+    </div>
+    <div class="asset">
+      <div style="display:flex;align-items:center">
+        <div class="a-icon" style="background:#dbeafe">📈</div>
+        <div><div class="a-label">Stock Equity</div><div class="a-val">€5,800</div></div>
+      </div>
+      <span style="color:#e2e8f0;font-size:16px">↗</span>
+    </div>
+
+    <div class="section-title">Manage Liquid Cash <span class="change-tag">labels unified</span></div>
+    <div class="card">
+      <div class="c-title">Manage Liquid Cash</div>
+      <div class="input-label">Monthly Recurring Savings</div>
+      <div class="input-wrap" style="margin-bottom:10px">
+        <span class="prefix">€</span><span class="val">800</span>
+      </div>
+      <div class="outlook">
+        <div class="o-title">12-Month Outlook</div>
+        <div class="o-row"><span class="o-label">Projected Balance</span><span class="o-val">€13,600</span></div>
+        <div class="o-row"><span class="o-label">Net Growth</span><span style="font-weight:600;color:#059669">+€9,600</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:18px;font-size:12px">Does this direction look right? Reply in the terminal to confirm or request adjustments.</p>

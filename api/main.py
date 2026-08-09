@@ -2,7 +2,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from api.routers import expenses, integrations
+from api.observability import configure_observability
+from api.routers import expenses, integrations, merchants, statements
 from dotenv import load_dotenv
 import os
 
@@ -10,12 +11,21 @@ load_dotenv()
 
 app = FastAPI(title="FinanceFlow API")
 
+# Tracing for the API and every LLM call it makes. A no-op without LOGFIRE_TOKEN,
+# so dev and CI are unaffected.
+configure_observability(app)
+
 # CORS Configuration
 origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    # The Capacitor Android app. Its WebView serves the bundled assets from
+    # https://localhost (androidScheme in capacitor.config.ts), so its /api
+    # calls to this backend are cross-origin and need CORS.
+    "https://localhost",
+    "capacitor://localhost",
 ]
 
 app.add_middleware(
@@ -27,6 +37,8 @@ app.add_middleware(
 )
 
 app.include_router(expenses.router, prefix="/api")
+app.include_router(statements.router, prefix="/api")
+app.include_router(merchants.router, prefix="/api")
 # Read-only service-to-service feeds (e.g. Life OS). Registered before the SPA
 # catch-all below so /v1/* resolves to the API, not index.html.
 app.include_router(integrations.router)

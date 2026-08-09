@@ -1,69 +1,142 @@
-# FinanceFlow (Cashflow)
+# Cashflow
 
-FinanceFlow is a comprehensive personal finance dashboard designed to help you track expenses, project legitimate investment growth, calculate savings goals, and receive AI-powered financial advice. It combines manual tracking with intelligent insights to give you a complete picture of your financial health.
+A personal finance app for tracking what you spend, what you own, and what you owe — with a
+statement-review pipeline that reads a bank PDF and checks it against what you already logged.
 
-## 🚀 Features
+It runs as a web app and as an Android app (Capacitor) off the same React codebase, backed by a
+FastAPI service and Supabase.
 
-- **📊 Expense Tracking**: Log and categorize monthly expenses (Housing, Food, Transport, etc.) to understand your spending habits.
-- **💰 Savings Goals**: Set target amounts and dates for your savings goals and track your progress.
-- **📈 Investment Projections**: Visualize compound interest growth based on your monthly contributions and expected returns.
-- **🔥 FIRE Calculator**: Estimate your Financial Independence, Retire Early (FIRE) number and timeline.
-- **🏦 Net Worth Tracker**: Monitor your total net worth by aggregating assets (savings, investments, gold) and liabilities (loans).
-- **🤖 AI Financial Advisor**: Get personalized, holistic financial advice powered by Google Gemini AI, analyzing your unique financial data.
-- **☁️ Cloud Sync**: Securely sync your data across devices using Supabase, with support for Google OAuth and Guest Mode.
-- **📉 Live Stock Prices**: Fetch real-time stock and ETF prices to keep your portfolio value up-to-date.
+## What it does
 
-## 🛠️ Tech Stack
+| Screen | Purpose |
+|---|---|
+| Savings Hub | Total assets, emergency-fund runway, distribution mix |
+| Expenses | Log one-time and recurring spending, flag essentials |
+| Net Worth | Assets against liabilities |
+| Debts | Payoff ordering and simulation |
+| FIRE | Financial-independence projection |
+| Goals | Goal-based savings tracking |
+| Calculator | Compound-growth projections |
+| Statement Review | Upload a bank statement PDF and get it cross-checked |
+| Portfolio / Stocks | Holdings that feed Total Assets |
+| Data | Sync, export, integration tokens, account |
 
-- **Frontend**: React 19, TypeScript, Vite
-- **Styling**: Tailwind CSS (CDN), Lucide React (Icons)
-- **Charts**: Recharts
-- **Backend/Auth**: Supabase (Auth, Database)
-- **AI**: Google Gemini AI SDK
-- **Language**: TypeScript, Python (for data processing scripts)
+Beyond the screens:
 
-## 📦 Installation & Setup
+- **Statement review.** A PDF goes through parse → redact → extract → cross-check → report.
+  Redaction is local, deterministic, and runs *before* any LLM call — `api/statement_review/redactor.py`
+  is the privacy boundary. Only redacted text ever leaves the process.
+- **Merchant naming.** Card-network descriptors (`DM DROGERIE SAGT DANKE`, `REWE Bonn, Friedenspla`)
+  are resolved to a readable name and category by a Pydantic AI agent with a structured output type,
+  so the model cannot return an unlisted category. The phone asks once per unseen merchant and caches
+  the answer locally.
+- **Transaction capture.** Advanzia push notifications are read by a native Android listener and
+  drained into a review inbox; Sparkasse Kontowecker emails are pulled from Gmail. Both are idempotent —
+  a dismissed capture does not come back.
+- **Integration feeds.** Read-only `/v1/*` endpoints (expenses, savings history, income) for external
+  aggregators, authenticated by a per-user token you generate and revoke yourself.
 
-1.  **Clone the repository:**
-    ```bash
-    git clone https://github.com/AswinManohar/personal_finance.git
-    cd personal_finance
-    ```
+## Stack
 
-2.  **Install dependencies:**
-    ```bash
-    npm install
-    ```
+- **Frontend** — React 19, TypeScript, Vite, Tailwind CSS, Recharts, Lucide
+- **Mobile** — Capacitor 7 (Android, `com.aswinmanohar.cashflow`)
+- **Backend** — FastAPI on Python 3.13, served by Gunicorn + Uvicorn workers, dependencies via `uv`
+- **Data & auth** — Supabase (Postgres + Auth), row-level security keyed on `auth.uid()::text = user_key`
+- **AI** — OpenAI via Pydantic AI, traced with Logfire (optional)
+- **Deploy** — Docker multi-stage build on Railway; FastAPI also serves the built SPA
 
-3.  **Environment Setup:**
-    Create a `.env.local` file in the root directory and add your API keys:
-    ```env
-    GEMINI_API_KEY=your_google_gemini_api_key
-    ```
-    *Note: Supabase configuration is currently hardcoded in `services/supabaseService.ts` for this demo/personal version.*
+## Getting started
 
-4.  **Run the development server:**
-    ```bash
-    npm run dev
-    ```
+Requires Node 20+, Python 3.13, [uv](https://docs.astral.sh/uv/), and optionally
+[just](https://github.com/casey/just).
 
-## 🏗️ Project Structure
+```bash
+git clone git@github.com:AswinManohar/personal_finance.git
+cd personal_finance
+npm install
+uv sync
+cp .env.example .env    # fill in what you need — see below
+```
 
-For a detailed breakdown of the project directory and architecture, please refer to [PROJECT_STRUCTURE.md](./PROJECT_STRUCTURE.md).
+Run both halves together:
 
-## 🧩 Key Components
+```bash
+just start        # FastAPI on :8000, Vite on :5173
+```
 
-- **`App.tsx`**: Main application controller handling navigation and state persistence.
-- **`AIAdvisor.tsx`**: Interface for the Gemini-powered financial assistant.
-- **`Expenses.tsx`**: Core module for managing daily and recurring expenses.
-- **`FIRECalculator.tsx`**: Specialized calculator for retirement planning.
-- **`Portfolio.tsx` & `Stocks.tsx`**: Tools for tracking market investments.
-- **`supabaseService.ts`**: Handles all data synchronization and authentication logic.
+Or separately with `just api` and `just web`.
 
-## 🤝 Contributing
+### Environment
 
-This is a personal project. Feel free to fork and modify for your own use!
+Supabase URL and anon key are compiled into `services/supabaseService.ts`. Everything else is
+optional and read from `.env` — see `.env.example` for the full annotated list.
 
-## 📄 License
+| Variable | Needed for |
+|---|---|
+| `OPENAI_API_KEY` | Statement review and merchant guessing |
+| `OPENAI_MODEL` | Overrides the default model |
+| `SUPABASE_URL`, `SUPABASE_KEY` | Backend Supabase access |
+| `SUPABASE_SERVICE_ROLE_KEY` | Integration feeds (service-to-service reads) |
+| `REDACT_NAMES` | Extra names for the statement redactor to mask |
+| `LOGFIRE_TOKEN` | Tracing; without it instrumentation is a no-op |
+| `VITE_GOOGLE_WEB_CLIENT_ID` | Google sign-in on Android |
+| `VITE_GOOGLE_ANDROID_CLIENT_ID` | Gmail access for Sparkasse capture |
+| `VITE_API_BASE_URL` | Backend origin for the Android build |
 
-[MIT License](LICENSE)
+Without an OpenAI key the app still runs; the statement-review and merchant-guess paths are what stop
+working.
+
+## Android
+
+```bash
+npm run android:sync    # build the web bundle and copy it into the Android project
+npm run android:run     # build, sync and launch on a device or emulator
+npm run android:apk     # assemble a debug APK
+```
+
+Sign-in differs by platform: the web uses the OAuth redirect flow, Android cannot (Google refuses
+OAuth in plain WebViews) and instead exchanges a native Google ID token via `signInWithIdToken`.
+`services/auth.ts` holds that branch, and the native module is dynamically imported so the web bundle
+never pulls it in.
+
+## Tests
+
+```bash
+npm test              # vitest — tests/frontend
+npx tsc --noEmit      # typecheck
+uv run pytest         # backend — tests/
+```
+
+Evals for the merchant-guess agent live in `evals/` and run through `pydantic-evals`.
+
+CI (`.github/workflows/ci-cd.yml`) runs backend tests, typecheck and frontend tests on every PR into
+`main` and on pushes to `main`/`dev`. A push to `main` that passes deploys to Railway.
+
+## Layout
+
+```
+App.tsx                  Root component, tab routing, persisted state
+components/              One file per screen, plus shell/ (nav) and ui/ (primitives)
+services/                Supabase, auth, Gmail, notification capture, API base
+utils/                   Pure logic — finance math, parsers, merge, dedup, hashing
+api/                     FastAPI app
+  routers/               expenses, statements, merchants, integrations
+  statement_review/      parser, redactor, extractor, reviewer, crosscheck, pipeline
+  dependencies.py        Auth: Supabase JWT, personal token, integration token
+tests/                   pytest suites; tests/frontend holds the vitest suites
+evals/                   Agent evals and synthetic fixtures
+migrations/              SQL migrations
+docs/                    Plans and design notes
+```
+
+## Deployment
+
+The Dockerfile builds the frontend in a Node stage, installs Python dependencies from `uv.lock` in a
+`python:3.13-slim` stage, and copies `dist/` into the backend image. FastAPI serves `/api/*` and
+`/v1/*`, then falls through to the SPA for everything else. `/health` is a zero-dependency health
+check, wired to Railway's health check in `railway.json`.
+
+## Status
+
+This is a personal project, built for one household's finances. No license file, no support promised —
+fork it if it's useful to you.

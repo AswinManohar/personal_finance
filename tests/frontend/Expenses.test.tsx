@@ -1,9 +1,37 @@
 import React, { useState } from 'react';
-import { describe, it, expect } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Expenses } from '../../components/Expenses';
 import { Expense, ExpenseCategory, IncomeState } from '../../types';
+
+const { importedExpense, report } = vi.hoisted(() => {
+  // 'Food' rather than ExpenseCategory.FOOD: vi.hoisted runs before this
+  // file's own imports are evaluated, so referencing the imported enum here
+  // would throw. The enum's value for FOOD is the literal string 'Food'.
+  const importedExpense = {
+    id: 'e-imported', name: 'Lieferando', amount: 28.9, category: 'Food',
+    isRecurring: false, date: '2026-06-05',
+  };
+  const tx = { date: '2026-06-05', description: 'Lieferando', amount: 28.9,
+               category: 'Food', direction: 'debit' as const };
+  const report = {
+    transactions: [tx],
+    flags: [],
+    crosscheck: { missing_in_app: [tx], missing_on_statement: [], amount_mismatch: [] },
+    redaction_preview: { masked_counts: {} },
+    totals: { statement_spend: 28.9, flagged_spend: 0, coverage_pct: 0 },
+  };
+  return { importedExpense, report };
+});
+
+// Only the "Statement import" describe block below drives StatementReview;
+// other tests in this file don't touch it, so mocking the service here is
+// harmless for them.
+vi.mock('../../services/statementReview', () => ({
+  reviewStatement: vi.fn().mockResolvedValue(report),
+  importTransaction: vi.fn().mockResolvedValue(importedExpense),
+}));
 
 // YYYY-MM-DD for `n` days ago (the form/filter use local date strings).
 const daysAgo = (n: number) => {
@@ -13,11 +41,11 @@ const daysAgo = (n: number) => {
 };
 
 /** Controlled harness mirroring how App.tsx owns expense + income state. */
-function Harness({ initial = [], initialIncome = { salaryMe: 0, salaryPartner: 0 } }:
-  { initial?: Expense[]; initialIncome?: IncomeState }) {
+function Harness({ initial = [], initialIncome = { salaryMe: 0, salaryPartner: 0 }, onSync }:
+  { initial?: Expense[]; initialIncome?: IncomeState; onSync?: (overrides?: any) => Promise<void> }) {
   const [expenses, setExpenses] = useState<Expense[]>(initial);
   const [income, setIncome] = useState<IncomeState>(initialIncome);
-  return <Expenses expenses={expenses} setExpenses={setExpenses} income={income} setIncome={setIncome} />;
+  return <Expenses expenses={expenses} setExpenses={setExpenses} income={income} setIncome={setIncome} onSync={onSync} />;
 }
 
 const totalSpentText = () =>
@@ -108,5 +136,53 @@ describe('Calculations', () => {
   it('total monthly income sums both salaries', () => {
     render(<Harness initialIncome={{ salaryMe: 5000, salaryPartner: 4000 }} />);
     expect(screen.getByText('€9,000.00')).toBeInTheDocument();
+  });
+});
+
+// The "Statement import" case that lived here moved to AppNavigation.test.tsx.
+// Statement Review is a destination of its own now, so the import crosses a
+// screen boundary and can no longer be driven from inside Expenses.
+
+describe('Add validation feedback', () => {
+  // The form used to `return` silently when a field was missing: the button did
+  // nothing at all, with no message and nothing in the console. On the redesigned
+  // card the amount is the hero field and Description sits below it, so entering
+  // only an amount is an easy mistake to make — and it looked like a broken app.
+  it('explains why nothing was added when the description is missing', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+
+    await user.type(screen.getAllByPlaceholderText('0.00')[0], '99.99');
+    await user.click(screen.getByRole('button', { name: 'Add Expense' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/description/i);
+    expect(screen.getByText('No transactions yet.')).toBeInTheDocument();
+  });
+
+  it('explains why nothing was added when the amount is missing or zero', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+
+    await user.type(screen.getByPlaceholderText('e.g. Weekly Groceries'), 'Coffee');
+    await user.type(screen.getAllByPlaceholderText('0.00')[0], '0');
+    await user.click(screen.getByRole('button', { name: 'Add Expense' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/amount/i);
+    expect(screen.getByText('No transactions yet.')).toBeInTheDocument();
+  });
+
+  it('clears the message once a valid expense is added', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+
+    await user.type(screen.getAllByPlaceholderText('0.00')[0], '12.34');
+    await user.click(screen.getByRole('button', { name: 'Add Expense' }));
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+
+    await user.type(screen.getByPlaceholderText('e.g. Weekly Groceries'), 'Coffee');
+    await user.click(screen.getByRole('button', { name: 'Add Expense' }));
+
+    expect(await screen.findByText('Coffee')).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });

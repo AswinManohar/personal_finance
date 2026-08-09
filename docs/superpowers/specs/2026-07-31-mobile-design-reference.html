@@ -1,0 +1,1379 @@
+<!-- Extracted from Claude artifact 9e97b65c-9412-40ed-a5b7-9043aab8fdcb
+     "Cashflow prototype refinement review" - Pencil prototype @ 390x844.
+     Font-face rules and asset blobs stripped; markup + logic preserved verbatim.
+     This is the reference for the mobile design implementation. -->
+<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="2be6cae7-cf40-460d-9f8c-42071c63a032"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>/* cyrillic-ext */
+
+/* cyrillic */
+
+/* greek-ext */
+
+/* greek */
+
+/* vietnamese */
+
+/* latin-ext */
+
+/* latin */
+
+/* cyrillic-ext */
+
+/* cyrillic */
+
+/* greek-ext */
+
+/* greek */
+
+/* vietnamese */
+
+/* latin-ext */
+
+/* latin */
+
+/* cyrillic-ext */
+
+/* cyrillic */
+
+/* greek-ext */
+
+/* greek */
+
+/* vietnamese */
+
+/* latin-ext */
+
+/* latin */
+
+/* cyrillic-ext */
+
+/* cyrillic */
+
+/* greek-ext */
+
+/* greek */
+
+/* vietnamese */
+
+/* latin-ext */
+
+/* latin */
+
+/* cyrillic-ext */
+
+/* cyrillic */
+
+/* greek-ext */
+
+/* greek */
+
+/* vietnamese */
+
+/* latin-ext */
+
+/* latin */
+
+/* cyrillic-ext */
+
+/* cyrillic */
+
+/* greek-ext */
+
+/* greek */
+
+/* vietnamese */
+
+/* latin-ext */
+
+/* latin */
+
+</style>
+<style>/* fallback */
+
+
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+}
+</style>
+<style>
+body{margin:0;background:#0d0e12;font-family:'Inter',system-ui,sans-serif}
+a{color:#c1c1ff;text-decoration:none}a:hover{color:#e3e2e7}
+.material-symbols-outlined{font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24;vertical-align:middle}
+input,select,button{font-family:'Inter',system-ui,sans-serif}
+input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+::-webkit-scrollbar{display:none}
+@keyframes toastIn{from{opacity:0;transform:translate(-50%,8px)}to{opacity:1;transform:translate(-50%,0)}}
+@keyframes jiggle{0%{transform:rotate(-.3deg)}50%{transform:rotate(.3deg)}100%{transform:rotate(-.3deg)}}
+</style>
+</helmet>
+<div style="width:100%;max-width:430px;height:100dvh;margin:0 auto;background:#121317;color:#e3e2e7;display:flex;flex-direction:column;position:relative;overflow:hidden">
+
+  <header style="height:56px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 16px;background:#1a1b20;border-bottom:1px solid rgba(70,69,84,.15);z-index:20">
+    <span style="font-size:16px;font-weight:800;letter-spacing:.18em;color:#e3e2e7">CASHFLOW</span>
+    <div style="display:flex;align-items:center;gap:8px">
+      <button sc-camel-on-click="{{ onArrangeToggle }}" style="{{ arrangeBtnStyle }}"><span class="material-symbols-outlined" style="font-size:20px">swap_vert</span></button>
+      <button sc-camel-on-click="{{ onSyncClick }}" style="width:44px;height:44px;border:none;background:transparent;border-radius:22px;color:#c1c1ff;cursor:pointer;display:flex;align-items:center;justify-content:center" style-hover="background:#292a2e"><span class="material-symbols-outlined" style="font-size:22px">sync</span></button>
+      <div style="width:32px;height:32px;border-radius:16px;background:#292a2e;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#ccc5c0">A</div>
+    </div>
+  </header>
+
+  <main style="flex:1;overflow-y:auto;padding:16px 16px 24px;display:flex;flex-direction:column;gap:12px">
+
+    <!-- ══ SAVINGS HUB ══ -->
+    <sc-if value="{{ isSavings }}" hint-placeholder-val="{{ true }}">
+      <div data-screen-label="Savings Hub" style="display:flex;flex-direction:column;gap:12px">
+        <div style="background:#1a1b20;border-radius:16px;padding:20px;position:relative;overflow:hidden;{{ o.s0 }}">{{ c.s0 }}
+          <p style="margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#908fa0">Total Tracked Assets</p>
+          <div style="font-size:39px;font-weight:800;letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums;color:#f0ede8;margin-bottom:8px">{{ totalAssetsF }}</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="color:#3DD68C;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums">↗ +{{ projPctF }}%</span>
+            <span style="color:#ccc5c0;font-size:11px;opacity:.6">projected annual</span>
+          </div>
+          <div style="position:absolute;right:0;bottom:0;width:45%;height:72px;opacity:.2;pointer-events:none">{{ heroSpark }}</div>
+        </div>
+
+        <div style="background:#1a1b20;border-radius:16px;padding:20px;{{ o.s1 }}">{{ c.s1 }}
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:8px">
+            <h2 style="margin:0;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#c7c4d7">Emergency Fund</h2>
+            <div style="display:flex;gap:4px;background:#0d0e12;padding:4px;border-radius:8px">
+              <sc-for list="{{ targetChips }}" as="c" hint-placeholder-count="4">
+                <button sc-camel-on-click="{{ c.go }}" style="{{ c.style }}">{{ c.label }}</button>
+              </sc-for>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+            <div>
+              <p style="margin:0 0 4px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#908fa0">Runway</p>
+              <p style="margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums">{{ runwayF }}</p>
+              <p style="margin:4px 0 0;font-size:11px;color:#ccc5c0">{{ essentialsF }} essentials / mo</p>
+            </div>
+            <div>
+              <p style="margin:0 0 4px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#908fa0">Fully Funded</p>
+              <p style="margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em;color:#3DD68C">{{ etaLabel }}</p>
+              <p style="margin:4px 0 0;font-size:11px;color:#ccc5c0">target {{ efTargetF }}</p>
+            </div>
+          </div>
+          <div style="height:8px;background:#343439;border-radius:4px;overflow:hidden;margin-bottom:8px"><div style="{{ efBarStyle }}"></div></div>
+          <p style="margin:0;font-size:11px;color:#ccc5c0;font-variant-numeric:tabular-nums">{{ cashF }} of {{ efTargetF }} ({{ efPctF }}%)</p>
+        </div>
+
+        <div style="background:#1a1b20;border-radius:16px;padding:20px;{{ o.s2 }}">{{ c.s2 }}
+          <h2 style="margin:0 0 16px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#c7c4d7">Asset Breakdown</h2>
+          <div style="height:32px;display:flex;border-radius:16px;overflow:hidden;margin-bottom:16px">
+            <sc-for list="{{ breakBar }}" as="b" hint-placeholder-count="4"><div style="{{ b.style }}"></div></sc-for>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:0">
+            <sc-for list="{{ breakRows }}" as="r" hint-placeholder-count="4">
+              <div style="display:flex;justify-content:space-between;align-items:center;height:44px;border-bottom:1px solid rgba(70,69,84,.12)">
+                <div style="display:flex;align-items:center;gap:12px"><div style="{{ r.dotStyle }}"></div><span style="font-size:13px;font-weight:500">{{ r.label }}</span></div>
+                <span style="font-size:13px;font-weight:600;font-variant-numeric:tabular-nums">{{ r.valF }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="background:#1a1b20;border-radius:16px;padding:20px;{{ o.s3 }}">{{ c.s3 }}
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <h2 style="margin:0;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#c7c4d7">12-Month Outlook</h2>
+            <span style="padding:4px 12px;background:#292a2e;border-radius:12px;font-size:11px;font-weight:700;color:#c1c1ff">PROJECTED</span>
+          </div>
+          <div style="height:140px;margin-bottom:8px">{{ outlookChart }}</div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:600;letter-spacing:.08em;color:#908fa0;margin-bottom:16px"><span>JAN</span><span>MAR</span><span>JUN</span><span>SEP</span><span>DEC</span></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding-top:16px;border-top:1px solid rgba(70,69,84,.12)">
+            <div><p style="margin:0 0 4px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#908fa0">Projected Balance</p><p style="margin:0;font-size:20px;font-weight:700;font-variant-numeric:tabular-nums">{{ projBalF }}</p></div>
+            <div><p style="margin:0 0 4px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#908fa0">Net Growth</p><p style="margin:0;font-size:20px;font-weight:700;color:#3DD68C;font-variant-numeric:tabular-nums">+{{ netGrowthF }}</p></div>
+          </div>
+        </div>
+
+        <div style="background:#1a1b20;border-radius:16px;padding:20px;{{ o.s4 }}">{{ c.s4 }}
+          <h2 style="margin:0 0 16px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#c7c4d7">Monthly Savings</h2>
+          <label style="display:block;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#908fa0;margin-bottom:8px">Set Monthly Target</label>
+          <div style="position:relative;margin-bottom:16px">
+            <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#ccc5c0;font-weight:700;font-size:13px">€</span>
+            <input type="number" value="{{ monthlyTargetVal }}" sc-camel-on-change="{{ onTargetChange }}" style="width:100%;height:44px;background:#0d0e12;border:1px solid rgba(70,69,84,.35);border-radius:10px;padding:0 14px 0 30px;color:#e3e2e7;font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;outline:none;box-sizing:border-box" style-focus="border-color:#c1c1ff">
+          </div>
+          <div style="margin-bottom:16px"><span style="font-size:31px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums">{{ monthlyTargetF }}</span><p style="margin:4px 0 0;font-size:11px;color:#ccc5c0">Monthly recurring savings target</p></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px">
+            <sc-for list="{{ miniBars }}" as="m" hint-placeholder-count="3">
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <div style="height:88px;background:#292a2e;border-radius:10px;display:flex;flex-direction:column;justify-content:flex-end;padding:4px;box-sizing:border-box"><div style="{{ m.style }}"></div></div>
+                <p style="margin:0;font-size:11px;font-weight:700;text-align:center;color:#c7c4d7">{{ m.label }}</p>
+              </div>
+            </sc-for>
+          </div>
+          <div style="padding-top:16px;border-top:1px solid rgba(70,69,84,.12)">
+            <label style="display:block;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#908fa0;margin-bottom:8px">Cash Savings Balance</label>
+            <div style="position:relative;margin-bottom:12px">
+              <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#ccc5c0;font-weight:700;font-size:13px">€</span>
+              <input type="number" value="{{ cashVal }}" sc-camel-on-change="{{ onCashChange }}" style="width:100%;height:44px;background:#0d0e12;border:1px solid rgba(70,69,84,.35);border-radius:10px;padding:0 14px 0 30px;color:#e3e2e7;font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;outline:none;box-sizing:border-box" style-focus="border-color:#c1c1ff">
+            </div>
+            <div style="display:flex;gap:12px">
+              <div style="position:relative;flex:1">
+                <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#ccc5c0;font-weight:700;font-size:13px">+€</span>
+                <input type="number" value="{{ addVal }}" sc-camel-on-change="{{ onAddChange }}" placeholder="Add amount" style="width:100%;height:44px;background:#0d0e12;border:1px solid rgba(70,69,84,.35);border-radius:10px;padding:0 14px 0 38px;color:#e3e2e7;font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;outline:none;box-sizing:border-box" style-focus="border-color:#c1c1ff">
+              </div>
+              <button sc-camel-on-click="{{ onAddClick }}" style="height:44px;padding:0 20px;border:none;border-radius:10px;background:linear-gradient(135deg,#c1c1ff,#8183ff);color:#121317;font-size:13px;font-weight:700;cursor:pointer;flex:none" style-active="transform:scale(.97)">ADD</button>
+            </div>
+          </div>
+        </div>
+
+        <div style="background:#1a1b20;border-radius:16px;padding:20px;{{ o.s5 }}">{{ c.s5 }}
+          <h2 style="margin:0 0 20px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#c7c4d7">Distribution Mix</h2>
+          <div style="display:flex;justify-content:center;margin-bottom:20px">{{ mixDonut }}</div>
+          <div style="display:flex;flex-direction:column;gap:0">
+            <sc-for list="{{ mixRows }}" as="r" hint-placeholder-count="3">
+              <div style="display:flex;justify-content:space-between;align-items:center;height:40px;border-bottom:1px solid rgba(70,69,84,.12)">
+                <div style="display:flex;align-items:center;gap:12px"><div style="{{ r.dotStyle }}"></div><span style="font-size:13px;font-weight:500">{{ r.label }}</span></div>
+                <span style="font-size:13px;font-weight:600;color:#ccc5c0;font-variant-numeric:tabular-nums">{{ r.pctF }}%</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="background:#1a1b20;border-radius:16px;padding:20px;{{ o.s6 }}">{{ c.s6 }}
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <h2 style="margin:0;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#c7c4d7">Active Subscriptions</h2>
+            <span style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#c1c1ff">{{ subCount }} active</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:0">
+            <sc-for list="{{ subs }}" as="s" hint-placeholder-count="4">
+              <div style="display:flex;justify-content:space-between;align-items:center;min-height:56px;padding:8px 0;border-bottom:1px solid rgba(70,69,84,.12)">
+                <div style="display:flex;flex-direction:column;gap:4px">
+                  <span style="font-size:13px;font-weight:500">{{ s.name }}</span>
+                  <div style="display:flex;gap:4px">
+                    <span style="font-size:10px;font-weight:700;text-transform:uppercase;padding:2px 8px;border-radius:8px;background:rgba(193,193,255,.1);color:#c1c1ff">{{ s.freq }}</span>
+                    <sc-if value="{{ s.essential }}" hint-placeholder-val="{{ false }}"><span style="font-size:10px;font-weight:700;text-transform:uppercase;padding:2px 8px;border-radius:8px;background:rgba(61,214,140,.1);color:#3DD68C">Essential</span></sc-if>
+                  </div>
+                </div>
+                <span style="font-size:13px;font-weight:700;font-variant-numeric:tabular-nums">{{ s.amtF }}<span style="font-size:10px;font-weight:500;color:#ccc5c0"> /mo</span></span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding-top:12px">
+            <span style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#908fa0">Total / Month</span>
+            <span style="font-size:20px;font-weight:700;font-variant-numeric:tabular-nums">{{ subTotalF }}</span>
+          </div>
+        </div>
+
+        <div style="background:rgba(193,193,255,.05);border:1px solid rgba(193,193,255,.1);border-radius:16px;padding:20px;display:flex;align-items:center;justify-content:space-between;gap:12px;{{ o.s7 }}">{{ c.s7 }}
+          <div><h4 style="margin:0 0 4px;font-size:13px;font-weight:700;color:#c1c1ff">Optimize Savings</h4><p style="margin:0;font-size:11px;color:#c7c4d7">12-month growth: <span style="font-weight:600;font-variant-numeric:tabular-nums">{{ netGrowthF }}</span></p></div>
+          <button sc-camel-on-click="{{ onReview }}" style="height:44px;padding:0 20px;border:none;border-radius:10px;background:linear-gradient(135deg,#c1c1ff,#8183ff);color:#121317;font-size:13px;font-weight:700;cursor:pointer;flex:none">REVIEW</button>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- ══ EXPENSES ══ -->
+    <sc-if value="{{ isExpenses }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="Expenses" style="display:flex;flex-direction:column;gap:12px">
+        <div style="background:#1a1b20;border-radius:16px;padding:20px;{{ o.e0 }}">{{ c.e0 }}
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;gap:8px">
+            <h2 style="margin:0;font-size:16px;font-weight:700">Breakdown</h2>
+            <div style="display:flex;gap:4px;background:#0d0e12;padding:4px;border-radius:8px">
+              <sc-for list="{{ spanChips }}" as="c" hint-placeholder-count="4"><button sc-camel-on-click="{{ c.go }}" style="{{ c.style }}">{{ c.label }}</button></sc-for>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:center;margin-bottom:20px">{{ expenseDonut }}</div>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <sc-for list="{{ catRows }}" as="c" hint-placeholder-count="5">
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <div style="display:flex;justify-content:space-between;font-size:12px">
+                  <span style="display:flex;align-items:center;gap:8px;font-weight:500"><span style="{{ c.dotStyle }}"></span>{{ c.name }}</span>
+                  <span style="color:#ccc5c0;font-weight:700;font-variant-numeric:tabular-nums">{{ c.pctF }}%</span>
+                </div>
+                <div style="height:6px;background:#343439;border-radius:3px;overflow:hidden"><div style="{{ c.barStyle }}"></div></div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="background:#1a1b20;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:12px;{{ o.e1 }}">{{ c.e1 }}
+          <div><h2 style="margin:0;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#c7c4d7">Log Expense</h2><p style="margin:4px 0 0;font-size:11px;color:#ccc5c0;opacity:.7">Capture a new transaction</p></div>
+          <div style="position:relative">
+            <span style="position:absolute;left:16px;top:50%;transform:translateY(-50%);color:#c1c1ff;font-weight:700;font-size:20px">€</span>
+            <input type="number" value="{{ formAmount }}" sc-camel-on-change="{{ onFormAmount }}" placeholder="0.00" style="width:100%;height:64px;background:#0d0e12;border:1px solid rgba(70,69,84,.35);border-radius:10px;padding:0 14px 0 40px;color:#e3e2e7;font-size:25px;font-weight:700;font-variant-numeric:tabular-nums;outline:none;box-sizing:border-box" style-focus="border-color:#c1c1ff">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <label style="font-size:11px;color:#ccc5c0;margin-left:4px">Category</label>
+            <sc-raw-select value="{{ formCat }}" sc-camel-on-change="{{ onFormCat }}" style="width:100%;height:44px;background:#0d0e12;border:1px solid rgba(70,69,84,.35);border-radius:10px;padding:0 14px;color:#e3e2e7;font-size:13px;outline:none;appearance:none;box-sizing:border-box">
+              <option value="Housing">Housing</option><option value="Food">Food</option><option value="Transport">Transport</option><option value="Utilities">Utilities</option><option value="Entertainment">Entertainment</option><option value="Other">Other</option>
+            </sc-raw-select>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <label style="font-size:11px;color:#ccc5c0;margin-left:4px">Description</label>
+            <input type="text" value="{{ formName }}" sc-camel-on-change="{{ onFormName }}" placeholder="e.g. Weekly Groceries" style="width:100%;height:44px;background:#0d0e12;border:1px solid rgba(70,69,84,.35);border-radius:10px;padding:0 14px;color:#e3e2e7;font-size:13px;outline:none;box-sizing:border-box" style-focus="border-color:#c1c1ff">
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <button sc-camel-on-click="{{ onFormRecurring }}" style="{{ recurringToggleStyle }}"><span class="material-symbols-outlined" style="font-size:18px">autorenew</span>{{ recurringToggleLabel }}</button>
+            <button sc-camel-on-click="{{ onFormEssential }}" style="{{ essentialToggleStyle }}"><span class="material-symbols-outlined" style="font-size:18px">verified</span>{{ essentialToggleLabel }}</button>
+          </div>
+          <button sc-camel-on-click="{{ onAddExpense }}" style="height:48px;border:none;border-radius:12px;background:linear-gradient(135deg,#c1c1ff,#8183ff);color:#121317;font-size:14px;font-weight:700;cursor:pointer;width:100%" style-active="transform:scale(.98)">Add Expense</button>
+        </div>
+
+        <div style="background:#1a1b20;border-radius:16px;padding:20px;{{ o.e2 }}">{{ c.e2 }}
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <h2 style="margin:0;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#c7c4d7">Recent</h2>
+            <span style="font-size:11px;color:#ccc5c0;font-variant-numeric:tabular-nums">{{ txCount }} in period</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:0">
+            <sc-for list="{{ recent }}" as="e" hint-placeholder-count="6">
+              <div style="display:flex;justify-content:space-between;align-items:center;height:60px;border-bottom:1px solid rgba(70,69,84,.12)">
+                <div style="display:flex;align-items:center;gap:12px">
+                  <div style="width:40px;height:40px;border-radius:10px;background:#292a2e;display:flex;align-items:center;justify-content:center;flex:none"><span class="{{ e.iconClass }}" style="{{ e.iconStyle }}">{{ e.icon }}</span></div>
+                  <div><p style="margin:0;font-size:13px;font-weight:500;line-height:1.2">{{ e.name }}</p><p style="margin:2px 0 0;font-size:11px;color:#ccc5c0;font-variant-numeric:tabular-nums">{{ e.dateLabel }}</p></div>
+                </div>
+                <span style="font-size:13px;font-weight:700;color:#F26B6B;font-variant-numeric:tabular-nums">-{{ e.amtF }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="background:#1a1b20;border-radius:16px;padding:20px;{{ o.e3 }}">{{ c.e3 }}
+          <h2 style="margin:0 0 16px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#c7c4d7">Weekly Trends</h2>
+          <div style="height:120px;display:flex;align-items:flex-end;gap:12px">
+            <sc-for list="{{ weekBars }}" as="w" hint-placeholder-count="4">
+              <div style="flex:1;display:flex;flex-direction:column;gap:6px;align-items:center;height:100%;justify-content:flex-end">
+                <span style="font-size:11px;color:#ccc5c0;font-weight:600;font-variant-numeric:tabular-nums">{{ w.amtF }}</span>
+                <div style="{{ w.style }}"></div>
+                <span style="font-size:10px;color:#908fa0;font-weight:700">{{ w.label }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="background:#1a1b20;border-radius:16px;padding:20px;border-left:4px solid #c1c1ff;{{ o.e4 }}">{{ c.e4 }}
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">
+            <div><h3 style="margin:0;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#908fa0">Monthly Income</h3><p style="margin:8px 0 0;font-size:25px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums">{{ incomeTotalF }}</p></div>
+            <div style="width:40px;height:40px;border-radius:10px;background:rgba(193,193,255,.1);display:flex;align-items:center;justify-content:center;color:#c1c1ff"><span class="material-symbols-outlined" style="font-size:20px">payments</span></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <label style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#908fa0;margin-left:4px">My Salary</label>
+              <input type="number" value="{{ salaryMeVal }}" sc-camel-on-change="{{ onSalaryMe }}" style="width:100%;height:44px;background:#0d0e12;border:1px solid rgba(70,69,84,.35);border-radius:10px;padding:0 14px;color:#e3e2e7;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;outline:none;box-sizing:border-box" style-focus="border-color:#c1c1ff">
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <label style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#908fa0;margin-left:4px">Partner</label>
+              <input type="number" value="{{ salaryPartnerVal }}" sc-camel-on-change="{{ onSalaryPartner }}" style="width:100%;height:44px;background:#0d0e12;border:1px solid rgba(70,69,84,.35);border-radius:10px;padding:0 14px;color:#e3e2e7;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;outline:none;box-sizing:border-box" style-focus="border-color:#c1c1ff">
+            </div>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- ══ GOALS ══ -->
+    <sc-if value="{{ isGoal }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="Goals" style="display:flex;flex-direction:column;gap:12px">
+        <div style="padding:8px 4px 4px">
+          <div style="display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#c1c1ff;margin-bottom:8px"><span class="material-symbols-outlined" style="font-size:16px">flag</span>Savings Goals</div>
+          <h1 style="margin:0;font-size:25px;font-weight:700;letter-spacing:-.02em">{{ goalTitle }}</h1>
+          <p style="margin:6px 0 0;font-size:13px;color:#ccc5c0">Automated tracking for your primary milestone.</p>
+        </div>
+        <div style="background:#1a1b20;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:20px">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start">
+            <div>
+              <span style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#908fa0">Target Amount</span>
+              <sc-if value="{{ goalEdit }}" hint-placeholder-val="{{ false }}">
+                <div><input type="number" value="{{ goalTargetVal }}" sc-camel-on-change="{{ onGoalTarget }}" style="margin-top:6px;width:150px;height:44px;background:#0d0e12;border:1px solid rgba(70,69,84,.35);border-radius:10px;padding:0 14px;color:#e3e2e7;font-size:20px;font-weight:700;font-variant-numeric:tabular-nums;outline:none;box-sizing:border-box" style-focus="border-color:#c1c1ff"></div>
+              </sc-if>
+              <sc-if value="{{ goalNotEdit }}" hint-placeholder-val="{{ true }}">
+                <div sc-camel-on-click="{{ onEditToggle }}" style="font-size:31px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1.1;cursor:pointer;margin-top:4px" style-hover="color:#c1c1ff">{{ goalTargetF }}</div>
+              </sc-if>
+            </div>
+            <div style="text-align:right">
+              <span style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#908fa0">Deadline</span>
+              <p style="margin:6px 0 0;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums">{{ deadlineLabel }}</p>
+            </div>
+          </div>
+          <div>
+            <div style="height:8px;background:#343439;border-radius:4px;overflow:hidden;margin-bottom:12px"><div style="{{ goalBarStyle }}"></div></div>
+            <div style="display:flex;justify-content:space-between;font-size:11px">
+              <div><p style="margin:0;color:#ccc5c0">Saved so far</p>
+                <sc-if value="{{ goalEdit }}" hint-placeholder-val="{{ false }}"><input type="number" value="{{ goalSavedVal }}" sc-camel-on-change="{{ onGoalSaved }}" style="margin-top:4px;width:110px;height:36px;background:#0d0e12;border:1px solid rgba(70,69,84,.35);border-radius:8px;padding:0 10px;color:#c1c1ff;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;outline:none;box-sizing:border-box"></sc-if>
+                <sc-if value="{{ goalNotEdit }}" hint-placeholder-val="{{ true }}"><p sc-camel-on-click="{{ onEditToggle }}" style="margin:4px 0 0;color:#c1c1ff;font-weight:700;font-variant-numeric:tabular-nums;cursor:pointer">{{ goalSavedF }}</p></sc-if>
+              </div>
+              <div style="text-align:center"><p style="margin:0;color:#ccc5c0">Progress</p><p style="margin:4px 0 0;font-weight:700;font-variant-numeric:tabular-nums">{{ goalPctF }}%</p></div>
+              <div style="text-align:right"><p style="margin:0;color:#ccc5c0">Remaining</p><p style="margin:4px 0 0;color:#ccc5c0;font-weight:600;font-variant-numeric:tabular-nums">{{ goalRemainF }}</p></div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:16px;background:rgba(52,52,57,.4);border-radius:10px;border:1px solid rgba(70,69,84,.12)">
+            <div><span style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#908fa0">Monthly needed</span><p style="margin:2px 0 0;font-size:11px;color:#ccc5c0">to reach goal in {{ goalMonthsLeft }} months</p></div>
+            <span style="font-size:25px;font-weight:700;color:#c1c1ff;font-variant-numeric:tabular-nums;letter-spacing:-.02em">{{ goalMonthlyF }}</span>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:12px">
+              <span style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#908fa0">12-Month Accumulation</span>
+              <span style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#8183ff">— Monthly Target</span>
+            </div>
+            <div style="position:relative;height:88px;display:flex;align-items:flex-end;gap:5px">
+              <div style="position:absolute;top:25%;left:0;width:100%;border-top:1px dashed rgba(193,193,255,.4);z-index:0;pointer-events:none"></div>
+              <sc-for list="{{ goalBars }}" as="b" hint-placeholder-count="12"><div style="{{ b.style }}"></div></sc-for>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:10px;color:rgba(204,197,192,.6);font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-top:8px"><span>Jan</span><span>Jun</span><span>Dec</span></div>
+          </div>
+          <sc-if value="{{ goalEdit }}" hint-placeholder-val="{{ false }}">
+            <button sc-camel-on-click="{{ onEditToggle }}" style="height:48px;border:none;border-radius:12px;background:linear-gradient(135deg,#c1c1ff,#8183ff);color:#121317;font-size:14px;font-weight:700;cursor:pointer;width:100%">Save Goal</button>
+          </sc-if>
+        </div>
+        <sc-if value="{{ goalNotEdit }}" hint-placeholder-val="{{ true }}">
+          <button sc-camel-on-click="{{ onEditToggle }}" style="height:48px;border:none;border-radius:12px;background:linear-gradient(135deg,#c1c1ff,#8183ff);color:#121317;font-size:14px;font-weight:700;cursor:pointer;width:100%;display:flex;align-items:center;justify-content:center;gap:8px" style-active="transform:scale(.98)"><span class="material-symbols-outlined" style="font-size:18px">edit</span>Edit Goal</button>
+        </sc-if>
+      </div>
+    </sc-if>
+
+    <!-- ══ CALCULATOR ══ -->
+    <sc-if value="{{ isCalc }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="Investment Calculator" style="display:flex;flex-direction:column;gap:12px">
+        <div style="padding:8px 4px 4px"><h1 style="margin:0;font-size:25px;font-weight:800;letter-spacing:-.02em">Investment Calculator</h1><p style="margin:6px 0 0;font-size:13px;color:#ccc5c0">Project compounded growth over time.</p></div>
+        <div style="background:#1a1b20;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:16px;{{ o.c0 }}">{{ c.c0 }}
+          <h2 style="margin:0;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#c7c4d7">Parameters</h2>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div style="display:flex;flex-direction:column;gap:6px"><label style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#908fa0">Principal (€)</label><input type="number" value="{{ invP }}" sc-camel-on-change="{{ onInvP }}" style="width:100%;height:44px;background:#0d0e12;border:1px solid rgba(70,69,84,.35);border-radius:10px;padding:0 14px;color:#e3e2e7;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;outline:none;box-sizing:border-box" style-focus="border-color:#c1c1ff"></div>
+            <div style="display:flex;flex-direction:column;gap:6px"><label style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#908fa0">Monthly (€)</label><input type="number" value="{{ invM }}" sc-camel-on-change="{{ onInvM }}" style="width:100%;height:44px;background:#0d0e12;border:1px solid rgba(70,69,84,.35);border-radius:10px;padding:0 14px;color:#e3e2e7;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;outline:none;box-sizing:border-box" style-focus="border-color:#c1c1ff"></div>
+            <div style="display:flex;flex-direction:column;gap:6px"><label style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#908fa0">Rate (%)</label><input type="number" value="{{ invR }}" sc-camel-on-change="{{ onInvR }}" style="width:100%;height:44px;background:#0d0e12;border:1px solid rgba(70,69,84,.35);border-radius:10px;padding:0 14px;color:#e3e2e7;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;outline:none;box-sizing:border-box" style-focus="border-color:#c1c1ff"></div>
+            <div style="display:flex;flex-direction:column;gap:6px"><label style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#908fa0">Years — <span style="color:#c1c1ff">{{ invY }}</span></label><input type="number" value="{{ invY }}" sc-camel-on-change="{{ onInvY }}" style="width:100%;height:44px;background:#0d0e12;border:1px solid rgba(70,69,84,.35);border-radius:10px;padding:0 14px;color:#e3e2e7;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;outline:none;box-sizing:border-box" style-focus="border-color:#c1c1ff"></div>
+          </div>
+          <input type="range" min="1" max="50" value="{{ invY }}" sc-camel-on-change="{{ onInvY }}" style="width:100%;accent-color:#c1c1ff;height:24px">
+        </div>
+        <div style="background:#1a1b20;border-radius:16px;padding:20px;{{ o.c1 }}">{{ c.c1 }}
+          <p style="margin:0 0 4px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#908fa0">Final Value</p>
+          <p style="margin:0;font-size:31px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums">{{ calcFinalF }}</p>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;{{ o.c2 }}">{{ c.c2 }}
+          <div style="background:#1a1b20;border-radius:16px;padding:20px"><p style="margin:0 0 4px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#908fa0">Contributed</p><p style="margin:0;font-size:20px;font-weight:700;font-variant-numeric:tabular-nums">{{ calcContribF }}</p></div>
+          <div style="background:#1a1b20;border-radius:16px;padding:20px"><p style="margin:0 0 4px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#908fa0">Interest</p><p style="margin:0;font-size:20px;font-weight:700;color:#3DD68C;font-variant-numeric:tabular-nums">+{{ calcInterestF }}</p></div>
+        </div>
+        <div style="background:#1a1b20;border-radius:16px;padding:20px;{{ o.c3 }}">{{ c.c3 }}
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <h2 style="margin:0;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#c7c4d7">Growth Projection</h2>
+            <div style="display:flex;gap:12px;font-size:10px;color:#ccc5c0"><span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:2px;background:#c1c1ff;border-radius:1px"></span>Value</span><span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:2px;background:#464554;border-radius:1px"></span>Invested</span></div>
+          </div>
+          <div style="height:180px">{{ calcChart }}</div>
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:#908fa0;font-weight:600;margin-top:8px;font-variant-numeric:tabular-nums"><span>Y0</span><span>Y{{ invYMid }}</span><span>Y{{ invY }}</span></div>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- ══ FIRE ══ -->
+    <sc-if value="{{ isFire }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="FIRE" style="display:flex;flex-direction:column;gap:12px">
+        <div style="padding:8px 4px 4px"><h1 style="margin:0;font-size:25px;font-weight:800;letter-spacing:-.02em">FIRE Calculator</h1><p style="margin:6px 0 0;font-size:13px;color:#ccc5c0">Map your journey to financial independence.</p></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;{{ o.f0 }}">{{ c.f0 }}
+          <div style="background:#1a1b20;border-radius:16px;padding:20px;text-align:center"><span style="font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#908fa0">FIRE Number</span><div style="font-size:25px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums;margin-top:8px">{{ fireNumberF }}</div><div style="margin-top:4px;font-size:11px;color:#ccc5c0;font-variant-numeric:tabular-nums">{{ fireWrF }}% SWR</div></div>
+          <div style="background:#1a1b20;border-radius:16px;padding:20px;text-align:center"><span style="font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#908fa0">Age at FIRE</span><div style="font-size:25px;font-weight:800;letter-spacing:-.02em;color:#3DD68C;font-variant-numeric:tabular-nums;margin-top:8px">{{ fireAge }}</div><div style="margin-top:4px;font-size:11px;color:#ccc5c0;font-variant-numeric:tabular-nums">in {{ fireYears }} yrs · {{ fireExitYear }}</div></div>
+        </div>
+        <div style="background:#1a1b20;border-radius:16px;padding:20px;{{ o.f1 }}">{{ c.f1 }}
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <h2 style="margin:0;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#c7c4d7">60-Year Projection</h2>
+            <div style="display:flex;gap:12px;font-size:10px;color:#ccc5c0"><span style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:4px;background:rgba(193,193,255,.5)"></span>Grow</span><span style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:4px;background:rgba(61,214,140,.5)"></span>Draw</span></div>
+          </div>
+          <div style="height:180px;position:relative">{{ fireChart }}</div>
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:#908fa0;font-weight:600;margin-top:8px;font-variant-numeric:tabular-nums"><span>AGE {{ fireAgeStart }}</span><span>{{ fireAgeMid }}</span><span>{{ fireAgeEnd }}</span></div>
+        </div>
+        <div style="background:#1a1b20;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:16px;{{ o.f2 }}">{{ c.f2 }}
+          <h2 style="margin:0;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#c7c4d7">Inputs</h2>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div style="display:flex;flex-direction:column;gap:6px"><label style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#908fa0">Annual Expenses</label><input type="number" value="{{ fExp }}" sc-camel-on-change="{{ onFExp }}" style="width:100%;height:44px;background:#0d0e12;border:1px solid rgba(70,69,84,.35);border-radius:10px;padding:0 14px;color:#e3e2e7;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;outline:none;box-sizing:border-box" style-focus="border-color:#c1c1ff"></div>
+            <div style="display:flex;flex-direction:column;gap:6px"><label style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#908fa0">Current Savings</label><input type="number" value="{{ fNw }}" sc-camel-on-change="{{ onFNw }}" style="width:100%;height:44px;background:#0d0e12;border:1px solid rgba(70,69,84,.35);border-radius:10px;padding:0 14px;color:#e3e2e7;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;outline:none;box-sizing:border-box" style-focus="border-color:#c1c1ff"></div>
+            <div style="display:flex;flex-direction:column;gap:6px"><label style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#908fa0">Monthly Savings</label><input type="number" value="{{ fSavM }}" sc-camel-on-change="{{ onFSavM }}" style="width:100%;height:44px;background:#0d0e12;border:1px solid rgba(70,69,84,.35);border-radius:10px;padding:0 14px;color:#e3e2e7;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;outline:none;box-sizing:border-box" style-focus="border-color:#c1c1ff"></div>
+            <div style="display:flex;flex-direction:column;gap:6px"><label style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#908fa0">Current Age</label><input type="number" value="{{ fAge }}" sc-camel-on-change="{{ onFAge }}" style="width:100%;height:44px;background:#0d0e12;border:1px solid rgba(70,69,84,.35);border-radius:10px;padding:0 14px;color:#e3e2e7;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;outline:none;box-sizing:border-box" style-focus="border-color:#c1c1ff"></div>
+            <div style="display:flex;flex-direction:column;gap:6px"><label style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#908fa0">Return %</label><input type="number" value="{{ fRet }}" sc-camel-on-change="{{ onFRet }}" step="0.1" style="width:100%;height:44px;background:#0d0e12;border:1px solid rgba(70,69,84,.35);border-radius:10px;padding:0 14px;color:#e3e2e7;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;outline:none;box-sizing:border-box" style-focus="border-color:#c1c1ff"></div>
+            <div style="display:flex;flex-direction:column;gap:6px"><label style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#908fa0">Withdrawal %</label><input type="number" value="{{ fWr }}" sc-camel-on-change="{{ onFWr }}" step="0.1" style="width:100%;height:44px;background:#0d0e12;border:1px solid rgba(70,69,84,.35);border-radius:10px;padding:0 14px;color:#e3e2e7;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;outline:none;box-sizing:border-box" style-focus="border-color:#c1c1ff"></div>
+          </div>
+        </div>
+        <div style="background:#1a1b20;border-radius:16px;padding:20px;display:flex;gap:16px;{{ o.f3 }}">{{ c.f3 }}
+          <div style="width:44px;height:44px;border-radius:10px;background:rgba(238,192,96,.1);display:flex;align-items:center;justify-content:center;flex:none;color:#eec060"><span class="material-symbols-outlined" style="font-size:20px">lightbulb</span></div>
+          <div><h3 style="margin:0 0 4px;font-size:13px;font-weight:700">Optimization</h3><p style="margin:0;font-size:12px;color:#ccc5c0;line-height:1.5">Saving <span style="color:#e3e2e7;font-weight:600">€500</span> more per month brings FIRE forward by <span style="color:#e3e2e7;font-weight:600;font-variant-numeric:tabular-nums">{{ fireBoostMonths }}</span> months.</p></div>
+        </div>
+        <div style="background:#1a1b20;border-radius:16px;padding:20px;display:flex;gap:16px;{{ o.f4 }}">{{ c.f4 }}
+          <div style="width:44px;height:44px;border-radius:10px;background:rgba(193,193,255,.1);display:flex;align-items:center;justify-content:center;flex:none;color:#c1c1ff"><span class="material-symbols-outlined" style="font-size:20px">shield</span></div>
+          <div><h3 style="margin:0 0 4px;font-size:13px;font-weight:700">Risk Assessment</h3><p style="margin:0;font-size:12px;color:#ccc5c0;line-height:1.5">A <span style="color:#e3e2e7;font-weight:600;font-variant-numeric:tabular-nums">{{ fireWrF }}%</span> withdrawal rate has a <span style="color:#e3e2e7;font-weight:600;font-variant-numeric:tabular-nums">{{ fireSuccessRate }}%</span> historical success rate over 40 years.</p></div>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- ══ NET WORTH ══ -->
+    <sc-if value="{{ isNetworth }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="Net Worth" style="display:flex;flex-direction:column;gap:12px">
+        <div style="background:#1a1b20;border-radius:16px;padding:24px 20px;position:relative;overflow:hidden;{{ o.n0 }}">{{ c.n0 }}
+          <div style="position:absolute;top:0;right:0;width:40%;height:100%;background:linear-gradient(to left,rgba(193,193,255,.05),transparent);pointer-events:none"></div>
+          <span style="font-size:11px;font-weight:700;letter-spacing:.24em;text-transform:uppercase;color:#ccc5c0;display:block;margin-bottom:12px">Current Net Worth</span>
+          <h1 style="margin:0 0 8px;font-size:39px;font-weight:700;letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1">{{ netWorthF }}</h1>
+          <div style="display:flex;align-items:center;gap:8px;color:#3DD68C;margin-bottom:20px"><span class="material-symbols-outlined" style="font-size:18px">trending_up</span><span style="font-size:13px;font-weight:600">Assets exceed liabilities <span style="font-weight:400;color:rgba(204,197,192,.6)">· debt ratio {{ debtRatioF }}%</span></span></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div><span style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(204,197,192,.7)">Total Assets</span><p style="margin:4px 0 0;font-size:20px;font-weight:700;color:#3DD68C;font-variant-numeric:tabular-nums">{{ totalAssetsF }}</p></div>
+            <div><span style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(204,197,192,.7)">Total Liabilities</span><p style="margin:4px 0 0;font-size:20px;font-weight:700;color:#F26B6B;font-variant-numeric:tabular-nums">-{{ totalLiabF }}</p></div>
+          </div>
+        </div>
+
+        <div style="background:#1a1b20;border-radius:16px;padding:20px;{{ o.n1 }}">{{ c.n1 }}
+          <h2 style="margin:0 0 12px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#c7c4d7">Asset Breakdown</h2>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <sc-for list="{{ nwRows }}" as="r" hint-placeholder-count="5">
+              <div style="background:rgba(41,42,46,.4);border-radius:12px;padding:12px;display:flex;align-items:center;justify-content:space-between" style-hover="background:#292a2e">
+                <div style="display:flex;align-items:center;gap:12px">
+                  <div style="{{ r.iconBoxStyle }}"><span class="material-symbols-outlined" style="font-size:20px">{{ r.icon }}</span></div>
+                  <div><p style="margin:0;font-size:13px;font-weight:700">{{ r.name }}</p><p style="margin:2px 0 0;font-size:11px;color:rgba(204,197,192,.6)">{{ r.sub }}</p></div>
+                </div>
+                <div style="text-align:right"><p style="margin:0;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums">{{ r.valF }}</p><p style="margin:2px 0 0;font-size:10px;font-weight:700;color:#3DD68C;font-variant-numeric:tabular-nums">{{ r.pctF }}%</p></div>
+              </div>
+            </sc-for>
+            <div style="background:#0d0e12;border:1px solid rgba(70,69,84,.12);border-radius:12px;padding:12px;display:flex;align-items:center;justify-content:space-between">
+              <div style="display:flex;align-items:center;gap:12px">
+                <div style="width:40px;height:40px;border-radius:10px;background:rgba(242,107,107,.1);display:flex;align-items:center;justify-content:center;color:#F26B6B;flex:none"><span class="material-symbols-outlined" style="font-size:20px">credit_card</span></div>
+                <div><p style="margin:0;font-size:13px;font-weight:700">Loans</p><p style="margin:2px 0 0;font-size:11px;color:rgba(204,197,192,.6)">{{ loanCount }} from Debts tab</p></div>
+              </div>
+              <div style="text-align:right"><p style="margin:0;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums">-{{ totalLiabF }}</p><p style="margin:2px 0 0;font-size:10px;font-weight:700;color:#F26B6B;font-variant-numeric:tabular-nums">{{ debtRatioF }}% ratio</p></div>
+            </div>
+          </div>
+        </div>
+
+        <div style="background:#1a1b20;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:12px;{{ o.n2 }}">{{ c.n2 }}
+          <h2 style="margin:0;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#c7c4d7">Manual Inputs</h2>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div style="display:flex;flex-direction:column;gap:6px"><label style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#908fa0">Physical Gold</label><input type="number" value="{{ goldVal }}" sc-camel-on-change="{{ onGold }}" style="width:100%;height:44px;background:#0d0e12;border:1px solid rgba(70,69,84,.35);border-radius:10px;padding:0 14px;color:#e3e2e7;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;outline:none;box-sizing:border-box" style-focus="border-color:#c1c1ff"></div>
+            <div style="display:flex;flex-direction:column;gap:6px"><label style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#908fa0">Other Assets</label><input type="number" value="{{ otherVal }}" sc-camel-on-change="{{ onOther }}" style="width:100%;height:44px;background:#0d0e12;border:1px solid rgba(70,69,84,.35);border-radius:10px;padding:0 14px;color:#e3e2e7;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;outline:none;box-sizing:border-box" style-focus="border-color:#c1c1ff"></div>
+          </div>
+        </div>
+
+        <div style="background:#1a1b20;border-radius:16px;padding:20px;{{ o.n3 }}">{{ c.n3 }}
+          <h2 style="margin:0 0 4px;font-size:16px;font-weight:700">Historical Performance</h2>
+          <p style="margin:0 0 16px;font-size:11px;color:#ccc5c0">Net worth over recorded snapshots</p>
+          <div style="height:160px">{{ historyChart }}</div>
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:rgba(204,197,192,.4);font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-top:12px;font-variant-numeric:tabular-nums"><span>Feb 15</span><span>Apr 15</span><span>Jul 15</span></div>
+          <div style="margin-top:16px;padding:16px;background:rgba(52,52,57,.3);border-radius:12px;display:flex;align-items:center;justify-content:space-between;gap:12px">
+            <div style="display:flex;align-items:center;gap:12px"><div style="width:40px;height:40px;border-radius:20px;background:rgba(193,193,255,.1);display:flex;align-items:center;justify-content:center;color:#c1c1ff;flex:none"><span class="material-symbols-outlined" style="font-size:20px">history</span></div><p style="margin:0;font-size:12px;color:#ccc5c0">Last snapshot <span style="color:#e3e2e7;font-weight:700">15 days ago</span></p></div>
+            <button sc-camel-on-click="{{ onSnapshot }}" style="height:44px;padding:0 16px;border:none;border-radius:10px;background:linear-gradient(135deg,#c1c1ff,#8183ff);color:#121317;font-size:12px;font-weight:700;cursor:pointer;flex:none;display:flex;align-items:center;gap:6px" style-active="transform:scale(.97)"><span class="material-symbols-outlined" style="font-size:16px">photo_camera</span>Snapshot</button>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- ══ DEBTS ══ -->
+    <sc-if value="{{ isDebts }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="Debts" style="display:flex;flex-direction:column;gap:12px">
+        <div style="background:#1a1b20;border-radius:16px;padding:20px;{{ o.d0 }}">{{ c.d0 }}
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <h2 style="margin:0;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#c7c4d7">Payoff Order (Avalanche)</h2>
+            <span style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#ccc5c0">{{ loanCount }} active</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <sc-for list="{{ loanRows }}" as="l" hint-placeholder-count="2">
+              <div style="background:rgba(41,42,46,.4);border-radius:12px;padding:14px;display:flex;align-items:center;justify-content:space-between;gap:12px">
+                <div style="min-width:0">
+                  <div style="display:flex;align-items:center;gap:8px"><p style="margin:0;font-size:13px;font-weight:700">{{ l.name }}</p><sc-if value="{{ l.payFirst }}" hint-placeholder-val="{{ false }}"><span style="font-size:10px;font-weight:700;text-transform:uppercase;padding:2px 8px;border-radius:8px;background:rgba(242,107,107,.1);color:#F26B6B;flex:none">Pay First</span></sc-if></div>
+                  <p style="margin:4px 0 0;font-size:11px;color:rgba(204,197,192,.6);font-variant-numeric:tabular-nums">{{ l.meta }}</p>
+                </div>
+                <div style="text-align:right;flex:none"><p style="margin:0;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums">{{ l.balF }}</p><p style="margin:2px 0 0;font-size:10px;font-weight:700;color:#F26B6B;font-variant-numeric:tabular-nums">{{ l.intF }}/mo interest</p></div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px;padding-top:16px;border-top:1px solid rgba(70,69,84,.12)">
+            <div><p style="margin:0 0 4px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#908fa0">Total Debt</p><p style="margin:0;font-size:20px;font-weight:700;font-variant-numeric:tabular-nums">{{ totalLiabF }}</p></div>
+            <div><p style="margin:0 0 4px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#908fa0">Interest / Month</p><p style="margin:0;font-size:20px;font-weight:700;color:#F26B6B;font-variant-numeric:tabular-nums">{{ totalIntF }}</p></div>
+          </div>
+        </div>
+
+        <div style="background:#1a1b20;border-radius:16px;padding:20px;{{ o.d1 }}">{{ c.d1 }}
+          <h2 style="margin:0 0 4px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#c7c4d7">Lump-Sum Payoff Simulator</h2>
+          <p style="margin:0 0 16px;font-size:11px;color:#ccc5c0;font-variant-numeric:tabular-nums">Liquid cash: {{ cashF }} · essentials {{ essentialsF }}/mo</p>
+          <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:16px">
+            <sc-raw-select value="{{ payLoanId }}" sc-camel-on-change="{{ onPayLoan }}" style="width:100%;height:44px;background:#0d0e12;border:1px solid rgba(70,69,84,.35);border-radius:10px;padding:0 14px;color:#e3e2e7;font-size:13px;outline:none;appearance:none;box-sizing:border-box">
+              <sc-for list="{{ loanOptions }}" as="o" hint-placeholder-count="2"><option value="{{ o.id }}">{{ o.label }}</option></sc-for>
+            </sc-raw-select>
+            <input type="number" value="{{ payAmtVal }}" sc-camel-on-change="{{ onPayAmt }}" placeholder="Amount to pay off" style="width:100%;height:44px;background:#0d0e12;border:1px solid rgba(70,69,84,.35);border-radius:10px;padding:0 14px;color:#e3e2e7;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;outline:none;box-sizing:border-box" style-focus="border-color:#c1c1ff">
+          </div>
+          <sc-if value="{{ simBreach }}" hint-placeholder-val="{{ false }}">
+            <div style="margin-bottom:12px;padding:12px;background:rgba(242,107,107,.1);border:1px solid rgba(242,107,107,.2);border-radius:10px"><p style="margin:0;font-size:11px;font-weight:700;color:#F26B6B">Leaves under one month of essentials in cash. Max safe payoff: {{ simSafeF }}.</p></div>
+          </sc-if>
+          <sc-if value="{{ simShow }}" hint-placeholder-val="{{ false }}">
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+              <div><p style="margin:0 0 4px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#908fa0">Cash After</p><p style="margin:0;font-size:16px;font-weight:700;font-variant-numeric:tabular-nums">{{ simCashF }}</p></div>
+              <div><p style="margin:0 0 4px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#908fa0">Saved / Mo</p><p style="margin:0;font-size:16px;font-weight:700;color:#3DD68C;font-variant-numeric:tabular-nums">{{ simSavedF }}</p></div>
+              <div><p style="margin:0 0 4px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#908fa0">New Runway</p><p style="margin:0;font-size:16px;font-weight:700;font-variant-numeric:tabular-nums">{{ simRunwayF }}</p></div>
+            </div>
+          </sc-if>
+        </div>
+
+        <div style="background:#1a1b20;border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:12px;{{ o.d2 }}">{{ c.d2 }}
+          <div><h2 style="margin:0;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#c7c4d7">New Loan</h2><p style="margin:4px 0 0;font-size:11px;color:#ccc5c0;opacity:.7">Track each debt individually</p></div>
+          <input type="text" value="{{ nlName }}" sc-camel-on-change="{{ onNlName }}" placeholder="e.g. Car Loan" style="width:100%;height:44px;background:#0d0e12;border:1px solid rgba(70,69,84,.35);border-radius:10px;padding:0 14px;color:#e3e2e7;font-size:13px;outline:none;box-sizing:border-box" style-focus="border-color:#c1c1ff">
+          <input type="number" value="{{ nlBalance }}" sc-camel-on-change="{{ onNlBalance }}" placeholder="Remaining balance" style="width:100%;height:44px;background:#0d0e12;border:1px solid rgba(70,69,84,.35);border-radius:10px;padding:0 14px;color:#e3e2e7;font-size:13px;font-variant-numeric:tabular-nums;outline:none;box-sizing:border-box" style-focus="border-color:#c1c1ff">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <input type="number" value="{{ nlRate }}" sc-camel-on-change="{{ onNlRate }}" placeholder="Annual rate %" style="width:100%;height:44px;background:#0d0e12;border:1px solid rgba(70,69,84,.35);border-radius:10px;padding:0 14px;color:#e3e2e7;font-size:13px;font-variant-numeric:tabular-nums;outline:none;box-sizing:border-box" style-focus="border-color:#c1c1ff">
+            <input type="number" value="{{ nlPayment }}" sc-camel-on-change="{{ onNlPayment }}" placeholder="Monthly payment" style="width:100%;height:44px;background:#0d0e12;border:1px solid rgba(70,69,84,.35);border-radius:10px;padding:0 14px;color:#e3e2e7;font-size:13px;font-variant-numeric:tabular-nums;outline:none;box-sizing:border-box" style-focus="border-color:#c1c1ff">
+          </div>
+          <button sc-camel-on-click="{{ onAddLoan }}" style="height:48px;border:none;border-radius:12px;background:linear-gradient(135deg,#c1c1ff,#8183ff);color:#121317;font-size:14px;font-weight:700;cursor:pointer;width:100%" style-active="transform:scale(.98)">Add Loan</button>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- ══ DATA ══ -->
+    <sc-if value="{{ isData }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="Data Management" style="display:flex;flex-direction:column;gap:12px">
+        <div style="padding:8px 4px 4px"><h1 style="margin:0;font-size:25px;font-weight:800;letter-spacing:-.02em">Data Management</h1><p style="margin:6px 0 0;font-size:13px;color:#ccc5c0">Connected via Sync ID — cloud backup enabled.</p></div>
+        <div style="background:#1a1b20;border-radius:16px;border:1px solid rgba(70,69,84,.15);overflow:hidden;{{ o.t0 }}">{{ c.t0 }}
+          <div style="padding:16px 20px;border-bottom:1px solid rgba(70,69,84,.12);display:flex;align-items:center;gap:12px">
+            <div style="width:40px;height:40px;border-radius:10px;background:rgba(193,193,255,.1);display:flex;align-items:center;justify-content:center;color:#c1c1ff;flex:none"><span class="material-symbols-outlined" style="font-size:20px">cloud</span></div>
+            <div style="flex:1"><p style="margin:0;font-size:13px;font-weight:700">Cloud Sync</p><p style="margin:2px 0 0;font-size:11px;color:#ccc5c0">Last synced: today, 09:42</p></div>
+            <div style="display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:4px;background:#3DD68C"></span><span style="font-size:11px;font-weight:700;color:#3DD68C">Active</span></div>
+          </div>
+          <div style="padding:12px 20px;border-bottom:1px solid rgba(70,69,84,.08);display:flex;align-items:center;justify-content:space-between;gap:12px">
+            <div style="display:flex;align-items:center;gap:12px"><span class="material-symbols-outlined" style="font-size:18px;color:#ccc5c0">upload</span><div><p style="margin:0;font-size:13px;font-weight:600">Push to Cloud</p><p style="margin:2px 0 0;font-size:11px;color:#ccc5c0">Upload current data</p></div></div>
+            <button sc-camel-on-click="{{ onPush }}" style="height:44px;padding:0 16px;border:none;border-radius:10px;background:#292a2e;color:#e3e2e7;font-size:13px;font-weight:600;cursor:pointer" style-hover="background:#38393d">Push</button>
+          </div>
+          <div style="padding:12px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px">
+            <div style="display:flex;align-items:center;gap:12px"><span class="material-symbols-outlined" style="font-size:18px;color:#ccc5c0">download</span><div><p style="margin:0;font-size:13px;font-weight:600">Pull from Cloud</p><p style="margin:2px 0 0;font-size:11px;color:#ccc5c0">Restore data</p></div></div>
+            <button sc-camel-on-click="{{ onPull }}" style="height:44px;padding:0 16px;border:none;border-radius:10px;background:#292a2e;color:#e3e2e7;font-size:13px;font-weight:600;cursor:pointer" style-hover="background:#38393d">Pull</button>
+          </div>
+        </div>
+        <div style="background:#1a1b20;border-radius:16px;border:1px solid rgba(70,69,84,.12);overflow:hidden;{{ o.t1 }}">{{ c.t1 }}
+          <div style="padding:16px 20px;border-bottom:1px solid rgba(70,69,84,.12);display:flex;align-items:center;gap:12px">
+            <div style="width:40px;height:40px;border-radius:10px;background:rgba(238,192,96,.1);display:flex;align-items:center;justify-content:center;color:#eec060;flex:none"><span class="material-symbols-outlined" style="font-size:20px">database</span></div>
+            <div><p style="margin:0;font-size:13px;font-weight:700">Export / Import</p><p style="margin:2px 0 0;font-size:11px;color:#ccc5c0">CSV backup and restore</p></div>
+          </div>
+          <sc-for list="{{ dataRows }}" as="d" hint-placeholder-count="3">
+            <div style="padding:12px 20px;border-bottom:1px solid rgba(70,69,84,.08);display:flex;align-items:center;justify-content:space-between;gap:12px">
+              <div><p style="margin:0;font-size:13px;font-weight:600">{{ d.name }}</p><p style="margin:2px 0 0;font-size:11px;color:#ccc5c0;font-variant-numeric:tabular-nums">{{ d.count }}</p></div>
+              <div style="display:flex;gap:8px">
+                <button sc-camel-on-click="{{ d.onExport }}" style="height:40px;padding:0 12px;border:none;border-radius:10px;background:#292a2e;color:#e3e2e7;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px" style-hover="background:#38393d"><span class="material-symbols-outlined" style="font-size:15px">download</span>Export</button>
+                <button sc-camel-on-click="{{ d.onImport }}" style="height:40px;padding:0 12px;border:none;border-radius:10px;background:#292a2e;color:#e3e2e7;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px" style-hover="background:#38393d"><span class="material-symbols-outlined" style="font-size:15px">upload</span>Import</button>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="background:#1a1b20;border-radius:16px;border:1px solid rgba(70,69,84,.12);overflow:hidden;{{ o.t2 }}">{{ c.t2 }}
+          <div style="padding:16px 20px;border-bottom:1px solid rgba(70,69,84,.12);display:flex;align-items:center;gap:12px">
+            <div style="width:40px;height:40px;border-radius:10px;background:#292a2e;display:flex;align-items:center;justify-content:center;color:#ccc5c0;flex:none"><span class="material-symbols-outlined" style="font-size:20px">person</span></div>
+            <div style="flex:1"><p style="margin:0;font-size:13px;font-weight:700">Sync ID Session</p><p style="margin:2px 0 0;font-size:11px;color:#ccc5c0">Private cloud sync enabled</p></div>
+            <span style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:4px 8px;border-radius:6px;background:rgba(193,193,255,.1);color:#c1c1ff">Sync ID</span>
+          </div>
+          <div style="padding:16px 20px;border-bottom:1px solid rgba(70,69,84,.08)">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <span style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#908fa0;display:flex;align-items:center;gap:6px"><span class="material-symbols-outlined" style="font-size:13px">key</span>Your Sync ID</span>
+              <button sc-camel-on-click="{{ onCopyId }}" style="border:none;background:transparent;color:#c1c1ff;font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:4px;padding:8px" style-hover="color:#e3e2e7"><span class="material-symbols-outlined" style="font-size:13px">content_copy</span>{{ copyLabel }}</button>
+            </div>
+            <p style="margin:0;font-family:ui-monospace,Menlo,monospace;font-size:12px;letter-spacing:.04em;word-break:break-all;color:#e3e2e7">7f3a-91b2-4de8-a6c5</p>
+            <p style="margin:8px 0 0;font-size:10px;color:#ccc5c0;font-style:italic">Use this ID on other devices to restore your data.</p>
+          </div>
+          <div style="padding:12px 20px">
+            <button sc-camel-on-click="{{ onLogout }}" style="border:none;background:transparent;color:#F26B6B;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:10px" style-hover="background:rgba(242,107,107,.1)"><span class="material-symbols-outlined" style="font-size:18px">logout</span>Exit Session</button>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- ══ STATEMENT REVIEW ══ -->
+    <sc-if value="{{ isStmt }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="Statement Review" style="display:flex;flex-direction:column;gap:12px">
+        <div style="background:#1a1b20;border-radius:16px;padding:20px;{{ o.v0 }}">{{ c.v0 }}
+          <h2 style="margin:0 0 16px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#c7c4d7">Review a Statement</h2>
+          <label style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;height:112px;border:1px dashed rgba(193,193,255,.35);border-radius:10px;background:#0d0e12;cursor:pointer;margin-bottom:16px;box-sizing:border-box" style-hover="border-color:rgba(193,193,255,.6)">
+            <input type="file" accept="application/pdf" sc-camel-on-change="{{ onStmtFile }}" style="display:none">
+            <span class="material-symbols-outlined" style="font-size:24px;color:#c1c1ff">upload_file</span>
+            <span style="font-size:13px;font-weight:600;color:#e3e2e7;max-width:90%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ stmtFileLabel }}</span>
+            <span style="font-size:11px;color:#908fa0">PDF only</span>
+          </label>
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:16px">
+            <div style="display:flex;gap:4px;background:#0d0e12;padding:4px;border-radius:8px">
+              <sc-for list="{{ stmtTypeChips }}" as="c" hint-placeholder-count="2"><button sc-camel-on-click="{{ c.go }}" style="{{ c.style }}">{{ c.label }}</button></sc-for>
+            </div>
+            <button sc-camel-on-click="{{ onRedactToggle }}" style="{{ redactStyle }}"><span class="material-symbols-outlined" style="font-size:16px">shield</span>{{ redactLabel }}</button>
+          </div>
+          <button sc-camel-on-click="{{ onRunReview }}" style="{{ reviewBtnStyle }}" style-active="transform:scale(.98)">{{ reviewBtnLabel }}</button>
+          <p style="margin:12px 0 0;font-size:10px;color:#908fa0;font-style:italic;text-align:center">Personal data is masked on-device before analysis.</p>
+        </div>
+
+        <sc-if value="{{ hasReport }}" hint-placeholder-val="{{ false }}">
+          <div style="background:#1a1b20;border-radius:16px;padding:20px;{{ o.v1 }}">{{ c.v1 }}
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+              <h2 style="margin:0;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#c7c4d7">Flagged Spend</h2>
+              <span style="padding:4px 12px;background:#292a2e;border-radius:12px;font-size:11px;font-weight:700;color:#F26B6B">{{ flagCount }} FLAGS</span>
+            </div>
+            <div style="margin-bottom:8px"><span style="font-size:31px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:#f0ede8">{{ flaggedF }}</span> <span style="font-size:13px;color:#908fa0">of {{ stmtSpendF }} statement spend</span></div>
+            <div style="display:flex;flex-direction:column;gap:0">
+              <sc-for list="{{ flagRows }}" as="f" hint-placeholder-count="3">
+                <div style="padding:12px 0;border-bottom:1px solid rgba(70,69,84,.12)">
+                  <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px">
+                    <span style="font-size:13px;font-weight:600;color:#e3e2e7">{{ f.desc }}</span>
+                    <span style="font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;flex:none">{{ f.amtF }}</span>
+                  </div>
+                  <div style="display:flex;align-items:flex-start;gap:8px">
+                    <span style="{{ f.pillStyle }}">{{ f.sev }}</span>
+                    <span style="font-size:11px;line-height:1.5;color:#ccc5c0;flex:1">{{ f.reason }}</span>
+                  </div>
+                  <sc-if value="{{ f.hasSave }}" hint-placeholder-val="{{ false }}"><p style="margin:6px 0 0;font-size:11px;font-weight:700;color:#3DD68C">{{ f.saveLabel }}</p></sc-if>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="background:#1a1b20;border-radius:16px;padding:20px;{{ o.v2 }}">{{ c.v2 }}
+            <h2 style="margin:0 0 16px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#c7c4d7">Missing in App</h2>
+            <div style="display:flex;flex-direction:column;gap:0">
+              <sc-for list="{{ missingRows }}" as="m" hint-placeholder-count="3">
+                <div style="display:flex;justify-content:space-between;align-items:center;height:56px;border-bottom:1px solid rgba(70,69,84,.12);gap:8px">
+                  <div style="min-width:0"><p style="margin:0;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ m.desc }}</p><p style="margin:2px 0 0;font-size:11px;color:#908fa0">{{ m.dateLabel }} · {{ m.cat }}</p></div>
+                  <div style="display:flex;align-items:center;gap:12px;flex:none">
+                    <span style="font-size:13px;font-weight:700;font-variant-numeric:tabular-nums">{{ m.amtF }}</span>
+                    <sc-if value="{{ m.imported }}" hint-placeholder-val="{{ false }}"><span style="font-size:11px;font-weight:700;color:#3DD68C">ADDED</span></sc-if>
+                    <sc-if value="{{ m.notImported }}" hint-placeholder-val="{{ true }}"><button sc-camel-on-click="{{ m.add }}" style="height:32px;padding:0 12px;border:none;border-radius:8px;background:rgba(193,193,255,.12);color:#c1c1ff;font-size:11px;font-weight:700;cursor:pointer" style-hover="background:rgba(193,193,255,.2)">+ ADD</button></sc-if>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+            <sc-if value="{{ hasMismatch }}" hint-placeholder-val="{{ false }}">
+              <div style="margin-top:12px;padding:12px;border-radius:10px;background:rgba(238,192,96,.08)">
+                <p style="margin:0 0 4px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#eec060">Amount Mismatch</p>
+                <sc-for list="{{ mismatchRows }}" as="mm" hint-placeholder-count="1"><p style="margin:0;font-size:11px;line-height:1.5;color:#ccc5c0">{{ mm.text }}</p></sc-for>
+              </div>
+            </sc-if>
+            <div style="margin-top:16px;padding-top:16px;border-top:1px solid rgba(70,69,84,.12)">
+              <div style="display:flex;justify-content:space-between;margin-bottom:8px"><span style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#908fa0">Coverage</span><span style="font-size:11px;font-weight:700;color:#c1c1ff;font-variant-numeric:tabular-nums">{{ coveragePctF }}%</span></div>
+              <div style="height:8px;background:#343439;border-radius:4px;overflow:hidden"><div style="{{ coverageBarStyle }}"></div></div>
+              <p style="margin:12px 0 0;font-size:10px;color:#908fa0;font-style:italic">Redacted before upload: {{ redactSummary }}</p>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+    </sc-if>
+  </main>
+
+  <!-- Bottom nav -->
+  <nav style="height:64px;flex:none;background:#1a1b20;border-top:1px solid rgba(70,69,84,.1);display:flex;align-items:stretch;justify-content:space-around;padding:0 8px;z-index:20">
+    <sc-for list="{{ navItems }}" as="n" hint-placeholder-count="5">
+      <button sc-camel-on-click="{{ n.go }}" style="flex:1;border:none;background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;min-width:44px">
+        <span class="material-symbols-outlined" style="{{ n.iconStyle }}">{{ n.icon }}</span>
+        <span style="{{ n.labelStyle }}">{{ n.label }}</span>
+      </button>
+    </sc-for>
+  </nav>
+
+  <!-- More sheet -->
+  <sc-if value="{{ moreOpen }}" hint-placeholder-val="{{ false }}">
+    <div sc-camel-on-click="{{ onCloseMore }}" style="position:absolute;inset:0;background:rgba(13,14,18,.6);z-index:30"></div>
+    <div style="position:absolute;left:0;right:0;bottom:0;background:#1f1f24;border-radius:20px 20px 0 0;padding:16px 16px 24px;z-index:31;box-shadow:0 -8px 32px rgba(0,0,0,.4)">
+      <div style="width:36px;height:4px;border-radius:2px;background:#464554;margin:0 auto 16px"></div>
+      <sc-for list="{{ moreItems }}" as="m" hint-placeholder-count="4">
+        <button sc-camel-on-click="{{ m.go }}" style="width:100%;border:none;background:transparent;display:flex;align-items:center;gap:16px;padding:12px;border-radius:12px;cursor:pointer;text-align:left" style-hover="background:#292a2e">
+          <div style="width:44px;height:44px;border-radius:12px;background:#292a2e;display:flex;align-items:center;justify-content:center;color:#c1c1ff;flex:none"><span class="material-symbols-outlined" style="font-size:22px">{{ m.icon }}</span></div>
+          <div><p style="margin:0;font-size:14px;font-weight:700;color:#e3e2e7">{{ m.label }}</p><p style="margin:2px 0 0;font-size:11px;color:#ccc5c0">{{ m.desc }}</p></div>
+        </button>
+      </sc-for>
+    </div>
+  </sc-if>
+
+  <!-- Toast -->
+  <sc-if value="{{ toastShow }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;bottom:80px;left:50%;transform:translateX(-50%);background:#343439;color:#e3e2e7;padding:10px 20px;border-radius:12px;font-size:12px;font-weight:600;z-index:40;white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,.4);animation:toastIn .2s ease">{{ toastMsg }}</div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;:{&quot;width&quot;:390,&quot;height&quot;:844},&quot;startTab&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;savings&quot;,&quot;options&quot;:[&quot;savings&quot;,&quot;expenses&quot;,&quot;goal&quot;,&quot;calc&quot;,&quot;fire&quot;,&quot;networth&quot;,&quot;debts&quot;,&quot;stmt&quot;,&quot;data&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Prototype&quot;}}">
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    const today = new Date('2026-07-30');
+    const d = (ago) => { const t = new Date(today); t.setDate(t.getDate() - ago); return t; };
+    this.CAT = {
+      Housing: '#c1c1ff', Food: '#eec060', Transport: '#3DD68C',
+      Utilities: '#8183ff', Entertainment: '#F26B6B', Other: '#ccc5c0'
+    };
+    this.state = {
+      tab: props.startTab || 'savings', moreOpen: false, toast: null,
+      targetMonths: 3, monthlyTarget: 650, cash: 8400, addAmount: '',
+      gold: 2800, other: 1200,
+      salaryMe: 3400, salaryPartner: 2900,
+      timeSpan: '30d',
+      form: { amount: '', cat: 'Food', name: '', recurring: false, essential: false },
+      expenses: [
+        { id: 'e1', name: 'Groceries', cat: 'Food', amount: 62.4, date: d(0), recurring: false, essential: false },
+        { id: 'e2', name: 'Dinner — Trattoria', cat: 'Entertainment', amount: 48.5, date: d(1), recurring: false, essential: false },
+        { id: 'e3', name: 'Rent', cat: 'Housing', amount: 1150, date: d(2), recurring: true, freq: 'monthly', essential: true },
+        { id: 'e4', name: 'BVG Transit Pass', cat: 'Transport', amount: 49, date: d(2), recurring: true, freq: 'monthly', essential: true },
+        { id: 'e5', name: 'Groceries', cat: 'Food', amount: 95.2, date: d(5), recurring: true, freq: 'weekly', essential: true },
+        { id: 'e6', name: 'Electricity', cat: 'Utilities', amount: 62, date: d(6), recurring: true, freq: 'monthly', essential: true },
+        { id: 'e7', name: 'Internet', cat: 'Utilities', amount: 39.99, date: d(8), recurring: true, freq: 'monthly', essential: true },
+        { id: 'e8', name: 'Netflix', cat: 'Entertainment', amount: 13.99, date: d(9), recurring: true, freq: 'monthly', essential: false },
+        { id: 'e9', name: 'Spotify', cat: 'Entertainment', amount: 10.99, date: d(11), recurring: true, freq: 'monthly', essential: false },
+        { id: 'e10', name: 'Gym Membership', cat: 'Other', amount: 29.9, date: d(13), recurring: true, freq: 'monthly', essential: false },
+        { id: 'e11', name: 'Pharmacy', cat: 'Other', amount: 18.6, date: d(16), recurring: false, essential: false },
+        { id: 'e12', name: 'Fuel', cat: 'Transport', amount: 71.3, date: d(21), recurring: false, essential: false },
+        { id: 'e13', name: 'Concert Tickets', cat: 'Entertainment', amount: 89, date: d(38), recurring: false, essential: false },
+        { id: 'e14', name: 'Groceries', cat: 'Food', amount: 88.7, date: d(26), recurring: false, essential: false }
+      ],
+      loans: [
+        { id: 'car', name: 'Car Loan', balance: 7200, rate: 5.9, payment: 220, lender: 'Santander' },
+        { id: 'stud', name: 'Student Loan', balance: 4850, rate: 2.1, payment: 120, lender: 'KfW' }
+      ],
+      payLoanId: 'car', payAmt: '',
+      nl: { name: '', balance: '', rate: '', payment: '' },
+      goalEdit: false, goalTarget: 25000, goalSaved: 9750, goalDate: '2027-12-31',
+      inv: { p: 5000, m: 500, r: 7, y: 10 },
+      fire: { age: 31, exp: 28000, nw: 21800, savM: 1500, ret: 7, wr: 4 },
+      copied: false,
+      arrange: false,
+      stmt: { fileName: null, type: 'bank', redact: true, busy: false, report: null, imported: {} },
+      order: { s: [1,2,3,4,5,6,7,8], e: [1,2,3,4,5], c: [1,2,3,4], f: [1,2,3,4,5], n: [1,2,3,4], d: [1,2,3], t: [1,2,3], v: [1,2,3] }
+    };
+    this.PORTFOLIO = 12300; this.STOCKS = 9150;
+  }
+
+  toast(msg) {
+    clearTimeout(this._tt);
+    this.setState({ toast: msg });
+    this._tt = setTimeout(() => this.setState({ toast: null }), 2200);
+  }
+  fmt(n, dec = 0) { return '€' + Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec }); }
+
+  buildReport(redact) {
+    return {
+      flags: [
+        { desc: 'Account Maintenance Fee', amt: 4.9, sev: 'high', reason: 'Monthly bank fee — comparable banks offer free accounts.', save: 4.9 },
+        { desc: 'Prime Video + Netflix', amt: 22.98, sev: 'medium', reason: 'Two overlapping streaming subscriptions charged this month.', save: 8.99 },
+        { desc: 'Late-Night Delivery ×3', amt: 26.4, sev: 'medium', reason: 'Impulse pattern: three delivery orders after 22:00.', save: 26.4 },
+        { desc: 'REWE (4th visit this week)', amt: 31.6, sev: 'low', reason: 'Grocery spend 22% above your 3-month baseline.', save: 0 }
+      ],
+      missing: [
+        { desc: 'Amazon.de Order', date: 'Jul 24', cat: 'Other', amt: 34.99 },
+        { desc: 'DB Regio Ticket', date: 'Jul 19', cat: 'Transport', amt: 17.5 },
+        { desc: 'Café Kranzler', date: 'Jul 12', cat: 'Food', amt: 8.4 }
+      ],
+      mismatch: [{ text: 'Electricity: statement €68.00 vs app entry €62.00 (Δ €6.00)' }],
+      masked: redact ? { IBAN: 2, name: 3, address: 1 } : null,
+      totals: { spend: 1843.6, flagged: 85.88, coverage: 87 }
+    };
+  }
+
+  reorderTo(k, i, targetPos) {
+    const ord = [...this.state.order[k]];
+    const from = ord[i];
+    if (from === targetPos) return;
+    ord.forEach((p, idx) => {
+      if (idx === i) return;
+      if (from < targetPos && p > from && p <= targetPos) ord[idx] = p - 1;
+      if (from > targetPos && p >= targetPos && p < from) ord[idx] = p + 1;
+    });
+    ord[i] = targetPos;
+    this.setState({ order: { ...this.state.order, [k]: ord } });
+  }
+  dragStart(k, i, ev) {
+    ev.preventDefault();
+    ev.currentTarget.setPointerCapture(ev.pointerId);
+    this.dragInfo = { k, i, startY: ev.clientY };
+    this.setState({ dragKey: k + '|' + i, dragDy: 0 });
+  }
+  dragMove(ev) {
+    const d = this.dragInfo;
+    if (!d) return;
+    const dy = ev.clientY - d.startY;
+    // edge auto-scroll
+    const main = ev.currentTarget.closest('main');
+    if (main) {
+      const r = main.getBoundingClientRect();
+      if (ev.clientY < r.top + 70) main.scrollBy(0, -14);
+      else if (ev.clientY > r.bottom - 70) main.scrollBy(0, 14);
+    }
+    // hit-test the card under the pointer (same screen only)
+    const hit = document.elementsFromPoint(ev.clientX, ev.clientY)
+      .find(el => el.dataset && el.dataset.card && el.dataset.card !== d.k + ',' + d.i && el.dataset.card.split(',')[0] === d.k);
+    if (hit) {
+      const j = parseInt(hit.dataset.card.split(',')[1], 10);
+      this.reorderTo(d.k, d.i, this.state.order[d.k][j]);
+      d.startY = ev.clientY;
+      this.setState({ dragDy: 0 });
+    } else {
+      this.setState({ dragDy: dy });
+    }
+  }
+  dragEnd(ev) {
+    if (this.dragInfo && ev.currentTarget.hasPointerCapture(ev.pointerId)) ev.currentTarget.releasePointerCapture(ev.pointerId);
+    this.dragInfo = null;
+    this.setState({ dragKey: null, dragDy: 0 });
+  }
+  moveCtl(k, i) {
+    if (!this.state.arrange) return null;
+    const R = React.createElement;
+    return R('div', {
+      'data-card': k + ',' + i,
+      onPointerDown: ev => this.dragStart(k, i, ev),
+      onPointerMove: ev => this.dragMove(ev),
+      onPointerUp: ev => this.dragEnd(ev),
+      onPointerCancel: ev => this.dragEnd(ev),
+      style: { position: 'absolute', inset: 0, zIndex: 5, cursor: 'grab', touchAction: 'none', borderRadius: 16 }
+    });
+  }
+
+  monthlyAmount(e) {
+    if (!e.recurring) return 0;
+    const f = { weekly: 52 / 12, 'bi-weekly': 26 / 12, monthly: 1, quarterly: 1 / 3, yearly: 1 / 12 }[e.freq || 'monthly'] || 1;
+    return e.amount * f;
+  }
+
+  svgArea(w, h, pts, stroke, opts = {}) {
+    const R = React.createElement;
+    const max = Math.max(...pts) * 1.05, min = opts.min ?? 0, rg = max - min || 1;
+    const X = i => (i / (pts.length - 1)) * w, Y = v => h - ((v - min) / rg) * h;
+    const line = pts.map((v, i) => `${i ? 'L' : 'M'}${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(' ');
+    const gid = 'g' + (opts.gid || stroke.replace('#', ''));
+    const kids = [
+      R('defs', { key: 'd' }, R('linearGradient', { id: gid, x1: 0, x2: 0, y1: 0, y2: 1 },
+        R('stop', { offset: '0%', stopColor: stroke, stopOpacity: .25 }),
+        R('stop', { offset: '100%', stopColor: stroke, stopOpacity: 0 }))),
+      R('path', { key: 'a', d: `${line} L${w},${h} L0,${h} Z`, fill: `url(#${gid})` }),
+      R('path', { key: 'l', d: line, fill: 'none', stroke, strokeWidth: 2.5, strokeLinecap: 'round', strokeLinejoin: 'round' })
+    ];
+    (opts.extra || []).forEach((e, i) => kids.push(R('g', { key: 'x' + i }, e)));
+    if (opts.grid !== false) [0.25, 0.5, 0.75].forEach((g, i) =>
+      kids.unshift(R('line', { key: 'gr' + i, x1: 0, x2: w, y1: h * g, y2: h * g, stroke: '#464554', strokeOpacity: .18 })));
+    return R('svg', { viewBox: `0 0 ${w} ${h}`, preserveAspectRatio: 'none', style: { width: '100%', height: '100%', overflow: 'visible' } }, kids);
+  }
+
+  donut(segs, size, label, value) {
+    const R = React.createElement;
+    const r = size * 0.4, c = 2 * Math.PI * r, cx = size / 2;
+    const total = segs.reduce((s, x) => s + x.value, 0) || 1;
+    let off = 0;
+    const circles = [R('circle', { key: 'bg', cx, cy: cx, r, fill: 'transparent', stroke: '#343439', strokeWidth: size * 0.062 })];
+    segs.forEach((s, i) => {
+      const dash = (s.value / total) * c;
+      if (dash <= 0) return;
+      circles.push(R('circle', { key: i, cx, cy: cx, r, fill: 'transparent', stroke: s.color, strokeWidth: size * 0.062, strokeDasharray: `${dash} ${c - dash}`, strokeDashoffset: c - off }));
+      off += dash;
+    });
+    return R('div', { style: { position: 'relative', width: size, height: size } },
+      R('svg', { width: size, height: size, style: { transform: 'rotate(-90deg)' } }, circles),
+      R('div', { style: { position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' } },
+        R('span', { style: { fontSize: 10, fontWeight: 700, letterSpacing: '.12em', textTransform: 'uppercase', color: '#ccc5c0' } }, label),
+        R('span', { style: { fontSize: 22, fontWeight: 800, letterSpacing: '-.02em', fontVariantNumeric: 'tabular-nums', color: '#e3e2e7' } }, value)));
+  }
+
+  renderVals() {
+    const R = React.createElement, S = this.state, F = this.fmt.bind(this);
+    const set = (k) => (e) => this.setState({ [k]: e.target.value === '' ? '' : parseFloat(e.target.value) || 0 });
+
+    // ── arrange mode (card ordering)
+    const counts = { s: 8, e: 5, c: 4, f: 5, n: 4, d: 3, t: 3, v: 3 };
+    const ordMap = {}, ctlMap = {};
+    Object.keys(counts).forEach(k => {
+      for (let i = 0; i < counts[k]; i++) {
+        const dragging = S.arrange && S.dragKey === k + '|' + i;
+        ordMap[k + i] = 'order:' + S.order[k][i] + (!S.arrange ? '' : dragging
+          ? `;position:relative;z-index:10;transform:translateY(${S.dragDy || 0}px) scale(1.03);box-shadow:0 16px 40px rgba(0,0,0,.55);outline:1px dashed rgba(193,193,255,.4);outline-offset:3px`
+          : `;position:relative;outline:1px dashed rgba(193,193,255,.25);outline-offset:3px;animation:jiggle .35s ease-in-out infinite;animation-delay:-${(i * 97) % 300}ms`);
+        ctlMap[k + i] = this.moveCtl(k, i);
+      }
+    });
+
+    // ── aggregates
+    const totalAssets = this.PORTFOLIO + this.STOCKS + S.gold + S.cash + S.other;
+    const essentials = S.expenses.filter(e => e.essential).reduce((s, e) => s + this.monthlyAmount(e), 0);
+    const runway = essentials > 0 ? S.cash / essentials : null;
+    const efTarget = essentials * S.targetMonths;
+    const efPct = efTarget > 0 ? Math.min(100, (S.cash / efTarget) * 100) : 0;
+    const gap = efTarget - S.cash;
+    const etaMonths = gap <= 0 ? 0 : (S.monthlyTarget > 0 ? Math.ceil(gap / S.monthlyTarget) : null);
+    const subs = S.expenses.filter(e => e.recurring).sort((a, b) => this.monthlyAmount(b) - this.monthlyAmount(a));
+    const subTotal = subs.reduce((s, e) => s + this.monthlyAmount(e), 0);
+
+    // ── nav
+    const go = t => () => this.setState({ tab: t, moreOpen: false });
+    const navDefs = [
+      { id: 'savings', icon: 'savings', label: 'SAVINGS' },
+      { id: 'expenses', icon: 'receipt_long', label: 'EXPENSES' },
+      { id: 'networth', icon: 'account_balance', label: 'NET WORTH' },
+      { id: 'debts', icon: 'credit_card', label: 'DEBTS' },
+      { id: 'more', icon: 'apps', label: 'MORE' }
+    ];
+    const moreTabs = ['fire', 'goal', 'calc', 'stmt', 'data'];
+    const navItems = navDefs.map(n => {
+      const active = n.id === 'more' ? (S.moreOpen || moreTabs.includes(S.tab)) : S.tab === n.id;
+      const col = active ? '#c1c1ff' : 'rgba(204,197,192,.7)';
+      return {
+        icon: n.icon, label: n.label,
+        go: n.id === 'more' ? () => this.setState({ moreOpen: true }) : go(n.id),
+        iconStyle: `font-size:22px;color:${col}`,
+        labelStyle: `font-size:9px;font-weight:700;letter-spacing:-.01em;color:${col}`
+      };
+    });
+    const moreItems = [
+      { icon: 'local_fire_department', label: 'FIRE', desc: 'Financial independence projection', go: go('fire') },
+      { icon: 'flag', label: 'Goals', desc: 'Savings goal tracking', go: go('goal') },
+      { icon: 'calculate', label: 'Calculator', desc: 'Compound growth projections', go: go('calc') },
+      { icon: 'document_scanner', label: 'Statements', desc: 'Upload a bank statement for review', go: go('stmt') },
+      { icon: 'database', label: 'Data', desc: 'Sync, export & account', go: go('data') }
+    ];
+
+    // ── savings hub
+    const chipStyle = on => `height:32px;padding:0 12px;border:none;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-variant-numeric:tabular-nums;background:${on ? '#343439' : 'transparent'};color:${on ? '#c1c1ff' : '#ccc5c0'}`;
+    const targetChips = [3, 4, 5, 6].map(m => ({ label: m + 'M', style: chipStyle(S.targetMonths === m), go: () => { this.setState({ targetMonths: m }); this.toast('Target set to ' + m + ' months'); } }));
+    const breakCats = [
+      { label: 'Mutual Funds', value: this.PORTFOLIO, color: '#8183ff' },
+      { label: 'Stocks', value: this.STOCKS, color: '#c1c1ff' },
+      { label: 'Gold', value: S.gold, color: '#eec060' },
+      { label: 'Cash', value: S.cash, color: '#464554' }
+    ];
+    const breakTotal = breakCats.reduce((s, c) => s + c.value, 0) || 1;
+    const heroSpark = this.svgArea(400, 100, [20, 24, 22, 35, 40, 52, 48, 62, 78, 90], '#c1c1ff', { grid: false, gid: 'hero' });
+    const outlookPts = Array.from({ length: 13 }, (_, i) => S.cash + S.monthlyTarget * i * (0.92 + 0.08 * Math.sin(i)));
+    const mixCats = [
+      { label: 'Mutual Funds', value: this.PORTFOLIO, color: '#8183ff' },
+      { label: 'Stocks', value: this.STOCKS, color: '#c1c1ff' },
+      { label: 'Gold & Other', value: S.gold + S.other, color: '#eec060' }
+    ];
+    const mixTotal = mixCats.reduce((s, c) => s + c.value, 0) || 1;
+    const miniDefs = [
+      { label: 'AUTO', color: '#8183ff', h: Math.max(10, Math.min(90, Math.round((S.cash / totalAssets) * 300))) },
+      { label: 'DIVS', color: '#c1c1ff', h: Math.max(10, Math.min(90, Math.round(((this.PORTFOLIO + this.STOCKS) / totalAssets) * 100))) },
+      { label: 'EXTRA', color: '#eec060', h: Math.max(10, Math.min(90, Math.round((S.gold / totalAssets) * 300))) }
+    ];
+
+    // ── expenses
+    const spanDays = { '7d': 7, '30d': 30, '90d': 90, all: 9999 }[S.timeSpan];
+    const now = new Date('2026-07-30');
+    const filtered = S.expenses.filter(e => (now - e.date) / 86400000 <= spanDays);
+    const periodTotal = filtered.reduce((s, e) => s + e.amount, 0);
+    const spanChips = ['7d', '30d', '90d', 'all'].map(sp => ({ label: sp.toUpperCase(), style: chipStyle(S.timeSpan === sp), go: () => this.setState({ timeSpan: sp }) }));
+    const catData = Object.keys(this.CAT).map(c => ({ name: c, color: this.CAT[c], value: filtered.filter(e => e.cat === c).reduce((s, e) => s + e.amount, 0) })).filter(c => c.value > 0).sort((a, b) => b.value - a.value);
+    const recent = [...filtered].sort((a, b) => b.date - a.date).slice(0, 8).map(e => {
+      const ago = Math.round((now - e.date) / 86400000);
+      return {
+        name: e.name, amtF: F(e.amount, 2),
+        dateLabel: ago === 0 ? 'Today' : ago === 1 ? 'Yesterday' : e.date.toLocaleDateString('en-GB', { month: 'short', day: 'numeric' }),
+        icon: e.recurring ? 'autorenew' : e.cat.slice(0, 2).toUpperCase(),
+        iconStyle: e.recurring ? 'font-size:16px;color:#c1c1ff' : `font-size:11px;font-weight:700;color:${this.CAT[e.cat]};font-family:Inter`
+      };
+    });
+    const recentIcons = recent.map(r => { r.iconClass = r.icon.length > 2 ? 'material-symbols-outlined' : ''; return r; });
+    const weeks = [3, 2, 1, 0].map(w => {
+      const total = S.expenses.filter(e => { const ago = (now - e.date) / 86400000; return ago >= w * 7 && ago < (w + 1) * 7; }).reduce((s, e) => s + e.amount, 0);
+      return { label: 'W' + (4 - w), amount: total };
+    });
+    const maxWeek = Math.max(...weeks.map(w => w.amount), 1);
+    const weekBars = weeks.map(w => ({ label: w.label, amtF: F(w.amount), style: `width:100%;max-width:48px;height:${Math.max(4, (w.amount / maxWeek) * 72)}px;background:#c1c1ff;border-radius:4px 4px 2px 2px` }));
+    const toggleStyle = (on, col) => `height:44px;border-radius:10px;border:1px solid ${on ? col + '66' : 'rgba(70,69,84,.35)'};background:${on ? col + '1a' : '#0d0e12'};color:${on ? col : '#ccc5c0'};font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px`;
+    const setForm = (k, v) => this.setState({ form: { ...S.form, [k]: v } });
+
+    // ── goal
+    const goalDate = new Date(S.goalDate);
+    let monthsLeft = (goalDate.getFullYear() - now.getFullYear()) * 12 - now.getMonth() + goalDate.getMonth();
+    monthsLeft = Math.max(0, monthsLeft);
+    const goalRemain = Math.max(0, S.goalTarget - S.goalSaved);
+    const goalMonthly = monthsLeft > 0 ? goalRemain / monthsLeft : 0;
+    const goalPct = S.goalTarget > 0 ? Math.min(100, (S.goalSaved / S.goalTarget) * 100) : 0;
+    const goalHeights = [40, 45, 55, 50, 65, 70, 60, 75, 80, 85, 90, 40];
+    const goalBars = goalHeights.map((h, i) => ({ style: `flex:1;height:${h}%;border-radius:4px 4px 0 0;background:${i === now.getMonth() ? '#8183ff' : '#292a2e'};z-index:1` }));
+
+    // ── calculator
+    const inv = S.inv, months = (inv.y || 1) * 12, mr = (inv.r || 0) / 100 / 12;
+    let cv = inv.p || 0, ti = inv.p || 0;
+    const series = [], invested = [];
+    for (let i = 0; i <= months; i++) {
+      if (i % 12 === 0) { series.push(cv); invested.push(ti); }
+      if (i < months) { cv = (cv + (inv.m || 0)) * (1 + mr); ti += inv.m || 0; }
+    }
+    const calcFinal = series[series.length - 1] || 0, calcContrib = invested[invested.length - 1] || 0;
+    const calcChart = (() => {
+      const w = 340, h = 180, max = Math.max(...series) * 1.05 || 1;
+      const X = i => (i / (series.length - 1 || 1)) * w, Y = v => h - (v / max) * h;
+      const p1 = series.map((v, i) => `${i ? 'L' : 'M'}${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(' ');
+      const p2 = invested.map((v, i) => `${i ? 'L' : 'M'}${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(' ');
+      return R('svg', { viewBox: `0 0 ${w} ${h}`, preserveAspectRatio: 'none', style: { width: '100%', height: '100%' } },
+        [0.25, 0.5, 0.75].map((g, i) => R('line', { key: i, x1: 0, x2: w, y1: h * g, y2: h * g, stroke: '#464554', strokeOpacity: .18 })),
+        R('defs', null, R('linearGradient', { id: 'cg', x1: 0, x2: 0, y1: 0, y2: 1 }, R('stop', { offset: '0%', stopColor: '#c1c1ff', stopOpacity: .25 }), R('stop', { offset: '100%', stopColor: '#c1c1ff', stopOpacity: 0 }))),
+        R('path', { d: `${p1} L${w},${h} L0,${h} Z`, fill: 'url(#cg)' }),
+        R('path', { d: p2, fill: 'none', stroke: '#464554', strokeWidth: 1.5 }),
+        R('path', { d: p1, fill: 'none', stroke: '#c1c1ff', strokeWidth: 2.5, strokeLinecap: 'round' }));
+    })();
+    const setInv = k => e => this.setState({ inv: { ...inv, [k]: e.target.value === '' ? '' : parseFloat(e.target.value) || 0 } });
+
+    // ── FIRE
+    const f = S.fire;
+    const fireNumber = (f.exp || 0) / ((f.wr || 4) / 100);
+    let bal = f.nw || 0, proj = [], reachedIdx = -1;
+    for (let yr = 0; yr < 60; yr++) {
+      proj.push(bal);
+      if (bal >= fireNumber && reachedIdx === -1) reachedIdx = yr;
+      bal = bal * (1 + (f.ret || 0) / 100) + (f.savM || 0) * 12;
+    }
+    const fireYears = reachedIdx === -1 ? '>60' : reachedIdx;
+    const fireAge = reachedIdx === -1 ? 'N/A' : f.age + reachedIdx;
+    const fireChart = (() => {
+      const w = 340, h = 180, max = Math.max(...proj, fireNumber) * 1.05 || 1;
+      const X = i => (i / 59) * w, Y = v => h - (v / max) * h;
+      const split = reachedIdx === -1 ? 60 : reachedIdx + 1;
+      const acc = proj.slice(0, split), draw = reachedIdx === -1 ? [] : proj.slice(reachedIdx);
+      const path = (pts, s0) => pts.map((v, i) => `${i ? 'L' : 'M'}${X(s0 + i).toFixed(1)},${Y(v).toFixed(1)}`).join(' ');
+      const els = [
+        [0.25, 0.5, 0.75].map((g, i) => R('line', { key: 'g' + i, x1: 0, x2: w, y1: h * g, y2: h * g, stroke: '#464554', strokeOpacity: .18 })),
+        R('defs', { key: 'd' },
+          R('linearGradient', { id: 'fa', x1: 0, x2: 0, y1: 0, y2: 1 }, R('stop', { offset: '0%', stopColor: '#c1c1ff', stopOpacity: .3 }), R('stop', { offset: '100%', stopColor: '#c1c1ff', stopOpacity: 0 })),
+          R('linearGradient', { id: 'fd', x1: 0, x2: 0, y1: 0, y2: 1 }, R('stop', { offset: '0%', stopColor: '#3DD68C', stopOpacity: .3 }), R('stop', { offset: '100%', stopColor: '#3DD68C', stopOpacity: 0 }))),
+        R('path', { key: 'a1', d: `${path(acc, 0)} L${X(split - 1)},${h} L0,${h} Z`, fill: 'url(#fa)' }),
+        R('path', { key: 'l1', d: path(acc, 0), fill: 'none', stroke: '#c1c1ff', strokeWidth: 2.5, strokeLinecap: 'round' })
+      ];
+      if (draw.length > 1) {
+        els.push(R('path', { key: 'a2', d: `${path(draw, reachedIdx)} L${w},${h} L${X(reachedIdx)},${h} Z`, fill: 'url(#fd)' }));
+        els.push(R('path', { key: 'l2', d: path(draw, reachedIdx), fill: 'none', stroke: '#3DD68C', strokeWidth: 2.5, strokeDasharray: '7 4', strokeLinecap: 'round' }));
+        els.push(R('line', { key: 'fl', x1: X(reachedIdx), x2: X(reachedIdx), y1: 0, y2: h, stroke: '#c1c1ff', strokeWidth: 1.5, strokeDasharray: '4 4' }));
+      }
+      return R('svg', { viewBox: `0 0 ${w} ${h}`, preserveAspectRatio: 'none', style: { width: '100%', height: '100%' } }, els);
+    })();
+    const setFire = k => e => this.setState({ fire: { ...f, [k]: e.target.value === '' ? '' : parseFloat(e.target.value) || 0 } });
+    const boostMonths = reachedIdx !== -1 ? Math.round((500 * 12) / (fireNumber * 0.01)) : 14;
+    const successRate = f.wr <= 3.5 ? 99 : f.wr <= 4 ? 96 : f.wr <= 4.5 ? 90 : 82;
+
+    // ── net worth
+    const totalLiab = S.loans.reduce((s, l) => s + l.balance, 0);
+    const netWorth = totalAssets - totalLiab;
+    const debtRatio = totalAssets > 0 ? (totalLiab / totalAssets) * 100 : 0;
+    const nwDefs = [
+      { icon: 'account_balance_wallet', name: 'Cash & Savings', sub: 'Liquid savings', value: S.cash, col: '#3DD68C' },
+      { icon: 'trending_up', name: 'Portfolio', sub: '3 funds', value: this.PORTFOLIO, col: '#c1c1ff' },
+      { icon: 'candlestick_chart', name: 'Stocks', sub: '5 positions', value: this.STOCKS, col: '#eec060' },
+      { icon: 'diamond', name: 'Gold', sub: 'Physical gold', value: S.gold, col: '#D4A84B' },
+      { icon: 'home_work', name: 'Other Assets', sub: 'Crypto, vehicles', value: S.other, col: '#ccc5c0' }
+    ];
+    const nwRows = nwDefs.filter(r => r.value > 0).map(r => ({
+      icon: r.icon, name: r.name, sub: r.sub, valF: F(r.value), pctF: ((r.value / totalAssets) * 100).toFixed(1),
+      iconBoxStyle: `width:40px;height:40px;border-radius:10px;background:${r.col}1a;display:flex;align-items:center;justify-content:center;color:${r.col};flex:none`
+    }));
+    const histVals = [18200, 18900, 19600, 20400, 21100, netWorth];
+    const historyChart = this.svgArea(340, 160, histVals, '#c1c1ff', { min: Math.min(...histVals) * 0.97, gid: 'hist' });
+
+    // ── debts
+    const sorted = [...S.loans].sort((a, b) => b.rate - a.rate);
+    const mInt = l => l.balance * (l.rate / 100) / 12;
+    const loanRows = sorted.map((l, i) => ({
+      name: l.name, payFirst: i === 0, balF: F(l.balance), intF: F(mInt(l)),
+      meta: `${l.lender} · ${l.rate}% · ${F(l.payment)}/month`
+    }));
+    const totalInt = S.loans.reduce((s, l) => s + mInt(l), 0);
+    const selLoan = S.loans.find(l => l.id === S.payLoanId) || sorted[0];
+    const payAmt = parseFloat(S.payAmt);
+    const simOn = selLoan && !isNaN(payAmt) && payAmt > 0;
+    let sim = null;
+    if (simOn) {
+      const applied = Math.min(payAmt, selLoan.balance);
+      const newCash = S.cash - applied;
+      const newRunway = essentials > 0 ? newCash / essentials : null;
+      sim = {
+        cashF: F(newCash), savedF: F(applied * (selLoan.rate / 100) / 12, 2),
+        runwayF: newRunway === null ? '—' : newRunway.toFixed(1) + ' mo',
+        breach: newRunway !== null && newRunway < 1,
+        safeF: F(Math.max(0, Math.min(selLoan.balance, S.cash - essentials)))
+      };
+    }
+    const setNl = k => e => this.setState({ nl: { ...S.nl, [k]: e.target.value } });
+
+    // ── statement review
+    const st = S.stmt;
+    const setStmt = patch => this.setState({ stmt: { ...st, ...patch } });
+    const rep = st.report;
+    const sevCol = { high: '#F26B6B', medium: '#eec060', low: '#ccc5c0' };
+    const flagRows = rep ? rep.flags.map(f => ({
+      desc: f.desc, amtF: F(f.amt, 2), sev: f.sev.toUpperCase(), reason: f.reason,
+      hasSave: f.save > 0, saveLabel: f.save > 0 ? 'Save ' + F(f.save, 2) + '/mo' : '',
+      pillStyle: `flex:none;font-size:9px;font-weight:800;letter-spacing:.08em;padding:3px 8px;border-radius:6px;background:${sevCol[f.sev]}1a;color:${sevCol[f.sev]}`
+    })) : [];
+    const missingRows = rep ? rep.missing.map((m, i) => ({
+      desc: m.desc, dateLabel: m.date, cat: m.cat, amtF: F(m.amt, 2),
+      imported: !!st.imported[i], notImported: !st.imported[i],
+      add: () => {
+        this.setState({
+          expenses: [{ id: 'st' + i + Date.now(), name: m.desc, cat: m.cat, amount: m.amt, date: new Date('2026-07-30'), recurring: false, essential: false }, ...S.expenses],
+          stmt: { ...st, imported: { ...st.imported, [i]: true } }
+        });
+        this.toast('Added ' + m.desc + ' to expenses');
+      }
+    })) : [];
+    const redactSummary = !rep ? '' : rep.masked
+      ? Object.entries(rep.masked).map(([k, v]) => k + '×' + v).join(', ')
+      : 'nothing (redaction off)';
+
+    return {
+      // shell
+      isSavings: !['expenses', 'goal', 'calc', 'fire', 'networth', 'debts', 'data', 'stmt'].includes(S.tab), isExpenses: S.tab === 'expenses', isGoal: S.tab === 'goal',
+      isCalc: S.tab === 'calc', isFire: S.tab === 'fire', isNetworth: S.tab === 'networth',
+      isDebts: S.tab === 'debts', isData: S.tab === 'data',
+      navItems, moreItems, moreOpen: S.moreOpen,
+      o: ordMap, c: ctlMap,
+      onArrangeToggle: () => { const on = !S.arrange; this.setState({ arrange: on }); if (on) this.toast('Arrange mode — drag cards to reorder'); },
+      arrangeBtnStyle: `width:44px;height:44px;border:none;border-radius:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;background:${S.arrange ? 'rgba(193,193,255,.15)' : 'transparent'};color:${S.arrange ? '#c1c1ff' : '#ccc5c0'}`,
+      onCloseMore: () => this.setState({ moreOpen: false }),
+      onSyncClick: () => this.toast('Synced to cloud'),
+      toastShow: !!S.toast, toastMsg: S.toast || '',
+
+      // savings hub
+      totalAssetsF: F(totalAssets),
+      projPctF: totalAssets > 0 ? ((S.monthlyTarget * 12 / totalAssets) * 100).toFixed(1) : '0.0',
+      heroSpark,
+      targetChips,
+      runwayF: runway === null ? '—' : runway.toFixed(1) + ' mo',
+      essentialsF: F(essentials), efTargetF: F(efTarget), cashF: F(S.cash),
+      efPctF: Math.round(efPct),
+      efBarStyle: `height:100%;width:${efPct}%;background:#c1c1ff;border-radius:4px;transition:width .4s`,
+      etaLabel: etaMonths === 0 ? 'Funded' : etaMonths === null ? '—' : '~' + etaMonths + ' mo',
+      breakBar: breakCats.map(c => ({ style: `height:100%;width:${(c.value / breakTotal) * 100}%;background:${c.color}` })),
+      breakRows: breakCats.map(c => ({ label: c.label, valF: F(c.value), dotStyle: `width:8px;height:8px;border-radius:4px;background:${c.color};flex:none` })),
+      outlookChart: this.svgArea(340, 140, outlookPts, '#c1c1ff', { min: S.cash * 0.9, gid: 'out' }),
+      projBalF: F(S.cash + S.monthlyTarget * 12), netGrowthF: F(S.monthlyTarget * 12),
+      monthlyTargetVal: S.monthlyTarget, onTargetChange: set('monthlyTarget'), monthlyTargetF: F(S.monthlyTarget),
+      miniBars: miniDefs.map(m => ({ label: m.label, style: `width:100%;height:${m.h}%;background:${m.color};border-radius:6px;transition:height .4s` })),
+      cashVal: S.cash, onCashChange: set('cash'),
+      addVal: S.addAmount, onAddChange: e => this.setState({ addAmount: e.target.value }),
+      onAddClick: () => { const a = parseFloat(S.addAmount); if (!isNaN(a) && a > 0) { this.setState({ cash: S.cash + a, addAmount: '' }); this.toast('Added ' + F(a) + ' to savings'); } },
+      mixDonut: this.donut(mixCats, 176, 'Total', F(totalAssets)),
+      mixRows: mixCats.map(c => ({ label: c.label, pctF: Math.round((c.value / mixTotal) * 100), dotStyle: `width:8px;height:8px;border-radius:4px;background:${c.color};flex:none` })),
+      subs: subs.map(s => ({ name: s.name, freq: s.freq || 'monthly', essential: !!s.essential, amtF: F(this.monthlyAmount(s)) })),
+      subCount: subs.length, subTotalF: F(subTotal),
+      onReview: () => this.toast('Savings review — coming soon'),
+
+      // statement review
+      isStmt: S.tab === 'stmt',
+      stmtFileLabel: st.fileName || 'Tap to choose a PDF',
+      onStmtFile: e => { const fl = e.target.files && e.target.files[0]; if (fl) setStmt({ fileName: fl.name, report: null, imported: {} }); },
+      stmtTypeChips: [{ id: 'bank', label: 'BANK' }, { id: 'credit_card', label: 'CARD' }].map(t => ({ label: t.label, style: chipStyle(st.type === t.id), go: () => setStmt({ type: t.id }) })),
+      onRedactToggle: () => setStmt({ redact: !st.redact }),
+      redactStyle: `height:32px;padding:0 12px;border:1px solid ${st.redact ? '#3DD68C66' : 'rgba(70,69,84,.35)'};border-radius:8px;background:${st.redact ? 'rgba(61,214,140,.1)' : '#0d0e12'};color:${st.redact ? '#3DD68C' : '#ccc5c0'};font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px`,
+      redactLabel: st.redact ? 'REDACT ON' : 'REDACT OFF',
+      reviewBtnStyle: `width:100%;height:44px;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;box-sizing:border-box;${st.fileName && !st.busy ? 'background:linear-gradient(135deg,#c1c1ff,#8183ff);color:#121317' : 'background:#292a2e;color:#908fa0;cursor:default'}`,
+      reviewBtnLabel: st.busy ? 'Reviewing…' : 'Review Statement',
+      onRunReview: () => {
+        if (!st.fileName) { this.toast('Choose a PDF first'); return; }
+        if (st.busy) return;
+        setStmt({ busy: true, report: null, imported: {} });
+        clearTimeout(this._st);
+        this._st = setTimeout(() => this.setState({ stmt: { ...this.state.stmt, busy: false, report: this.buildReport(this.state.stmt.redact) } }), 1400);
+      },
+      hasReport: !!rep,
+      flagCount: rep ? rep.flags.length : 0,
+      flaggedF: rep ? F(rep.totals.flagged, 2) : '', stmtSpendF: rep ? F(rep.totals.spend, 2) : '',
+      flagRows, missingRows,
+      hasMismatch: !!(rep && rep.mismatch.length), mismatchRows: rep ? rep.mismatch : [],
+      coveragePctF: rep ? rep.totals.coverage : 0,
+      coverageBarStyle: `height:100%;width:${rep ? rep.totals.coverage : 0}%;background:#c1c1ff;border-radius:4px;transition:width .4s`,
+      redactSummary,
+
+      // expenses
+      spanChips, periodTotalF: F(periodTotal),
+      expenseDonut: this.donut(catData.length ? catData : [{ value: 1, color: '#343439' }], 192, 'Total Spent', F(periodTotal)),
+      catRows: catData.map(c => {
+        const pct = periodTotal > 0 ? (c.value / periodTotal) * 100 : 0;
+        return { name: c.name, pctF: pct.toFixed(0), dotStyle: `width:8px;height:8px;border-radius:4px;background:${c.color};display:inline-block`, barStyle: `height:100%;width:${pct}%;background:${c.color};border-radius:3px` };
+      }),
+      formAmount: S.form.amount, onFormAmount: e => setForm('amount', e.target.value),
+      formCat: S.form.cat, onFormCat: e => setForm('cat', e.target.value),
+      formName: S.form.name, onFormName: e => setForm('name', e.target.value),
+      onFormRecurring: () => setForm('recurring', !S.form.recurring),
+      onFormEssential: () => setForm('essential', !S.form.essential),
+      recurringToggleStyle: toggleStyle(S.form.recurring, '#c1c1ff'),
+      recurringToggleLabel: S.form.recurring ? 'Recurring' : 'One-time',
+      essentialToggleStyle: toggleStyle(S.form.essential, '#3DD68C'),
+      essentialToggleLabel: S.form.essential ? 'Essential' : 'Non-essential',
+      onAddExpense: () => {
+        const a = parseFloat(S.form.amount);
+        if (!S.form.name || isNaN(a) || a <= 0) { this.toast('Enter a name and amount'); return; }
+        const e = { id: 'x' + Date.now(), name: S.form.name, cat: S.form.cat, amount: a, date: new Date('2026-07-30'), recurring: S.form.recurring, freq: 'monthly', essential: S.form.essential };
+        this.setState({ expenses: [e, ...S.expenses], form: { amount: '', cat: 'Food', name: '', recurring: false, essential: false } });
+        this.toast('Expense added');
+      },
+      recent: recentIcons, txCount: filtered.length,
+      weekBars,
+      incomeTotalF: F(S.salaryMe + S.salaryPartner, 2),
+      salaryMeVal: S.salaryMe, onSalaryMe: set('salaryMe'),
+      salaryPartnerVal: S.salaryPartner, onSalaryPartner: set('salaryPartner'),
+
+      // goal
+      goalTitle: F(S.goalTarget) + ' Goal', goalTargetF: '€' + Number(S.goalTarget || 0).toLocaleString('en-US'),
+      goalEdit: S.goalEdit, goalNotEdit: !S.goalEdit,
+      onEditToggle: () => this.setState({ goalEdit: !S.goalEdit }),
+      goalTargetVal: S.goalTarget, onGoalTarget: set('goalTarget'),
+      goalSavedVal: S.goalSaved, onGoalSaved: set('goalSaved'),
+      deadlineLabel: goalDate.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }),
+      goalBarStyle: `height:100%;width:${goalPct}%;background:#8183ff;border-radius:4px;transition:width .5s`,
+      goalPctF: goalPct.toFixed(1), goalSavedF: F(S.goalSaved, 2), goalRemainF: F(goalRemain, 2),
+      goalMonthlyF: F(goalMonthly), goalMonthsLeft: monthsLeft, goalBars,
+
+      // calculator
+      invP: inv.p, invM: inv.m, invR: inv.r, invY: inv.y, invYMid: Math.round((inv.y || 0) / 2),
+      onInvP: setInv('p'), onInvM: setInv('m'), onInvR: setInv('r'), onInvY: setInv('y'),
+      calcFinalF: F(calcFinal), calcContribF: F(calcContrib), calcInterestF: F(calcFinal - calcContrib), calcChart,
+
+      // fire
+      fExp: f.exp, fNw: f.nw, fSavM: f.savM, fAge: f.age, fRet: f.ret, fWr: f.wr,
+      onFExp: setFire('exp'), onFNw: setFire('nw'), onFSavM: setFire('savM'), onFAge: setFire('age'), onFRet: setFire('ret'), onFWr: setFire('wr'),
+      fireNumberF: F(fireNumber), fireWrF: (f.wr || 0).toFixed(1), fireAge, fireYears,
+      fireExitYear: reachedIdx === -1 ? '—' : 2026 + reachedIdx,
+      fireChart, fireAgeStart: f.age, fireAgeMid: f.age + 30, fireAgeEnd: f.age + 59,
+      fireBoostMonths: boostMonths, fireSuccessRate: successRate,
+
+      // net worth
+      netWorthF: F(netWorth), totalLiabF: F(totalLiab), debtRatioF: debtRatio.toFixed(1),
+      nwRows, loanCount: S.loans.length,
+      goldVal: S.gold, onGold: set('gold'), otherVal: S.other, onOther: set('other'),
+      historyChart,
+      onSnapshot: () => this.toast('Snapshot saved'),
+
+      // debts
+      loanRows, totalIntF: F(totalInt),
+      loanOptions: sorted.map(l => ({ id: l.id, label: `${l.name} (${F(l.balance)})` })),
+      payLoanId: S.payLoanId, onPayLoan: e => this.setState({ payLoanId: e.target.value }),
+      payAmtVal: S.payAmt, onPayAmt: e => this.setState({ payAmt: e.target.value }),
+      simShow: simOn, simBreach: !!(sim && sim.breach),
+      simCashF: sim ? sim.cashF : '', simSavedF: sim ? sim.savedF : '', simRunwayF: sim ? sim.runwayF : '', simSafeF: sim ? sim.safeF : '',
+      nlName: S.nl.name, onNlName: setNl('name'),
+      nlBalance: S.nl.balance, onNlBalance: setNl('balance'),
+      nlRate: S.nl.rate, onNlRate: setNl('rate'),
+      nlPayment: S.nl.payment, onNlPayment: setNl('payment'),
+      onAddLoan: () => {
+        const b = parseFloat(S.nl.balance), r = parseFloat(S.nl.rate);
+        if (!S.nl.name || isNaN(b) || b <= 0 || isNaN(r)) { this.toast('Enter name, balance and rate'); return; }
+        this.setState({ loans: [...S.loans, { id: 'l' + Date.now(), name: S.nl.name, balance: b, rate: r, payment: parseFloat(S.nl.payment) || 0, lender: '—' }], nl: { name: '', balance: '', rate: '', payment: '' } });
+        this.toast('Loan added');
+      },
+
+      // data
+      dataRows: [
+        { name: 'Expenses', count: S.expenses.length + ' records', onExport: () => this.toast('expenses.csv exported'), onImport: () => this.toast('Choose a CSV to import') },
+        { name: 'Portfolio', count: '3 funds', onExport: () => this.toast('portfolio.csv exported'), onImport: () => this.toast('Choose a CSV to import') },
+        { name: 'Stocks', count: '5 holdings', onExport: () => this.toast('stocks.csv exported'), onImport: () => this.toast('Choose a CSV to import') }
+      ],
+      onPush: () => this.toast('Cloud backup updated'),
+      onPull: () => this.toast('Data restored from cloud'),
+      onCopyId: () => { this.setState({ copied: true }); setTimeout(() => this.setState({ copied: false }), 2000); },
+      copyLabel: S.copied ? 'Copied' : 'Copy',
+      onLogout: () => this.toast('This is a prototype — session kept')
+    };
+  }
+}
+</script>
+
+
+<div id="__claude_design_branding"><style>#__claude_design_branding{position:fixed;right:16px;bottom:16px;z-index:2147483646;display:flex;align-items:center;gap:7px;height:30px;padding:0 5px 0 10px;border-radius:999px;font-family:"Anthropic Sans",-apple-system,BlinkMacSystemFont,system-ui,sans-serif;font-size:12.5px;font-weight:400;line-height:1;letter-spacing:normal;text-transform:none;color:#141413;background:rgba(255,255,255,.86);-webkit-backdrop-filter:blur(24px);backdrop-filter:blur(24px);box-shadow:0 0 0 .5px rgba(31,30,29,.14),0 2px 10px rgba(0,0,0,.09)}
+#__claude_design_branding *{box-sizing:border-box;margin:0}
+#__claude_design_branding a{color:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
+#__claude_design_branding a:hover span{text-decoration:underline}
+#__claude_design_branding svg{flex:none}
+#__claude_design_branding a svg{color:#D97757}
+#__claude_design_branding button{width:20px;height:20px;padding:0;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:currentColor;opacity:.55;border:0;background:none;cursor:pointer;flex:none;font:inherit;transition:opacity .14s}
+#__claude_design_branding button:hover{opacity:1;background:rgba(127,127,127,.22)}
+@media print{#__claude_design_branding{display:none}}</style><a href="https://claude.com/product/design" target="_blank" rel="noopener noreferrer"><svg width="14" height="14" viewBox="0 0 20 21" fill="none" aria-hidden="true"><path fill="currentColor" d="M9.99902 0C15.5258 0.000170936 19.999 4.50643 19.999 10.0547C19.999 11.7656 19.5863 12.9976 18.7861 13.8203C17.9924 14.6362 16.9465 14.9138 15.9854 15.0078C15.05 15.0993 14.0097 15.0262 13.2549 15.0186C12.8524 15.0145 12.5177 15.0267 12.2441 15.0703C11.9682 15.1144 11.8143 15.1813 11.7305 15.2432C11.4745 15.4322 11.3353 15.7121 11.2656 16.1602C11.2303 16.3875 11.2168 16.6362 11.209 16.9131C11.2017 17.1715 11.1986 17.4893 11.1807 17.7705C11.1469 18.2975 11.0495 19.0865 10.4199 19.5908C9.7846 20.0996 8.88652 20.1057 7.85449 19.877C7.36399 19.7682 6.88652 19.6232 6.42578 19.4453C2.66989 17.9949 0.000187748 14.3414 0 10.0547C0 4.50643 4.47223 0.000171048 9.99902 0ZM9.99902 1.60547C5.36781 1.60564 1.60547 5.38391 1.60547 10.0547C1.60566 13.6582 3.84823 16.7296 7.00391 17.9482C7.39027 18.0974 7.79085 18.2184 8.20215 18.3096C9.1375 18.5169 9.384 18.3633 9.41602 18.3379C9.4524 18.3087 9.54558 18.1915 9.5791 17.668C9.5947 17.4239 9.59473 17.1786 9.60352 16.8672C9.61179 16.5742 9.62831 16.2435 9.67969 15.9131C9.78359 15.2455 10.0474 14.4906 10.7764 13.9521C11.1479 13.6778 11.5842 13.5493 11.9912 13.4844C12.4007 13.4191 12.8434 13.4088 13.2705 13.4131C14.1753 13.4222 15.0071 13.4905 15.8291 13.4102C16.6257 13.3322 17.2249 13.1235 17.6357 12.7012C18.0401 12.2855 18.3935 11.5261 18.3936 10.0547C18.3936 5.38391 14.6302 1.60564 9.99902 1.60547ZM5.11621 9.86719C5.86386 9.91468 6.45486 10.5348 6.45508 11.2939C6.45506 12.0838 5.81519 12.7245 5.02539 12.7246C4.28481 12.7246 3.67573 12.1617 3.60254 11.4404L3.59473 11.2939L3.60156 11.1533C3.66942 10.4596 4.23282 9.91186 4.93359 9.86719H5.11621ZM14.9814 7.19141C15.729 7.23889 16.3199 7.85919 16.3203 8.61816C16.3203 9.40801 15.6804 10.0487 14.8906 10.0488C14.1501 10.0487 13.5409 9.48586 13.4678 8.76465L13.46 8.61816L13.4668 8.47754C13.5348 7.78403 14.0983 7.23618 14.7988 7.19141H14.9814ZM6.4541 4.93457C7.20161 4.9822 7.79275 5.60231 7.79297 6.36133C7.79288 7.151 7.15291 7.7917 6.36328 7.79199C5.62274 7.79199 5.01369 7.22903 4.94043 6.50781L4.93262 6.36133L4.93945 6.2207C5.00731 5.52698 5.5707 4.97922 6.27148 4.93457H6.4541ZM11.3867 3.59668C12.1343 3.64419 12.7253 4.26436 12.7256 5.02344C12.7256 5.81326 12.0857 6.45393 11.2959 6.4541C10.5553 6.4541 9.94622 5.89123 9.87305 5.16992L9.86523 5.02344L9.87207 4.88281C9.93996 4.18912 10.5033 3.64133 11.2041 3.59668H11.3867Z"></path></svg><span>Made with Claude Design</span></a><button type="button" aria-label="Dismiss" onclick="this.parentElement.remove()"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path></svg></button></div></body></html>

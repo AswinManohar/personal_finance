@@ -1,5 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
 import { Expense, SavingsHistoryRecord, IncomeState, PortfolioAsset, Stock } from '../types';
+import { newId } from '../utils/id';
+// SHA-256 with a software fallback: crypto.subtle is secure-context-only, so
+// token generation threw over a plain-HTTP origin.
+import { sha256Hex } from '../utils/sha256';
 
 // Supabase Configuration
 // Project ID: ognusjgoyvhihypbtgvl
@@ -91,7 +95,7 @@ export const pushToCloud = async (userKey: string, payload: any) => {
   if (!userKey) throw new Error("Missing Unique Sync ID");
 
   const now = new Date().toISOString();
-  const { expenses, income, ...restOfData } = payload;
+  const { expenses, income, deletedExpenseIds, ...restOfData } = payload;
 
   // Dual-save strategy: We forcefully include income in the main JSON blob 
   // just in case the dedicated relational 'user_income' table encounters an RLS block.
@@ -126,33 +130,57 @@ export const pushToCloud = async (userKey: string, payload: any) => {
 
       if (existingIncome && existingIncome.length > 0) {
         const { error } = await supabase.from('user_income').update(incomePayload).eq('user_key', userKey);
-        if (error) { alert("Server Error (Income Update): " + error.message); throw error; }
+        if (error) throw error;
       } else {
         const { error } = await supabase.from('user_income').insert([incomePayload]);
-        if (error) { alert("Server Error (Income Insert): " + error.message); throw error; }
+        if (error) throw error;
       }
     } catch (err: any) {
-      alert("Local Error logic: " + err?.message);
-      logError("pushIncome", err);
+      // Deliberately non-fatal, and deliberately NOT an alert() — this used to
+      // pop three blocking dialogs, which freeze the Capacitor WebView outright.
+      //
+      // Swallowing is safe here only because income is dual-written: the
+      // authoritative copy goes into the user_finances blob above, and this
+      // relational table is a convenience for the integration feed. If that ever
+      // stops being true, this must start throwing.
+      logError("pushIncome (non-fatal; blob copy is authoritative)", err);
     }
   }
 
-  // 3. Sync Expenses (Strictly following user_expenses table schema + new fields)
+  // 3a. Tombstone ONLY the expenses the user actually deleted.
+  //
+  // Deletions are carried explicitly by the caller. They must never be inferred
+  // from "absent from this client's expenses array": the Telegram bot (and any
+  // second device) writes rows straight into user_expenses that this client has
+  // not pulled yet. The previous set-difference treated those as deletions and
+  // silently tombstoned them — propagating the delete onward to Life OS via
+  // /v1/integrations/expenses, which faithfully reports it.
+  if (Array.isArray(deletedExpenseIds) && deletedExpenseIds.length > 0) {
+    try {
+      const { error } = await supabase
+        .from('user_expenses')
+        .update({ deleted: true, updated_at: now })
+        .in('id', deletedExpenseIds)
+        .eq('user_key', userKey);
+      if (error) throw error;
+    } catch (err) {
+      logError("pushExpenseTombstones", err);
+      throw err;
+    }
+  }
+
+  // 3b. Upsert the expenses this client holds. Rows it does not hold are left
+  // untouched — they belong to someone else's write, not to a deletion.
   if (expenses !== undefined) {
     try {
-      // Step A: Mark deleted expenses as tombstones instead of hard deleting everything
-      const { data: existingExpenses } = await supabase.from('user_expenses').select('id').eq('user_key', userKey).eq('deleted', false);
-      const existingIds = new Set((existingExpenses || []).map(e => e.id));
-      const incomingIds = new Set(expenses.map((e: Expense) => e.id));
-      const idsToDelete = [...existingIds].filter(id => !incomingIds.has(id));
+      // A pull can restore a row whose tombstone has not been pushed yet (deleted
+      // while offline). Upserting it would write deleted:false and resurrect the
+      // expense, undoing 3a — so drop anything with a pending deletion.
+      const pendingDeletions = new Set<string>(deletedExpenseIds || []);
+      const toUpsert = expenses.filter((e: Expense) => !pendingDeletions.has(e.id));
 
-      if (idsToDelete.length > 0) {
-        await supabase.from('user_expenses').update({ deleted: true, updated_at: now }).in('id', idsToDelete);
-      }
-
-      // Step B: Upsert current expenses
-      if (expenses.length > 0) {
-        const records = expenses.map((e: Expense) => {
+      if (toUpsert.length > 0) {
+        const records = toUpsert.map((e: Expense) => {
           let isoDate = new Date().toISOString();
           if (e.date) {
             const parsed = new Date(e.date);
@@ -169,6 +197,7 @@ export const pushToCloud = async (userKey: string, payload: any) => {
             vendor: e.vendor || null,
             is_recurring: !!e.isRecurring,
             recurring_frequency: e.isRecurring ? (e.recurringFrequency || 'monthly') : null,
+            is_essential: !!e.isEssential,
             created_at: isoDate,
             updated_at: now,
             deleted: false
@@ -193,31 +222,54 @@ export const pullFromCloud = async (userKey: string) => {
   if (!userKey) throw new Error("Sync ID missing");
 
   try {
-    const [financesRes, expensesRes, incomeRes, historyData] = await Promise.all([
+    const [financesRes, expensesRes, deletedRes, incomeRes, historyData] = await Promise.all([
       supabase.from('user_finances').select('data, updated_at').eq('user_key', userKey).limit(1),
-      // MATCHING SCHEMA: id, name, amount, category, vendor, is_recurring, recurring_frequency, created_at
-      supabase.from('user_expenses').select('id, name, amount, category, vendor, is_recurring, recurring_frequency, created_at').eq('user_key', userKey).eq('deleted', false),
+      // MATCHING SCHEMA: id, name, amount, category, vendor, is_recurring, recurring_frequency, is_essential, created_at
+      supabase.from('user_expenses').select('id, name, amount, category, vendor, is_recurring, recurring_frequency, is_essential, created_at').eq('user_key', userKey).eq('deleted', false),
+      // Tombstones, so the caller can tell "deleted upstream" from "never
+      // pushed from here". Without them a row missing from the active set is
+      // ambiguous, and treating it as a delete loses unsynced local work.
+      supabase.from('user_expenses').select('id').eq('user_key', userKey).eq('deleted', true),
       supabase.from('user_income').select('salary_me, salary_partner').eq('user_key', userKey).limit(1),
       getSavingsHistory(userKey)
     ]);
 
     if (financesRes.error) throw financesRes.error;
+    // A failed expenses read must NOT masquerade as "user has no expenses" —
+    // returning [] here could let the caller sync an empty list back over
+    // real data. Throw so the app falls back to local state instead.
+    if (expensesRes.error) throw expensesRes.error;
 
     const mainBlob = financesRes.data?.[0]?.data || {};
     const updatedAt = financesRes.data?.[0]?.updated_at;
 
+    const todayIso = new Date().toISOString().split('T')[0];
+
     // Transform expenses from user_expenses table back to internal Expense type
     // Since the schema lacks a 'date' column, we use 'created_at' as the source for 'date'
-    const expenses: Expense[] = (expensesRes.data || []).map(e => ({
-      id: e.id || crypto.randomUUID(),
-      name: e.name,
-      amount: parseFloat(e.amount) || 0,
-      category: e.category,
-      vendor: e.vendor || undefined,
-      isRecurring: !!e.is_recurring,
-      recurringFrequency: e.recurring_frequency || undefined,
-      date: e.created_at ? new Date(e.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
-    }));
+    const expenses: Expense[] = (expensesRes.data || []).map(e => {
+      // An unparseable created_at must not poison the whole pull:
+      // new Date(garbage).toISOString() throws, so validate per row and fall
+      // back to today for just that row.
+      let date = todayIso;
+      if (e.created_at) {
+        const parsed = new Date(e.created_at);
+        if (!isNaN(parsed.getTime())) {
+          date = parsed.toISOString().split('T')[0];
+        }
+      }
+      return {
+        id: e.id || newId(),
+        name: e.name,
+        amount: parseFloat(e.amount) || 0,
+        category: e.category,
+        vendor: e.vendor || undefined,
+        isRecurring: !!e.is_recurring,
+        recurringFrequency: e.recurring_frequency || undefined,
+        isEssential: !!e.is_essential,
+        date
+      };
+    });
 
     // Reconstruct income state
     let income: IncomeState = { salaryMe: 0, salaryPartner: 0 };
@@ -230,6 +282,10 @@ export const pullFromCloud = async (userKey: string) => {
       income = mainBlob.income;
     }
 
+    // A failed tombstone read is not fatal: the caller merges conservatively and
+    // simply keeps more rows than it strictly should, rather than dropping any.
+    const deletedExpenseIds: string[] = (deletedRes.data || []).map((r: any) => r.id);
+
     return {
       data: {
         ...mainBlob,
@@ -237,6 +293,7 @@ export const pullFromCloud = async (userKey: string) => {
         income,
         history: historyData
       },
+      deletedExpenseIds,
       updatedAt: updatedAt || new Date().toISOString()
     };
   } catch (err) {
@@ -272,20 +329,11 @@ export const signOut = async () => {
   }
 };
 
-/** SHA-256 hex digest — must match the backend's hash_integration_token(). */
-const sha256Hex = async (input: string): Promise<string> => {
-  const bytes = new TextEncoder().encode(input);
-  const digest = await crypto.subtle.digest('SHA-256', bytes);
-  return Array.from(new Uint8Array(digest))
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('');
-};
-
 export const generateIntegrationToken = async (userKey: string, tokenName: string) => {
   if (!userKey) throw new Error("Sync ID missing");
   // The raw token is returned to the user once and never stored; only its hash
   // is persisted, so a leaked DB row cannot be replayed as a live credential.
-  const rawToken = 'ff_live_' + crypto.randomUUID().replace(/-/g, '');
+  const rawToken = 'ff_live_' + newId().replace(/-/g, '');
   const tokenHash = await sha256Hex(rawToken);
   const { error } = await supabase.from('integration_tokens').insert([{
     user_key: userKey,

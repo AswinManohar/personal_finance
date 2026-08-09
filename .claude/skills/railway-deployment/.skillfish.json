@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "name": "railway-deployment",
+  "owner": "leanentropy",
+  "repo": "civax-cc-agents",
+  "path": "plugins/railway-deployer/skills/railway-deployment",
+  "branch": "main",
+  "sha": "fa5a10114ada1e6b6b7acdcbc19e9e6085de4714",
+  "source": "manual"
+}

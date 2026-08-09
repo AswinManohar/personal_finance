@@ -75,4 +75,4 @@ When deploying a new Cloud Run URL, your Supabase Google OAuth provider will ins
 1. Open the **Supabase Dashboard**.
 2. Go to **Authentication** -> **URL Configuration**.
 3. Change the **Site URL** strictly to your *new* live Cloud Run URL (e.g., `https://cashflow-eu-XXXXXXXXX.run.app`).
-4. Add `http://localhost:3000/*` and `http://localhost:3001/*` to the **Redirect URLs** list below it so your laptop development server still functions perfectly.
+4. Add `http://localhost:5173/*` to the **Redirect URLs** list below it so your laptop development server still functions perfectly.

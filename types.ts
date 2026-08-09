@@ -9,6 +9,7 @@ export interface Expense {
   recurringFrequency?: RecurringFrequency;
   date: string; // ISO date string
   vendor?: string;
+  isEssential?: boolean; // counts toward runway / emergency-fund target
 }
 
 export enum ExpenseCategory {
@@ -37,6 +38,9 @@ export interface SavingsGoal {
   targetDate: string; // ISO date string
   currentSavings: number;
 }
+
+/** A tracked asset line that a savings goal can count toward its progress. */
+export type GoalSource = 'cash' | 'stocks' | 'mutualFunds' | 'gold' | 'other';
 
 export interface NetWorthState {
   goldInvestment: number;
@@ -102,4 +106,32 @@ export interface SupabaseSyncState {
   lastSynced?: string;
 }
 
-export type ActiveTab = 'expenses' | 'savings' | 'investment' | 'networth' | 'fire' | 'portfolio' | 'stocks' | 'data' | 'goal';
+export interface Loan {
+  id: string;
+  name: string;
+  /**
+   * Outstanding amount. Derived from the amortisation schedule below whenever
+   * one is present — see currentBalance() — and only authoritative for loans
+   * entered before the schedule fields existed.
+   */
+  balance: number;
+  interestRate: number; // annual nominal %, e.g. 7.5
+  monthlyPayment: number;
+  /** Total number of installments over the life of the loan. */
+  termMonths?: number;
+  /** How many of those have been paid so far. */
+  installmentsPaid?: number;
+  lender?: string;
+}
+
+export interface EmergencyFundState {
+  /** What the fund should hold, in €. Entered by hand. */
+  targetAmount: number;
+  /** What the fund holds today, in €. Entered by hand; a slice of accumulatedSavings. */
+  currentAmount: number;
+}
+
+// 'stmt' is Statement Review. It used to render inside the Expenses screen; the
+// mobile design promotes it to a destination of its own, reached from the More
+// sheet, so it needs a tab id like everything else.
+export type ActiveTab = 'expenses' | 'savings' | 'investment' | 'networth' | 'fire' | 'portfolio' | 'stocks' | 'data' | 'goal' | 'debts' | 'stmt';

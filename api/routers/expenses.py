@@ -18,7 +18,13 @@ async def read_expenses(user_id: str = Depends(get_current_user_id)):
         supabase = get_supabase_client()
         if not supabase:
             raise HTTPException(status_code=500, detail="Supabase client is not configured")
-        response = supabase.table("user_expenses").select("*").eq("user_key", user_id).execute()
+        response = (
+            supabase.table("user_expenses")
+            .select("*")
+            .eq("user_key", user_id)
+            .eq("deleted", False)
+            .execute()
+        )
         return response.data
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -65,11 +71,15 @@ async def update_expense(
         if not updates:
             raise HTTPException(status_code=400, detail="No fields provided for update")
 
+        # `.eq("deleted", False)` makes a tombstoned row invisible to this
+        # update: it matches zero rows instead of resurrecting/editing a
+        # soft-deleted expense, so it falls straight into the 404 path below.
         response = (
             supabase.table("user_expenses")
             .update(updates)
             .eq("id", expense_id)
             .eq("user_key", user_id)
+            .eq("deleted", False)
             .execute()
         )
 
@@ -85,7 +95,13 @@ async def update_expense(
 @router.delete("/{expense_id}", status_code=status.HTTP_204_NO_CONTENT, operation_id="delete_expense")
 async def delete_expense(expense_id: str, user_id: str = Depends(get_current_user_id)):
     """
-    Delete an expense for the current user.
+    Soft-delete an expense for the current user.
+
+    Marks the row `deleted = true` rather than removing it. A hard delete makes
+    the row vanish from user_expenses entirely, so it never surfaces in
+    /v1/integrations/expenses as a tombstone — meaning downstream consumers
+    (Life OS) never learn the expense was deleted and hold it forever. The
+    updated_at trigger advances the row so the change feed resurfaces it.
     """
     try:
         supabase = get_supabase_client()
@@ -104,7 +120,7 @@ async def delete_expense(expense_id: str, user_id: str = Depends(get_current_use
 
         (
             supabase.table("user_expenses")
-            .delete()
+            .update({"deleted": True})
             .eq("id", expense_id)
             .eq("user_key", user_id)
             .execute()

@@ -1,17 +1,22 @@
 import React, { useState } from 'react';
 import {
-  Download, Upload, CheckCircle, RefreshCw, AlertCircle, Cloud,
-  LogOut, CloudOff, Key, Copy, Check, WifiOff, ArrowUpFromLine, ArrowDownToLine,
-  Database, User
+  Download, Upload, CheckCircle, RefreshCw, AlertCircle,
+  LogOut, Copy, WifiOff,
 } from 'lucide-react';
 import {
   Expense, PortfolioAsset, Stock, ExpenseCategory, IncomeState, InvestmentState,
-  SavingsGoal, FIREState, NetWorthState, InvestmentFrequency, AssetType
+  SavingsGoal, FIREState, NetWorthState, InvestmentFrequency, AssetType, EmergencyFundState, Loan
 } from '../types';
 import { 
   pushToCloud, pullFromCloud, isNetworkError, 
   generateIntegrationToken, getIntegrationTokens, revokeIntegrationToken 
 } from '../services/supabaseService';
+import {
+  Card, DangerButton, FieldLabel, GhostButton, IconBox, Pill, ScreenTitle, Tile,
+} from './ui';
+import { newId } from '../utils/id';
+import { num } from '../utils/finance';
+import { saveTextFile } from '../services/download';
 
 interface DataManagementProps {
   expenses: Expense[];
@@ -22,7 +27,11 @@ interface DataManagementProps {
   goal: SavingsGoal;
   fire: FIREState;
   netWorthData: NetWorthState;
-  uniqueSyncId: string | null;
+  emergencyFund: EmergencyFundState;
+  loans: Loan[];
+  userId: string | null;
+  /** Shown instead of the raw id, which is no longer a credential. */
+  accountEmail?: string | null;
   lastSyncedAt: string | null;
   setExpenses: (data: Expense[]) => void;
   setPortfolio: (data: PortfolioAsset[]) => void;
@@ -32,39 +41,40 @@ interface DataManagementProps {
   setGoal: (data: SavingsGoal) => void;
   setFire: (data: FIREState) => void;
   setNetWorthData: (data: NetWorthState) => void;
+  setEmergencyFund: (data: EmergencyFundState) => void;
+  setLoans: (data: Loan[]) => void;
   onLogout: () => void;
   onRetryPull?: () => void;
 }
 
 export const DataManagement: React.FC<DataManagementProps> = ({
-  expenses, portfolio, stocks, income, investment, goal, fire, netWorthData,
-  uniqueSyncId, lastSyncedAt,
-  setExpenses, setPortfolio, setStocks, setIncome, setInvestment, setGoal, setFire, setNetWorthData,
+  expenses, portfolio, stocks, income, investment, goal, fire, netWorthData, emergencyFund, loans,
+  userId, accountEmail, lastSyncedAt,
+  setExpenses, setPortfolio, setStocks, setIncome, setInvestment, setGoal, setFire, setNetWorthData, setEmergencyFund, setLoans,
   onLogout, onRetryPull,
 }) => {
   const [isCloudSyncing, setIsCloudSyncing] = useState(false);
   const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error' | 'info' | 'offline'; text: string } | null>(null);
-  const [copied, setCopied] = useState(false);
   
   const [tokens, setTokens] = useState<any[]>([]);
   const [isGeneratingToken, setIsGeneratingToken] = useState(false);
   const [newTokenText, setNewTokenText] = useState<string | null>(null);
 
-  const activeSyncKey = uniqueSyncId;
+  const activeUserKey = userId;
 
   React.useEffect(() => {
-    if (activeSyncKey) {
-      getIntegrationTokens(activeSyncKey).then(data => setTokens(data)).catch(console.error);
+    if (activeUserKey) {
+      getIntegrationTokens(activeUserKey).then(data => setTokens(data)).catch(console.error);
     }
-  }, [activeSyncKey]);
+  }, [activeUserKey]);
 
   const handleGenerateToken = async () => {
-    if (!activeSyncKey) return;
+    if (!activeUserKey) return;
     setIsGeneratingToken(true);
     try {
-      const token = await generateIntegrationToken(activeSyncKey, "Life OS Integration");
+      const token = await generateIntegrationToken(activeUserKey, "Life OS Integration");
       setNewTokenText(token);
-      const updatedTokens = await getIntegrationTokens(activeSyncKey);
+      const updatedTokens = await getIntegrationTokens(activeUserKey);
       setTokens(updatedTokens);
     } catch (e: any) {
       setStatusMsg({ type: 'error', text: 'Failed to generate token: ' + e.message });
@@ -83,15 +93,21 @@ export const DataManagement: React.FC<DataManagementProps> = ({
     }
   };
 
+  /** Pull then push, so one tap reconciles both directions. */
+  const handleSyncNow = async () => {
+    await handleCloudSyncPull();
+    await handleCloudSyncPush();
+  };
+
   const handleCloudSyncPush = async () => {
-    if (!activeSyncKey) return;
+    if (!activeUserKey) return;
     setIsCloudSyncing(true);
     setStatusMsg(null);
 
-    const payload = { expenses, portfolio, stocks, income, investment, goal, fire, netWorthData };
+    const payload = { expenses, portfolio, stocks, income, investment, goal, fire, netWorthData, emergencyFund, loans };
 
     try {
-      await pushToCloud(activeSyncKey, payload);
+      await pushToCloud(activeUserKey, payload);
       setStatusMsg({ type: 'success', text: 'Cloud backup updated successfully!' });
       setTimeout(() => setStatusMsg(null), 3000);
     } catch (error: any) {
@@ -106,12 +122,12 @@ export const DataManagement: React.FC<DataManagementProps> = ({
   };
 
   const handleCloudSyncPull = async () => {
-    if (!activeSyncKey) return;
+    if (!activeUserKey) return;
     setIsCloudSyncing(true);
     setStatusMsg(null);
 
     try {
-      const { data } = await pullFromCloud(activeSyncKey);
+      const { data } = await pullFromCloud(activeUserKey);
 
       if (data.expenses) setExpenses(data.expenses);
       if (data.portfolio) setPortfolio(data.portfolio);
@@ -121,6 +137,13 @@ export const DataManagement: React.FC<DataManagementProps> = ({
       if (data.goal) setGoal(data.goal);
       if (data.fire) setFire(data.fire);
       if (data.netWorthData) setNetWorthData(data.netWorthData);
+      // Normalised on the way in so the state matches its declared shape. Not
+      // migration: legacy { targetMonths } payloads degrade to zeros.
+      if (data.emergencyFund) setEmergencyFund({
+        targetAmount: num(data.emergencyFund.targetAmount),
+        currentAmount: num(data.emergencyFund.currentAmount),
+      });
+      if (data.loans) setLoans(data.loans);
 
       setStatusMsg({ type: 'success', text: 'Data restored from cloud!' });
       setTimeout(() => setStatusMsg(null), 3000);
@@ -135,42 +158,33 @@ export const DataManagement: React.FC<DataManagementProps> = ({
     }
   };
 
-  const copySyncId = () => {
-    if (uniqueSyncId) {
-      navigator.clipboard.writeText(uniqueSyncId);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
-  const exportCSV = (type: 'expenses' | 'portfolio' | 'stocks') => {
-    const downloadCSV = (content: string, filename: string) => {
-      const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      link.setAttribute('download', filename);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+  const exportCSV = async (type: 'expenses' | 'portfolio' | 'stocks') => {
+    // saveTextFile, not a blob: URL — a Capacitor WebView registers no
+    // DownloadListener and refuses blob: navigations, so the old helper made
+    // these buttons do nothing at all on the phone.
+    const downloadCSV = async (content: string, filename: string) => {
+      try {
+        await saveTextFile(filename, content);
+      } catch (e: any) {
+        setStatusMsg({ type: 'error', text: `Export failed: ${e?.message ?? e}` });
+      }
     };
 
     if (type === 'expenses') {
       const headers = ['Name,Category,Amount,Recurring'];
       const rows = expenses.map((e) => `"${e.name}","${e.category}",${e.amount},${e.isRecurring}`);
-      downloadCSV([headers, ...rows].join('\n'), 'expenses.csv');
+      await downloadCSV([headers, ...rows].join('\n'), 'expenses.csv');
     } else if (type === 'portfolio') {
       const headers = ['Name,Type,Current Value,Monthly Investment,Return %,TER %,Tax Rate %,Frequency'];
       const rows = portfolio.map(
         (p) =>
           `"${p.name}","${p.type}",${p.currentValue},${p.monthlyInvestment},${p.expectedReturn},${p.expenseRatio},${p.taxRate},"${p.frequency}"`
       );
-      downloadCSV([headers, ...rows].join('\n'), 'portfolio.csv');
+      await downloadCSV([headers, ...rows].join('\n'), 'portfolio.csv');
     } else if (type === 'stocks') {
       const headers = ['Symbol,Quantity,Buy Price,Frequency'];
       const rows = stocks.map((s) => `"${s.symbol}",${s.quantity},${s.buyPrice},"${s.frequency}"`);
-      downloadCSV([headers, ...rows].join('\n'), 'stocks.csv');
+      await downloadCSV([headers, ...rows].join('\n'), 'stocks.csv');
     }
   };
 
@@ -178,16 +192,23 @@ export const DataManagement: React.FC<DataManagementProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
+    // An unreadable file used to return silently, leaving the Import button
+    // looking like it had worked.
+    reader.onerror = () =>
+      setStatusMsg({ type: 'error', text: `Could not read ${file.name}.` });
     reader.onload = (event) => {
       const text = event.target?.result as string;
-      if (!text) return;
+      if (!text) {
+        setStatusMsg({ type: 'error', text: `${file.name} is empty.` });
+        return;
+      }
       const lines = text.split('\n');
       const dataRows = lines.slice(1).filter((line) => line.trim() !== '');
       if (type === 'expenses') {
         const parsed: Expense[] = dataRows.map((row) => {
           const parts = row.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || [];
           return {
-            id: crypto.randomUUID(),
+            id: newId(),
             name: parts[0]?.replace(/"/g, '') || 'Imported',
             category: (parts[1]?.replace(/"/g, '') || 'Other') as ExpenseCategory,
             amount: parseFloat(parts[2]) || 0,
@@ -200,7 +221,7 @@ export const DataManagement: React.FC<DataManagementProps> = ({
         const parsed: PortfolioAsset[] = dataRows.map((row) => {
           const parts = row.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || [];
           return {
-            id: crypto.randomUUID(),
+            id: newId(),
             name: parts[0]?.replace(/"/g, '') || 'Imported',
             type: (parts[1]?.replace(/"/g, '') || 'OTHER') as AssetType,
             currentValue: parseFloat(parts[2]) || 0,
@@ -216,7 +237,7 @@ export const DataManagement: React.FC<DataManagementProps> = ({
         const parsed: Stock[] = dataRows.map((row) => {
           const parts = row.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || [];
           return {
-            id: crypto.randomUUID(),
+            id: newId(),
             symbol: parts[0]?.replace(/"/g, '') || 'UNKNOWN',
             quantity: parseFloat(parts[1]) || 0,
             buyPrice: parseFloat(parts[2]) || 0,
@@ -231,44 +252,48 @@ export const DataManagement: React.FC<DataManagementProps> = ({
     e.target.value = '';
   };
 
-  const ghostBtn =
-    'bg-surface-container-high px-4 py-2 rounded-lg text-sm font-semibold text-on-surface hover:bg-surface-bright transition-all flex items-center gap-2';
+
+  const csvSets = [
+    { key: 'expenses' as const, name: 'Expenses', count: `${expenses.length} records` },
+    { key: 'portfolio' as const, name: 'Portfolio', count: `${portfolio.length} funds` },
+    { key: 'stocks' as const, name: 'Stocks', count: `${stocks.length} holdings` },
+  ];
 
   return (
-    <div className="p-8 max-w-[1400px] mx-auto">
-      {/* Page Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-black text-on-surface tracking-tight">Data Management</h1>
-        <p className="text-secondary text-sm mt-1">
-          {uniqueSyncId ? 'Connected via Unique Sync ID — cloud backup enabled.' : 'Local sandbox mode — data stored in browser only.'}
-        </p>
-      </div>
+    <div className="flex flex-col gap-3 max-w-[720px] w-full mx-auto">
+      <ScreenTitle
+        title="Data Management"
+        subtitle={
+          userId
+            ? 'Signed in with Google — cloud backup enabled.'
+            : 'Local sandbox mode — data stored in browser only.'
+        }
+      />
 
-      {/* Status Message */}
       {statusMsg && (
         <div
-          className={`mb-6 p-4 rounded-xl text-sm flex items-center justify-between border ${
+          className={`p-4 rounded-card text-body flex items-center justify-between gap-3 border ${
             statusMsg.type === 'success'
-              ? 'bg-[#3DD68C]/10 text-[#3DD68C] border-[#3DD68C]/20'
+              ? 'bg-positive/10 text-positive border-positive/20'
               : statusMsg.type === 'offline'
               ? 'bg-tertiary/10 text-tertiary border-tertiary/20'
-              : 'bg-[#F26B6B]/10 text-[#F26B6B] border-[#F26B6B]/20'
+              : 'bg-negative/10 text-negative border-negative/20'
           }`}
         >
-          <div className="flex items-center gap-3">
+          <span className="flex items-center gap-3 min-w-0">
             {statusMsg.type === 'success' ? (
-              <CheckCircle size={18} />
+              <CheckCircle size={18} className="flex-none" />
             ) : statusMsg.type === 'offline' ? (
-              <WifiOff size={18} />
+              <WifiOff size={18} className="flex-none" />
             ) : (
-              <AlertCircle size={18} />
+              <AlertCircle size={18} className="flex-none" />
             )}
             {statusMsg.text}
-          </div>
+          </span>
           {statusMsg.type === 'offline' && onRetryPull && (
             <button
               onClick={onRetryPull}
-              className="font-bold flex items-center gap-1 text-tertiary hover:text-on-surface transition-colors"
+              className="flex items-center gap-1 font-bold flex-none hover:text-on-surface transition-colors"
             >
               <RefreshCw size={14} /> Retry
             </button>
@@ -276,266 +301,201 @@ export const DataManagement: React.FC<DataManagementProps> = ({
         </div>
       )}
 
-      <div className="max-w-[720px] space-y-5">
-        {/* Cloud Sync Card */}
-        <div className={`bg-surface-container-low rounded-xl border ${activeSyncKey ? 'border-outline-variant/15' : 'border-outline-variant/10 opacity-60'}`}>
-          <div className="px-6 pt-5 pb-3 border-b border-outline-variant/10">
-            <div className="flex items-center gap-3">
-              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${activeSyncKey ? 'bg-primary/10 text-primary' : 'bg-surface-container-high text-secondary'}`}>
-                <Cloud size={18} />
-              </div>
-              <div>
-                <p className="text-sm font-bold text-on-surface">Cloud Sync</p>
-                <p className="text-xs text-secondary">
-                  {activeSyncKey
-                    ? lastSyncedAt
-                      ? `Last synced: ${lastSyncedAt}`
-                      : 'Connected — never synced'
-                    : 'Login with a Sync ID to enable'}
-                </p>
-              </div>
-              {activeSyncKey && (
-                <div className="ml-auto flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-[#3DD68C]" />
-                  <span className="text-xs text-[#3DD68C] font-bold">Active</span>
-                </div>
-              )}
-            </div>
+      {/* ── Cloud sync ── */}
+      <Card flush className={activeUserKey ? '' : 'opacity-60'}>
+        <div className="px-5 py-4 border-b border-outline-variant/12 flex items-center gap-3">
+          <IconBox icon="cloud" tone={activeUserKey ? 'primary' : 'neutral'} />
+          <div className="flex-1 min-w-0">
+            <p className="text-body font-bold">Cloud Sync</p>
+            <p className="mt-0.5 text-label text-secondary truncate">
+              {activeUserKey
+                ? lastSyncedAt
+                  ? `Last synced: ${lastSyncedAt}`
+                  : 'Connected — never synced'
+                : 'Sign in with Google to enable'}
+            </p>
           </div>
-
-          {activeSyncKey && (
-            <>
-              {/* Push row */}
-              <div className="px-6 py-4 flex items-center justify-between border-b border-outline-variant/5">
-                <div className="flex items-center gap-3">
-                  <ArrowUpFromLine size={18} className="text-secondary" />
-                  <div>
-                    <p className="text-sm font-semibold text-on-surface">Push to Cloud</p>
-                    <p className="text-xs text-secondary">Upload current data to your sync ID</p>
-                  </div>
-                </div>
-                <button
-                  onClick={handleCloudSyncPush}
-                  disabled={isCloudSyncing}
-                  className={`${ghostBtn} disabled:opacity-50`}
-                >
-                  {isCloudSyncing ? <RefreshCw size={15} className="animate-spin" /> : <Upload size={15} />}
-                  Push
-                </button>
-              </div>
-              {/* Pull row */}
-              <div className="px-6 py-4 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <ArrowDownToLine size={18} className="text-secondary" />
-                  <div>
-                    <p className="text-sm font-semibold text-on-surface">Pull from Cloud</p>
-                    <p className="text-xs text-secondary">Restore data from your sync ID</p>
-                  </div>
-                </div>
-                <button
-                  onClick={handleCloudSyncPull}
-                  disabled={isCloudSyncing}
-                  className={`${ghostBtn} disabled:opacity-50`}
-                >
-                  {isCloudSyncing ? <RefreshCw size={15} className="animate-spin" /> : <Download size={15} />}
-                  Pull
-                </button>
-              </div>
-            </>
-          )}
-
-          {!activeSyncKey && (
-            <div className="px-6 py-5 text-sm text-secondary">
-              Sign in with a Sync ID on the login screen to enable cloud backup.
-            </div>
+          {activeUserKey && (
+            <span className="flex items-center gap-1.5 flex-none">
+              <span className="w-2 h-2 rounded-full bg-positive" />
+              <span className="text-label font-bold text-positive">Active</span>
+            </span>
           )}
         </div>
 
-        {/* Export / Import Card */}
-        <div className="bg-surface-container-low rounded-xl border border-outline-variant/10">
-          <div className="px-6 pt-5 pb-3 border-b border-outline-variant/10">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-tertiary/10 flex items-center justify-center text-tertiary">
-                <Database size={18} />
-              </div>
-              <div>
-                <p className="text-sm font-bold text-on-surface">Export / Import</p>
-                <p className="text-xs text-secondary">Download or restore data as CSV files</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Expenses */}
-          <div className="px-6 py-4 flex items-center justify-between border-b border-outline-variant/5">
-            <div>
-              <p className="text-sm font-semibold text-on-surface">Expenses</p>
-              <p className="text-xs text-secondary">{expenses.length} records</p>
-            </div>
-            <div className="flex gap-2">
-              <button onClick={() => exportCSV('expenses')} className={ghostBtn}>
-                <Download size={14} /> Export
-              </button>
-              <label className={`${ghostBtn} cursor-pointer`}>
-                <Upload size={14} /> Import
-                <input type="file" accept=".csv" className="hidden" onChange={(e) => handleImport(e, 'expenses')} />
-              </label>
-            </div>
-          </div>
-
-          {/* Portfolio */}
-          <div className="px-6 py-4 flex items-center justify-between border-b border-outline-variant/5">
-            <div>
-              <p className="text-sm font-semibold text-on-surface">Portfolio</p>
-              <p className="text-xs text-secondary">{portfolio.length} funds</p>
-            </div>
-            <div className="flex gap-2">
-              <button onClick={() => exportCSV('portfolio')} className={ghostBtn}>
-                <Download size={14} /> Export
-              </button>
-              <label className={`${ghostBtn} cursor-pointer`}>
-                <Upload size={14} /> Import
-                <input type="file" accept=".csv" className="hidden" onChange={(e) => handleImport(e, 'portfolio')} />
-              </label>
-            </div>
-          </div>
-
-          {/* Stocks */}
-          <div className="px-6 py-4 flex items-center justify-between">
-            <div>
-              <p className="text-sm font-semibold text-on-surface">Stocks</p>
-              <p className="text-xs text-secondary">{stocks.length} holdings</p>
-            </div>
-            <div className="flex gap-2">
-              <button onClick={() => exportCSV('stocks')} className={ghostBtn}>
-                <Download size={14} /> Export
-              </button>
-              <label className={`${ghostBtn} cursor-pointer`}>
-                <Upload size={14} /> Import
-                <input type="file" accept=".csv" className="hidden" onChange={(e) => handleImport(e, 'stocks')} />
-              </label>
-            </div>
-          </div>
-        </div>
-
-        {/* Account / User Card */}
-        <div className="bg-surface-container-low rounded-xl border border-outline-variant/10">
-          <div className="px-6 pt-5 pb-3 border-b border-outline-variant/10">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-surface-container-high flex items-center justify-center text-secondary">
-                <User size={18} />
-              </div>
-              <div>
-                <p className="text-sm font-bold text-on-surface">
-                  {uniqueSyncId ? 'Sync ID Session' : 'Guest Session'}
-                </p>
-                <p className="text-xs text-secondary">
-                  {uniqueSyncId ? 'Private cloud sync enabled' : 'Local data only — no cloud'}
-                </p>
-              </div>
-              <span className={`ml-auto text-[10px] font-bold px-2 py-1 rounded tracking-widest uppercase ${uniqueSyncId ? 'bg-primary/10 text-primary' : 'bg-surface-container-highest text-secondary'}`}>
-                {uniqueSyncId ? 'Sync ID' : 'Local Mode'}
-              </span>
-            </div>
-          </div>
-
-          {uniqueSyncId && (
-            <div className="px-6 py-4 border-b border-outline-variant/5">
-              <div className="flex justify-between items-center mb-1.5">
-                <span className="text-xs font-bold tracking-widest uppercase text-secondary flex items-center gap-1.5">
-                  <Key size={12} /> Your Sync ID
+        {activeUserKey ? (
+          // Sync runs by itself: on sign-in, whenever the app comes back to the
+          // foreground, and after every change. This is a manual nudge for
+          // impatience, not a step anyone has to remember — the old separate
+          // Push and Pull buttons made an automatic process look like a chore.
+          <div className="px-5 py-3 flex items-center justify-between gap-3">
+            <span className="flex items-center gap-3 min-w-0">
+              <RefreshCw size={18} className="text-secondary flex-none" />
+              <span className="min-w-0">
+                <span className="block text-body font-semibold">Sync now</span>
+                <span className="block mt-0.5 text-label text-secondary">
+                  Runs automatically — this just does it sooner
                 </span>
-                <button
-                  onClick={copySyncId}
-                  className="text-xs font-bold text-primary hover:text-on-surface transition-colors flex items-center gap-1"
-                >
-                  {copied ? <Check size={12} /> : <Copy size={12} />}
-                  {copied ? 'Copied' : 'Copy'}
-                </button>
-              </div>
-              <p className="font-mono text-sm text-on-surface select-all tracking-wider break-all">
-                {uniqueSyncId}
-              </p>
-              <p className="text-[10px] text-secondary mt-2 italic">
-                Use this ID on other devices to restore your data without an account.
-              </p>
-            </div>
-          )}
+              </span>
+            </span>
+            <GhostButton onClick={handleSyncNow} disabled={isCloudSyncing}>
+              {isCloudSyncing ? <RefreshCw size={15} className="animate-spin" /> : <RefreshCw size={15} />}
+              Sync
+            </GhostButton>
+          </div>
+        ) : (
+          <p className="px-5 py-4 text-body text-secondary">
+            Sign in with Google on the login screen to enable cloud backup.
+          </p>
+        )}
+      </Card>
 
-          <div className="px-6 py-4">
-            <button
-              onClick={onLogout}
-              className="flex items-center gap-2 text-sm font-bold text-[#F26B6B] hover:bg-[#F26B6B]/10 px-3 py-2 rounded-lg transition-all"
-            >
-              <LogOut size={16} />
-              {uniqueSyncId ? 'Exit Session' : 'Exit Guest Mode'}
-            </button>
+      {/* ── Export / import ── */}
+      <Card flush>
+        <div className="px-5 py-4 border-b border-outline-variant/12 flex items-center gap-3">
+          <IconBox icon="database" tone="tertiary" />
+          <div>
+            <p className="text-body font-bold">Export / Import</p>
+            <p className="mt-0.5 text-label text-secondary">CSV backup and restore</p>
           </div>
         </div>
-
-        {/* Integrations Card */}
-        {uniqueSyncId && (
-          <div className="bg-surface-container-low rounded-xl border border-outline-variant/10">
-            <div className="px-6 pt-5 pb-3 border-b border-outline-variant/10">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-surface-container-high flex items-center justify-center text-secondary">
-                  <Key size={18} />
-                </div>
-                <div>
-                  <p className="text-sm font-bold text-on-surface">API Integrations</p>
-                  <p className="text-xs text-secondary">Manage service tokens for apps like Life OS</p>
-                </div>
-              </div>
+        {csvSets.map((set, i) => (
+          <div
+            key={set.key}
+            className={`px-5 py-3 flex items-center justify-between gap-3 ${
+              i < csvSets.length - 1 ? 'border-b border-outline-variant/[.08]' : ''
+            }`}
+          >
+            <div className="min-w-0">
+              <p className="text-body font-semibold">{set.name}</p>
+              <p className="mt-0.5 text-label text-secondary tabular-nums">{set.count}</p>
             </div>
-
-            <div className="px-6 py-4">
-              <div className="flex justify-between items-center mb-4">
-                <p className="text-sm text-secondary">Active Tokens</p>
-                <button
-                  onClick={handleGenerateToken}
-                  disabled={isGeneratingToken}
-                  className="bg-primary/10 text-primary px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-primary/20 transition-colors"
-                >
-                  {isGeneratingToken ? 'Generating...' : '+ Generate New Token'}
-                </button>
-              </div>
-
-              {newTokenText && (
-                <div className="mb-4 p-4 bg-[#3DD68C]/10 border border-[#3DD68C]/20 rounded-xl">
-                  <p className="text-xs font-bold text-[#3DD68C] mb-1">New Token Generated! (Copy now, it won't be shown again)</p>
-                  <div className="flex items-center justify-between">
-                    <p className="font-mono text-sm text-on-surface select-all tracking-wider break-all">{newTokenText}</p>
-                    <button 
-                      onClick={() => { navigator.clipboard.writeText(newTokenText); }}
-                      className="ml-2 text-secondary hover:text-on-surface"
-                    ><Copy size={14} /></button>
-                  </div>
-                </div>
-              )}
-
-              {tokens.length === 0 ? (
-                <p className="text-xs text-secondary italic">No active tokens.</p>
-              ) : (
-                <div className="space-y-3">
-                  {tokens.map(token => (
-                    <div key={token.id} className="flex items-center justify-between bg-surface-container-high p-3 rounded-lg">
-                      <div>
-                        <p className="text-sm font-bold text-on-surface">{token.token_name}</p>
-                        <p className="text-[10px] text-secondary">Created: {new Date(token.created_at).toLocaleDateString()}</p>
-                      </div>
-                      <button
-                        onClick={() => handleRevokeToken(token.id)}
-                        className="text-xs text-[#F26B6B] hover:bg-[#F26B6B]/10 px-2 py-1 rounded transition-colors"
-                      >
-                        Revoke
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
+            <div className="flex gap-2 flex-none">
+              <GhostButton size="sm" onClick={() => { void exportCSV(set.key); }}>
+                <Download size={15} /> Export
+              </GhostButton>
+              <label
+                className="h-10 px-3 text-caption inline-flex items-center justify-center gap-1.5 rounded-field
+                  font-semibold bg-surface-container-high text-on-surface hover:bg-surface-bright
+                  transition-colors cursor-pointer"
+              >
+                <Upload size={15} /> Import
+                <input
+                  type="file"
+                  accept=".csv"
+                  aria-label={`Import ${set.name} CSV`}
+                  className="hidden"
+                  onChange={e => handleImport(e, set.key)}
+                />
+              </label>
             </div>
+          </div>
+        ))}
+      </Card>
+
+      {/* ── Session ── */}
+      <Card flush>
+        <div className="px-5 py-4 border-b border-outline-variant/12 flex items-center gap-3">
+          <IconBox icon="person" tone="neutral" />
+          <div className="flex-1 min-w-0">
+            <p className="text-body font-bold">{userId ? 'Google Account' : 'Guest Session'}</p>
+            <p className="mt-0.5 text-label text-secondary">
+              {userId ? 'Private cloud sync enabled' : 'Local data only — no cloud'}
+            </p>
+          </div>
+          <Pill tone={userId ? 'primary' : 'neutral'}>
+            {userId ? 'Synced' : 'Local Mode'}
+          </Pill>
+        </div>
+
+        {userId && (
+          <div className="px-5 py-4 border-b border-outline-variant/[.08]">
+            <FieldLabel className="mb-1">Signed in as</FieldLabel>
+            <p className="text-body font-semibold break-all">
+              {accountEmail ?? 'Google account'}
+            </p>
+            <p className="mt-2 text-micro text-secondary italic">
+              Your data is tied to this account. Sign in with it on another device to
+              see the same figures.
+            </p>
           </div>
         )}
-      </div>
+
+        <div className="px-5 py-3">
+          <DangerButton onClick={onLogout}>
+            <LogOut size={16} />
+            {userId ? 'Exit Session' : 'Exit Guest Mode'}
+          </DangerButton>
+        </div>
+      </Card>
+
+      {/* ── Integrations ── */}
+      {userId && (
+        <Card flush>
+          <div className="px-5 py-4 border-b border-outline-variant/12 flex items-center gap-3">
+            <IconBox icon="key" tone="neutral" />
+            <div>
+              <p className="text-body font-bold">API Integrations</p>
+              <p className="mt-0.5 text-label text-secondary">Service tokens for apps like Life OS</p>
+            </div>
+          </div>
+
+          <div className="px-5 py-4">
+            <div className="flex justify-between items-center gap-3 mb-4">
+              <p className="text-body text-secondary">Active Tokens</p>
+              <button
+                onClick={handleGenerateToken}
+                disabled={isGeneratingToken}
+                className="h-10 px-3 rounded-field border-0 bg-primary/10 text-primary text-label font-bold
+                  cursor-pointer hover:bg-primary/20 transition-colors flex-none disabled:opacity-50"
+              >
+                {isGeneratingToken ? 'Generating…' : '+ Generate Token'}
+              </button>
+            </div>
+
+            {newTokenText && (
+              <div className="mb-4 p-4 rounded-card bg-positive/10 border border-positive/20">
+                <p className="mb-1 text-label font-bold text-positive">
+                  New token generated — copy it now, it will not be shown again.
+                </p>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="font-mono text-caption break-all select-all">{newTokenText}</p>
+                  <button
+                    onClick={() => navigator.clipboard.writeText(newTokenText)}
+                    aria-label="Copy token"
+                    className="w-11 h-11 flex items-center justify-center flex-none text-secondary hover:text-on-surface"
+                  >
+                    <Copy size={14} />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {tokens.length === 0 ? (
+              <p className="text-label text-secondary italic">No active tokens.</p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {tokens.map(token => (
+                  <Tile key={token.id}>
+                    <span className="min-w-0">
+                      <span className="block text-body font-bold truncate">{token.token_name}</span>
+                      <span className="block mt-0.5 text-micro text-secondary">
+                        Created {new Date(token.created_at).toLocaleDateString()}
+                      </span>
+                    </span>
+                    <button
+                      onClick={() => handleRevokeToken(token.id)}
+                      className="h-10 px-3 rounded-field text-label text-negative hover:bg-negative/10 transition-colors flex-none"
+                    >
+                      Revoke
+                    </button>
+                  </Tile>
+                ))}
+              </div>
+            )}
+          </div>
+        </Card>
+      )}
     </div>
   );
 };
