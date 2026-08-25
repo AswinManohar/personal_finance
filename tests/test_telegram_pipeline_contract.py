@@ -322,12 +322,16 @@ def test_repulling_boundary_cursor_is_idempotent(client, tables):
 
 
 def test_date_derives_from_created_at(client, tables):
-    """`date` is the expense's anchor date, sourced from created_at."""
+    """`date` is the Europe/Berlin calendar day derived from created_at when
+    the row itself has no `date` column value (pre-migration / legacy rows).
+    created_at is still emitted alongside it for a consumer that wants the
+    instant, not just the day."""
     tables["user_expenses"].append(
         _expense("a", "2026-06-09T00:00:00+00:00", created_at="2026-06-01T07:30:00+00:00")
     )
     row = _feed(client).json()["data"][0]
-    assert row["date"] == "2026-06-01T07:30:00+00:00"
+    assert row["date"] == "2026-06-01"
+    assert row["created_at"] == "2026-06-01T07:30:00+00:00"
     assert row["updated_at"] == "2026-06-09T00:00:00+00:00"
 
 
@@ -346,7 +350,7 @@ def test_recurring_expense_is_one_row_not_materialized(client, tables):
     assert len(data) == 1
     assert data[0]["isRecurring"] is True
     assert data[0]["recurringFrequency"] == "monthly"
-    assert data[0]["date"] == "2026-01-01T00:00:00+00:00"
+    assert data[0]["date"] == "2026-01-01"
 
 
 def test_tombstone_carries_no_payload(client, tables):

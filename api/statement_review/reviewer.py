@@ -36,13 +36,17 @@ def build_context(supabase, user_id: str) -> ReviewContext:
             income_rows[0].get("salary_partner") or 0
         )
 
-    since = (datetime.now(timezone.utc) - timedelta(days=90)).isoformat()
+    # `date` is the calendar day the money was spent; created_at is a
+    # timestamp that no longer reliably tracks it once the write path stops
+    # overloading it. Filtering on created_at here would wrongly admit a
+    # today-recorded, back-dated old expense into a "last 90 days" baseline.
+    since = (datetime.now(timezone.utc) - timedelta(days=90)).date().isoformat()
     rows = (
         supabase.table("user_expenses")
-        .select("name, amount, category, is_recurring, created_at")
+        .select("name, amount, category, is_recurring, date")
         .eq("user_key", user_id)
         .eq("deleted", False)
-        .gte("created_at", since)
+        .gte("date", since)
         .execute()
     ).data or []
 

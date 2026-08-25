@@ -21,11 +21,15 @@ Recurring-expense semantics (documented for consumers):
 import base64
 import binascii
 import re
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import Optional
 
 from api.dependencies import get_integration_user_key, get_service_supabase_client
 from api.models import ExpensesFeed, SavingsHistoryFeed, IncomeSnapshot
+
+BERLIN = ZoneInfo("Europe/Berlin")
 
 router = APIRouter(
     prefix="/v1/integrations",
@@ -103,6 +107,24 @@ def _apply_since(query, sort_key: str, since_value: Optional[tuple]):
     )
 
 
+def _berlin_date(created_at) -> Optional[str]:
+    """Reinterpret a stored instant as the Europe/Berlin calendar day.
+
+    Same rationale as the migration's backfill and resolveExpenseDate on the
+    client: this is consulted only for rows written before `date` existed, or
+    by a producer (the Telegram bot) that never sets it.
+    """
+    if not created_at:
+        return None
+    try:
+        parsed = datetime.fromisoformat(str(created_at).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=ZoneInfo("UTC"))
+    return parsed.astimezone(BERLIN).date().isoformat()
+
+
 def _shape_expense(row: dict) -> dict:
     """Map a user_expenses row to the integration contract.
 
@@ -122,7 +144,11 @@ def _shape_expense(row: dict) -> dict:
         "vendor": row.get("vendor") or None,
         "isRecurring": bool(row.get("is_recurring")),
         "recurringFrequency": row.get("recurring_frequency") or None,
-        "date": _to_iso(row.get("created_at")),
+        # NOTE: this used to be the full created_at timestamp; it is now the
+        # bare YYYY-MM-DD calendar day the money was spent. created_at is
+        # still emitted below for a consumer that wants the recorded instant.
+        "date": row.get("date") or _berlin_date(row.get("created_at")),
+        "created_at": _to_iso(row.get("created_at")),
         "updated_at": _to_iso(row.get("updated_at")),
         "deleted": False,
     }

@@ -1,7 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from api.dependencies import get_supabase_client, get_current_user_id
 from api.models import Expense, ExpenseCreate, ExpenseUpdate
+
+BERLIN = ZoneInfo("Europe/Berlin")
 
 router = APIRouter(
     prefix="/expenses",
@@ -41,7 +45,29 @@ async def create_expense(expense: ExpenseCreate, user_id: str = Depends(get_curr
         # Prepare data matching the table schema
         data = expense.model_dump(mode="json", exclude_unset=True)
         data["user_key"] = user_id
-        
+
+        # The DB trigger (user_expenses_fill_date) would fill `date` too, but
+        # doing it here means the response body — and the Telegram bot, which
+        # only ever sends created_at — gets the right day without a round trip.
+        if not data.get("date"):
+            if expense.created_at is not None:
+                # A naive timestamp (no offset in the payload) is treated as
+                # UTC rather than the server's local time, matching how the
+                # DB stores it and how the migration's backfill reinterprets it.
+                created_at = expense.created_at
+                if created_at.tzinfo is None:
+                    created_at = created_at.replace(tzinfo=ZoneInfo("UTC"))
+                try:
+                    data["date"] = created_at.astimezone(BERLIN).date().isoformat()
+                except (OverflowError, ValueError):
+                    # A timestamp at the extreme edge of datetime's range
+                    # (e.g. 9999-12-31T23:59:59Z) can overflow when shifted
+                    # forward into Berlin's positive offset. Fall back to the
+                    # UTC calendar day rather than failing the whole request.
+                    data["date"] = created_at.date().isoformat()
+            else:
+                data["date"] = datetime.now(BERLIN).date().isoformat()
+
         # Insert into Supabase
         response = supabase.table("user_expenses").insert(data).execute()
         

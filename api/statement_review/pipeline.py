@@ -28,7 +28,7 @@ def run_review(pdf_bytes, *, redact_enabled, statement_type, user_id, supabase, 
 
     rows = (
         supabase.table("user_expenses")
-        .select("id, name, amount, vendor, created_at")
+        .select("id, name, amount, vendor, date, created_at")
         .eq("user_key", user_id)
         .eq("deleted", False)
         .execute()

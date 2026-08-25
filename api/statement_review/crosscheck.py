@@ -18,6 +18,12 @@ def _cents(amount: float) -> int:
 
 
 def _row_date(row: dict) -> date:
+    # `date` is authoritative once the write path stops overloading
+    # created_at; the created_at fallback covers rows written before the
+    # column existed (or by a producer, like the Telegram bot, that only
+    # ever sends created_at).
+    if row.get("date"):
+        return date.fromisoformat(row["date"])
     return datetime.fromisoformat(row["created_at"].replace("Z", "+00:00")).date()
 
 

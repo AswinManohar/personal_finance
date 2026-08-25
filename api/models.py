@@ -1,7 +1,7 @@
 from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional, List, Union
 from enum import Enum
-from datetime import datetime
+from datetime import date as date_type, datetime
 
 class ExpenseCategory(str, Enum):
     HOUSING = 'Housing'
@@ -27,9 +27,13 @@ class ExpenseBase(BaseModel):
     recurring_frequency: Optional[RecurringFrequency] = Field(
         default=None, description="Cadence of a recurring expense (only set when is_recurring is true)"
     )
+    date: Optional[date_type] = Field(default=None, description="Calendar date the money was spent")
 
 class ExpenseCreate(ExpenseBase):
-    created_at: Optional[datetime] = Field(default=None, description="Date of the expense")
+    # Still accepted: the Telegram bot (outside this repo) only ever sends
+    # created_at. It is a timestamp, not the expense's day — create_expense
+    # derives `date` from it in Europe/Berlin when the caller omits `date`.
+    created_at: Optional[datetime] = Field(default=None, description="Timestamp the expense was recorded")
 
 class ExpenseUpdate(BaseModel):
     name: Optional[str] = Field(default=None, min_length=1, description="Name of the expense")
@@ -38,7 +42,8 @@ class ExpenseUpdate(BaseModel):
     vendor: Optional[str] = Field(default=None, description="Merchant/vendor")
     is_recurring: Optional[bool] = Field(default=None, description="Whether the expense is recurring")
     recurring_frequency: Optional[RecurringFrequency] = Field(default=None, description="Cadence of a recurring expense")
-    created_at: Optional[datetime] = Field(default=None, description="Date of the expense")
+    date: Optional[date_type] = Field(default=None, description="Calendar date the money was spent")
+    created_at: Optional[datetime] = Field(default=None, description="Timestamp the expense was recorded")
 
 class Expense(ExpenseBase):
     model_config = ConfigDict(from_attributes=True)
@@ -59,7 +64,10 @@ class IntegrationExpense(BaseModel):
     vendor: Optional[str] = None
     isRecurring: bool = False
     recurringFrequency: Optional[str] = None
-    date: Optional[str] = Field(default=None, description="ISO 8601 date/time of the expense (timezone-aware)")
+    date: Optional[str] = Field(default=None, description="Calendar date the money was spent, YYYY-MM-DD")
+    created_at: Optional[str] = Field(
+        default=None, description="ISO 8601 instant the row was recorded; kept for consumers that want the timestamp, not just the day"
+    )
     updated_at: Optional[str] = Field(default=None, description="ISO 8601 last-modified timestamp; cursor source")
     deleted: bool = False
 
