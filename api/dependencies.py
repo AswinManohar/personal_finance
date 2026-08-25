@@ -1,4 +1,6 @@
+import base64
 import hashlib
+import json
 import os
 from dotenv import load_dotenv
 from fastapi import Depends, HTTPException, status
@@ -11,10 +13,50 @@ load_dotenv()
 
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
-# Service-role key bypasses RLS so the backend can read across household users
-# for read-only integrations (e.g. Life OS). Falls back to SUPABASE_KEY when the
-# deployment already configures a service-role key there.
-SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "") or SUPABASE_KEY
+
+
+def _is_service_role_key(key: str) -> bool:
+    """
+    True only for a key that actually bypasses RLS.
+
+    This used to be `os.getenv(...) or SUPABASE_KEY`, which silently degraded to
+    the anon key when no service-role key was configured. That degradation was
+    invisible for as long as RLS was unenforced — the integration feeds appeared
+    to work, and would have started returning an empty list the moment RLS was
+    switched on, with no error to explain why. A missing key must be loud.
+
+    The anon key is still accepted *if* it is genuinely a service-role key —
+    some deployments put it in SUPABASE_KEY — so this inspects the role rather
+    than trusting the variable's name. The token is our own configuration, not a
+    credential being authenticated, so decoding it unverified is appropriate;
+    Supabase verifies it for real on every request.
+    """
+    if not key:
+        return False
+    # Newer-style Supabase secret keys are opaque, not JWTs.
+    if key.startswith("sb_secret_"):
+        return True
+    if key.startswith("sb_publishable_"):
+        return False
+    try:
+        payload = key.split(".")[1]
+        payload += "=" * (-len(payload) % 4)  # re-pad; JWT strips base64 padding
+        return json.loads(base64.urlsafe_b64decode(payload)).get("role") == "service_role"
+    except Exception:
+        # Unrecognised shape: refuse rather than assume it bypasses RLS.
+        return False
+
+
+_configured_service_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "") or SUPABASE_KEY
+SUPABASE_SERVICE_ROLE_KEY = _configured_service_key if _is_service_role_key(_configured_service_key) else ""
+
+if not SUPABASE_SERVICE_ROLE_KEY:
+    # Loud at import, not at the first confusing empty response.
+    print(
+        "WARNING: no service-role key configured (SUPABASE_SERVICE_ROLE_KEY). "
+        "Read-only integration feeds are disabled. Any backend read that relies "
+        "on bypassing RLS will return nothing once RLS is enforced."
+    )
 PERSONAL_API_TOKEN = os.getenv("PERSONAL_API_TOKEN")
 PERSONAL_USER_ID = os.getenv("PERSONAL_USER_ID")
 
