@@ -14,3 +14,35 @@ import { vi } from 'vitest';
 //
 // Id generation now goes through utils/id.ts, which falls back to
 // crypto.getRandomValues — not secure-context gated. See tests/frontend/id.test.ts.
+
+// localStorage has to be installed by hand, and the reason is worth recording
+// because the symptom points at the wrong thing.
+//
+// Node 22+ defines its own `localStorage` getter on globalThis, which returns
+// undefined unless the process was started with --localstorage-file. Vitest 2's
+// happy-dom adapter chooses what to copy off its Window with
+//
+//   if (k in global) return KEYS.includes(k);
+//
+// and its KEYS list predates that Node change. So `localStorage` now reads as
+// "already global", is skipped, and Node's undefined stub is what tests get.
+// Every test touching storage dies on `localStorage.clear()` — which looks like
+// a broken test, not a broken environment.
+//
+// Reaching for happy-dom's own instance does not work either: vitest sets
+// `window === globalThis`, so there is no Window object here to borrow one from.
+// happy-dom exports the Storage class itself, so construct one — this is the
+// same implementation the environment would have provided.
+//
+// Removable once vitest reaches v3, whose KEYS list includes localStorage.
+import { Storage } from 'happy-dom';
+
+for (const key of ['localStorage', 'sessionStorage'] as const) {
+  if (typeof (globalThis as any)[key] === 'undefined') {
+    Object.defineProperty(globalThis, key, {
+      value: new Storage(),
+      configurable: true,
+      writable: true,
+    });
+  }
+}
