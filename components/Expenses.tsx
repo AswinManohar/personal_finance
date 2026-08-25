@@ -23,6 +23,8 @@ interface ExpensesProps {
   onSync?: (overrides?: any) => Promise<void>;
   /** Records an explicit deletion and returns the resulting tombstone log. */
   onExpenseDeleted?: (id: string) => string[];
+  /** Lifts a tombstone when a deletion is undone; returns the resulting log. */
+  onExpenseRestored?: (id: string) => string[];
   /** Capture key from a notification tap, routed down from App's deep-link handler. */
   captureFocusKey?: string | null;
   onCaptureFocusHandled?: () => void;
@@ -57,7 +59,7 @@ const MONTH_OF = (ymd: string) =>
 const byDateDesc = (a: Expense, b: Expense): number =>
   a.date < b.date ? 1 : a.date > b.date ? -1 : 0;
 
-export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, income, setIncome, onSync, onExpenseDeleted, captureFocusKey, onCaptureFocusHandled }) => {
+export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, income, setIncome, onSync, onExpenseDeleted, onExpenseRestored, captureFocusKey, onCaptureFocusHandled }) => {
   const [newName, setNewName] = useState('');
   const [newAmount, setNewAmount] = useState('');
   const [newCategory, setNewCategory] = useState<ExpenseCategory>(ExpenseCategory.FOOD);
@@ -65,9 +67,22 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
   const [newDate, setNewDate] = useState(todayYmd());
   const [newIsRecurring, setNewIsRecurring] = useState(false);
   const [newRecurringFrequency, setNewRecurringFrequency] = useState<RecurringFrequency>('monthly');
+  // Bill unless said otherwise. Only read when `newIsRecurring` — a one-off
+  // expense is neither, and must be stored with no opinion rather than `false`.
+  const [newIsSubscription, setNewIsSubscription] = useState(false);
   const [newIsEssential, setNewIsEssential] = useState(false);
   const [timeSpan, setTimeSpan] = useState<TimeSpan>('30d');
   const [formError, setFormError] = useState<string | null>(null);
+  /**
+   * The one action undo can walk back, or null.
+   *
+   * Deliberately a single slot rather than a stack. Every entry here is already
+   * committed to the cloud, so a deep history would let someone reverse a sync
+   * from ten minutes ago and be unable to tell what they had just undone. One
+   * step covers the mistake this exists for — the wrong row tapped, the button
+   * hit twice — and nothing beyond it.
+   */
+  const [undoable, setUndoable] = useState<{ kind: 'add' | 'delete'; expense: Expense } | null>(null);
   /** Category whose day-by-day breakdown is open, or null. */
   const [drilldown, setDrilldown] = useState<ExpenseCategory | null>(null);
   // Per-card collapse, independent of the drill-down above — collapsing
@@ -108,11 +123,13 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
       date: newDate,
       isRecurring: newIsRecurring,
       recurringFrequency: newIsRecurring ? newRecurringFrequency : undefined,
+      isSubscription: newIsRecurring ? newIsSubscription : undefined,
       isEssential: newIsEssential,
     };
 
     const updatedExpenses = [...expenses, newExpense].sort(byDateDesc);
     setExpenses(updatedExpenses);
+    setUndoable({ kind: 'add', expense: newExpense });
 
     if (onSync) {
       await onSync({ expenses: updatedExpenses });
@@ -124,6 +141,7 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
     setNewVendor('');
     setNewIsRecurring(false);
     setNewRecurringFrequency('monthly');
+    setNewIsSubscription(false);
     setNewIsEssential(false);
   };
 
@@ -141,9 +159,42 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
   };
 
   const handleDelete = async (id: string) => {
+    const removed = expenses.find(e => e.id === id);
     const updatedExpenses = expenses.filter(e => e.id !== id);
     // Carry the deletion explicitly — the push no longer infers it from absence.
     const deletedExpenseIds = onExpenseDeleted ? onExpenseDeleted(id) : [id];
+    setExpenses(updatedExpenses);
+    if (removed) setUndoable({ kind: 'delete', expense: removed });
+    if (onSync) {
+      await onSync({ expenses: updatedExpenses, deletedExpenseIds });
+    }
+  };
+
+  /**
+   * Reverses the last add or delete.
+   *
+   * Restoring a deletion has to lift the tombstone as well as put the row back.
+   * The two are not interchangeable: `pushToCloud` skips any expense whose id is
+   * in `deletedExpenseIds` precisely so a stale pull cannot resurrect it, so a
+   * restore that left the id behind would show the row on screen while leaving
+   * it `deleted: true` in the cloud — and the next pull would take it away
+   * again. Because the delete is soft, the ordinary upsert (which writes
+   * `deleted: false`) is all that is needed to bring the row properly back.
+   */
+  const handleUndo = async () => {
+    if (!undoable) return;
+    const { kind, expense } = undoable;
+    setUndoable(null);
+
+    if (kind === 'add') {
+      await handleDelete(expense.id);
+      // handleDelete offers its own undo; an undone add is not itself undoable.
+      setUndoable(null);
+      return;
+    }
+
+    const updatedExpenses = [...expenses, expense].sort(byDateDesc);
+    const deletedExpenseIds = onExpenseRestored ? onExpenseRestored(expense.id) : [];
     setExpenses(updatedExpenses);
     if (onSync) {
       await onSync({ expenses: updatedExpenses, deletedExpenseIds });
@@ -179,6 +230,13 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
   // Calendar weeks over the full history, not the chip-filtered slice: a 7D chip
   // would otherwise zero every bar but the last and make the chart unreadable.
   const weeklyChartData = useMemo(() => weeklyTotals(expenses, new Date(), 4), [expenses]);
+
+  // The last bucket is the week containing today — `weekBuckets` builds oldest
+  // first and marks it `isCurrent`. Read from the same array the bars render so
+  // the caption under them cannot report a different set of rows: it used to
+  // show `filteredExpenses.length`, i.e. the CHIP period, which on ALL is every
+  // one-off expense on record under a label that says "this week".
+  const thisWeek = weeklyChartData[weeklyChartData.length - 1];
 
   const chartData = useMemo(() => categoryTotals(filteredExpenses), [filteredExpenses]);
 
@@ -266,6 +324,24 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
       {/* ── Captured from notifications ──
           Renders nothing at all when there is nothing waiting and capture is
           healthy, so the tab is unchanged for anyone not using it. */}
+      {undoable && (
+        /* Spans both columns on desktop and sits first on mobile: a delete can
+           be triggered from the Recent list, either recurring card or the
+           breakdown sheet, and the offer has to be findable from all of them. */
+        <div className="lg:col-span-2 flex items-center justify-between gap-3 rounded-card bg-surface-container-high px-4 py-3">
+          <span className="text-label text-secondary min-w-0 truncate">
+            {undoable.kind === 'add' ? 'Added' : 'Deleted'} “{undoable.expense.name}”
+          </span>
+          <button
+            type="button"
+            onClick={handleUndo}
+            className="flex-none h-9 px-4 rounded-field text-label font-bold text-primary hover:bg-primary/[0.08] transition-colors"
+          >
+            Undo
+          </button>
+        </div>
+      )}
+
       <AdvanziaInbox
         onAddExpense={handleAddCaptured}
         focusKey={captureFocusKey}
@@ -350,19 +426,45 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
         </div>
 
         {newIsRecurring && (
-          <Field label="Frequency" htmlFor="expense-frequency">
-            <Select
-              id="expense-frequency"
-              value={newRecurringFrequency}
-              onChange={e => setNewRecurringFrequency(e.target.value as RecurringFrequency)}
-            >
-              <option value="weekly">Weekly</option>
-              <option value="bi-weekly">Bi-weekly</option>
-              <option value="monthly">Monthly</option>
-              <option value="quarterly">Quarterly</option>
-              <option value="yearly">Yearly</option>
-            </Select>
-          </Field>
+          <>
+            <Field label="Frequency" htmlFor="expense-frequency">
+              <Select
+                id="expense-frequency"
+                value={newRecurringFrequency}
+                onChange={e => setNewRecurringFrequency(e.target.value as RecurringFrequency)}
+              >
+                <option value="weekly">Weekly</option>
+                <option value="bi-weekly">Bi-weekly</option>
+                <option value="monthly">Monthly</option>
+                <option value="quarterly">Quarterly</option>
+                <option value="yearly">Yearly</option>
+              </Select>
+            </Field>
+
+            {/* Which of the two cards this lands on. Stated, not guessed: the
+                inference it replaces splits on a name regex, which put two
+                identical €63 Transport commitments on opposite cards because
+                one was called "DB ticket" and the other "Subscription". It is
+                also the only way to have a WEEKLY subscription — the fallback's
+                cadence branch can only ever say monthly. */}
+            <FieldLabel>Type</FieldLabel>
+            <div className="grid grid-cols-2 gap-3">
+              <ToggleButton
+                on={!newIsSubscription}
+                onClick={() => setNewIsSubscription(false)}
+                icon="receipt_long"
+              >
+                Bill
+              </ToggleButton>
+              <ToggleButton
+                on={newIsSubscription}
+                onClick={() => setNewIsSubscription(true)}
+                icon="subscriptions"
+              >
+                Subscription
+              </ToggleButton>
+            </div>
+          </>
         )}
 
         <FormError>{formError}</FormError>
@@ -627,7 +729,7 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
             <span className="text-label text-secondary">This week so far</span>
           </span>
           <span className="text-label text-secondary tabular-nums">
-            {filteredExpenses.length} transactions
+            {thisWeek.count} transaction{thisWeek.count === 1 ? '' : 's'}
           </span>
         </div>
       </Card>

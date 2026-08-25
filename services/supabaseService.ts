@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { Expense, SavingsHistoryRecord, IncomeState, PortfolioAsset, Stock } from '../types';
 import { newId } from '../utils/id';
-import { resolveExpenseDate, todayYmd } from '../utils/expenseDate';
+import { DatedRow, resolveExpenseDate, todayYmd } from '../utils/expenseDate';
 // SHA-256 with a software fallback: crypto.subtle is secure-context-only, so
 // token generation threw over a plain-HTTP origin.
 import { sha256Hex } from '../utils/sha256';
@@ -90,12 +90,42 @@ export const deleteHistoryRecord = async (id: string) => {
 
 // The columns read from user_expenses once `date` exists.
 const EXPENSE_SELECT_COLUMNS =
+  'id, name, amount, category, vendor, is_recurring, recurring_frequency, is_essential, created_at, date, is_subscription';
+// One rung down: `date` has shipped, `is_subscription` has not. This is a real
+// state, not a hypothetical — the two arrived in separate migrations — and it
+// needs its own list. Falling straight to the pre-`date` list here would
+// silently re-derive every expense's date from created_at and reintroduce the
+// UTC day-shift that column exists to fix.
+const EXPENSE_SELECT_COLUMNS_NO_SUBSCRIPTION =
   'id, name, amount, category, vendor, is_recurring, recurring_frequency, is_essential, created_at, date';
 // Pre-migration fallback: the exact list this file used before the `date`
 // column existed. Kept verbatim so the self-heal below can drop back to
 // "the old app" behaviour rather than guessing at a second schema.
 const EXPENSE_SELECT_COLUMNS_LEGACY =
   'id, name, amount, category, vendor, is_recurring, recurring_frequency, is_essential, created_at';
+
+/**
+ * A `user_expenses` row as either select list can return it.
+ *
+ * Every column is optional, and that is the point: the legacy fallback list
+ * omits the ones added by later migrations, so reading `is_subscription` off a
+ * row fetched before that column existed is a normal `undefined`, not an error.
+ * Each read site is responsible for saying what absence means — for this column
+ * it means "infer", which is why it must not be flattened to false.
+ */
+interface ExpenseRow extends DatedRow {
+  id?: string | null;
+  name?: string | null;
+  // `any` for the three the caller re-narrows itself: amount goes through
+  // parseFloat, and category/frequency are checked against their enums there.
+  amount?: any;
+  category?: any;
+  vendor?: string | null;
+  is_recurring?: boolean | null;
+  recurring_frequency?: any;
+  is_essential?: boolean | null;
+  is_subscription?: boolean | null;
+}
 
 /**
  * True for the specific failure mode PostgREST produces when a column named in
@@ -114,17 +144,27 @@ const isMissingColumnError = (error: any): boolean => {
 };
 
 /**
- * Pulls expenses with the current column list, and — only if that fails with a
- * missing-column error — retries once against the pre-`date` legacy list. This
- * is the one defence that does not depend on anyone remembering to run the
- * migration's `NOTIFY pgrst, 'reload schema'` first.
+ * Pulls expenses with the current column list, shedding one migration's worth of
+ * columns per retry when the schema turns out to lag the client. This is the one
+ * defence that does not depend on anyone remembering to run a migration's
+ * `NOTIFY pgrst, 'reload schema'` first.
+ *
+ * One rung at a time, and that matters: the columns came from different
+ * migrations and can be absent independently, so a single jump to the oldest
+ * list would throw away a `date` that is present and correct merely because
+ * `is_subscription` had not landed yet.
  */
 const selectExpenses = async (userKey: string) => {
-  const res = await supabase.from('user_expenses').select(EXPENSE_SELECT_COLUMNS).eq('user_key', userKey).eq('deleted', false);
-  if (res.error && isMissingColumnError(res.error)) {
-    return supabase.from('user_expenses').select(EXPENSE_SELECT_COLUMNS_LEGACY).eq('user_key', userKey).eq('deleted', false);
-  }
-  return res;
+  const attempt = (columns: string) =>
+    supabase.from('user_expenses').select(columns).eq('user_key', userKey).eq('deleted', false);
+
+  const res = await attempt(EXPENSE_SELECT_COLUMNS);
+  if (!res.error || !isMissingColumnError(res.error)) return res;
+
+  const withoutSubscription = await attempt(EXPENSE_SELECT_COLUMNS_NO_SUBSCRIPTION);
+  if (!withoutSubscription.error || !isMissingColumnError(withoutSubscription.error)) return withoutSubscription;
+
+  return attempt(EXPENSE_SELECT_COLUMNS_LEGACY);
 };
 
 /**
@@ -135,11 +175,18 @@ const selectExpenses = async (userKey: string) => {
  */
 const upsertExpenseRecords = async (records: Record<string, any>[]) => {
   const res = await supabase.from('user_expenses').upsert(records, { onConflict: 'id' });
-  if (res.error && isMissingColumnError(res.error)) {
-    const legacyRecords = records.map(({ date: _date, ...rest }) => rest);
-    return supabase.from('user_expenses').upsert(legacyRecords, { onConflict: 'id' });
-  }
-  return res;
+  if (!res.error || !isMissingColumnError(res.error)) return res;
+
+  // Shed the newest column first, and only then the one before it. A single
+  // retry that dropped both would throw away dates that are already migrated
+  // and correct just because `is_subscription` had not landed yet — the two
+  // columns arrived in separate migrations and can be missing independently.
+  const withoutSubscription = records.map(({ is_subscription: _s, ...rest }) => rest);
+  const retry = await supabase.from('user_expenses').upsert(withoutSubscription, { onConflict: 'id' });
+  if (!retry.error || !isMissingColumnError(retry.error)) return retry;
+
+  const legacyRecords = withoutSubscription.map(({ date: _date, ...rest }) => rest);
+  return supabase.from('user_expenses').upsert(legacyRecords, { onConflict: 'id' });
 };
 
 /**
@@ -259,6 +306,11 @@ export const pushToCloud = async (userKey: string, payload: any) => {
             vendor: e.vendor || null,
             is_recurring: !!e.isRecurring,
             recurring_frequency: e.isRecurring ? (e.recurringFrequency || 'monthly') : null,
+            // `?? null`, never `!!` — false is a decision ("this is a bill"),
+            // and coercing it to absent would hand the row back to the name
+            // regex the flag exists to overrule. Only recurring rows can carry
+            // one; the split never asks about a one-off.
+            is_subscription: e.isRecurring ? (e.isSubscription ?? null) : null,
             is_essential: !!e.isEssential,
             created_at: isoDate,
             date: dateStr,
@@ -312,7 +364,7 @@ export const pullFromCloud = async (userKey: string) => {
     // is only consulted for rows written before the column existed, or from a
     // producer that never sets it (the Telegram bot). One bad row must not
     // poison the whole pull, so resolveExpenseDate degrades to today per-row.
-    const expenses: Expense[] = (expensesRes.data || []).map(e => {
+    const expenses: Expense[] = ((expensesRes.data || []) as ExpenseRow[]).map(e => {
       const date = resolveExpenseDate(e);
       return {
         id: e.id || newId(),
@@ -322,6 +374,11 @@ export const pullFromCloud = async (userKey: string) => {
         vendor: e.vendor || undefined,
         isRecurring: !!e.is_recurring,
         recurringFrequency: e.recurring_frequency || undefined,
+        // NULL (nobody has said) and absent (pre-migration schema) both become
+        // undefined, which is what `isSubscription` reads as "infer". Anything
+        // that flattened them to false would move every existing subscription
+        // onto the bills card the moment this shipped.
+        isSubscription: typeof e.is_subscription === 'boolean' ? e.is_subscription : undefined,
         isEssential: !!e.is_essential,
         date
       };

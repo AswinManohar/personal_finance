@@ -48,7 +48,24 @@ function Harness({ initial = [], initialIncome = { salaryMe: 0, salaryPartner: 0
   { initial?: Expense[]; initialIncome?: IncomeState; onSync?: (overrides?: any) => Promise<void> }) {
   const [expenses, setExpenses] = useState<Expense[]>(initial);
   const [income, setIncome] = useState<IncomeState>(initialIncome);
-  return <Expenses expenses={expenses} setExpenses={setExpenses} income={income} setIncome={setIncome} onSync={onSync} />;
+  // Mirrors App.tsx's tombstone log, which undo has to be able to walk back.
+  const [tombstones, setTombstones] = useState<string[]>([]);
+  return (
+    <Expenses
+      expenses={expenses} setExpenses={setExpenses}
+      income={income} setIncome={setIncome} onSync={onSync}
+      onExpenseDeleted={id => {
+        const next = tombstones.includes(id) ? tombstones : [...tombstones, id];
+        setTombstones(next);
+        return next;
+      }}
+      onExpenseRestored={id => {
+        const next = tombstones.filter(t => t !== id);
+        setTombstones(next);
+        return next;
+      }}
+    />
+  );
 }
 
 const totalSpentText = () =>
@@ -96,11 +113,20 @@ describe('Monthly visibility (time filtering)', () => {
     { id: '2', name: 'Old', amount: 500, category: ExpenseCategory.FOOD, isRecurring: false, date: daysAgo(45) },
   ];
 
-  it('30d view shows only expenses within the last month', () => {
+  // How many rows the chip period holds, read from the category drill-down —
+  // the surface that actually reports it. These assertions used to read the
+  // "This week so far" caption, which was the bug: that line is about the
+  // current calendar week and must not move when the chip does.
+  const openFoodDrilldown = async (user: ReturnType<typeof userEvent.setup>) =>
+    user.click(screen.getByRole('button', { name: /^Food, €.* — show transactions$/ }));
+
+  it('30d view shows only expenses within the last month', async () => {
+    const user = userEvent.setup();
     render(<Harness initial={data} />);
     // default timeSpan is 30d -> only the 10-day-old €100 counts
     expect(totalSpentText()).toContain('€100');
-    expect(screen.getByText('1 transactions')).toBeInTheDocument();
+    await openFoodDrilldown(user);
+    expect(screen.getByText('1 transaction · last 30 days')).toBeInTheDocument();
   });
 
   it('ALL view includes the whole history', async () => {
@@ -108,7 +134,8 @@ describe('Monthly visibility (time filtering)', () => {
     render(<Harness initial={data} />);
     await user.click(screen.getByRole('button', { name: 'ALL' }));
     expect(totalSpentText()).toContain('€600'); // 100 + 500
-    expect(screen.getByText('2 transactions')).toBeInTheDocument();
+    await openFoodDrilldown(user);
+    expect(screen.getByText('2 transactions · all time')).toBeInTheDocument();
   });
 });
 
@@ -190,6 +217,155 @@ describe('Add validation feedback', () => {
 
     expect(await screen.findByText('Coffee')).toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+});
+
+describe('This week so far', () => {
+  const weekCountText = () =>
+    screen.getByText('This week so far').closest('div')?.parentElement?.textContent ?? '';
+
+  it('counts the current week, not the selected chip period', async () => {
+    // The bug: this line rendered the chip-filtered list's length. On ALL that
+    // is every one-off expense on record — it read "254 transactions" under a
+    // label promising the current week, which really held four.
+    render(<Harness initial={[
+      { id: 'a', name: 'Groceries', amount: 12.54, category: ExpenseCategory.FOOD,
+        isRecurring: false, date: localYmd(new Date()) },
+      { id: 'b', name: 'Older', amount: 40, category: ExpenseCategory.FOOD,
+        isRecurring: false, date: daysAgo(20) },
+      { id: 'c', name: 'Older still', amount: 60, category: ExpenseCategory.FOOD,
+        isRecurring: false, date: daysAgo(21) },
+    ]} />);
+
+    expect(weekCountText()).toContain('1 transaction');
+    expect(weekCountText()).not.toContain('3 transaction');
+  });
+
+  it('does not change when the chip period changes', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={[
+      { id: 'a', name: 'Groceries', amount: 12.54, category: ExpenseCategory.FOOD,
+        isRecurring: false, date: localYmd(new Date()) },
+      { id: 'b', name: 'Older', amount: 40, category: ExpenseCategory.FOOD,
+        isRecurring: false, date: daysAgo(20) },
+    ]} />);
+
+    expect(weekCountText()).toContain('1 transaction');
+    await user.click(screen.getByRole('button', { name: 'ALL' }));
+    expect(weekCountText()).toContain('1 transaction');
+  });
+
+  it('excludes recurring commitments, matching the bar above it', () => {
+    render(<Harness initial={[
+      { id: 'a', name: 'Groceries', amount: 12.54, category: ExpenseCategory.FOOD,
+        isRecurring: false, date: localYmd(new Date()) },
+      { id: 'r', name: 'House rent', amount: 1500, category: ExpenseCategory.HOUSING,
+        isRecurring: true, recurringFrequency: 'monthly', date: localYmd(new Date()) },
+    ]} />);
+
+    expect(weekCountText()).toContain('1 transaction');
+  });
+});
+
+describe('Adding a subscription', () => {
+  const cards = () => ({
+    recurring: screen.getByText('Recurring Expenses').closest('div')!.parentElement!,
+    subscriptions: screen.getByText('Subscriptions').closest('div')!.parentElement!,
+  });
+
+  const fillBasics = async (user: ReturnType<typeof userEvent.setup>, name: string, amount: string) => {
+    await user.type(screen.getAllByPlaceholderText('0.00')[0], amount);
+    await user.type(screen.getByPlaceholderText('e.g. Weekly Groceries'), name);
+  };
+
+  it('offers the Bill/Subscription choice only once an expense is recurring', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+
+    expect(screen.queryByRole('button', { name: /^(Bill|Subscription)$/ })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'One-time' }));
+    expect(screen.getByRole('button', { name: 'Bill' })).toBeInTheDocument();
+  });
+
+  it('files a new subscription under Subscriptions even when nothing about it reads as one', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+
+    await fillBasics(user, 'Kleiderei', '29');
+    await user.click(screen.getByRole('button', { name: 'One-time' }));   // -> Recurring
+    await user.click(screen.getByRole('button', { name: 'Subscription' }));
+    await user.click(screen.getByRole('button', { name: 'Add Expense' }));
+
+    // No name match, category Food, not Entertainment/Other — the old
+    // inference would have called this a bill.
+    expect(within(cards().subscriptions).getByText('Kleiderei')).toBeInTheDocument();
+    expect(within(cards().recurring).queryByText('Kleiderei')).not.toBeInTheDocument();
+  });
+
+  it('supports a weekly subscription, which inference alone could never produce', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+
+    await fillBasics(user, 'Veg box', '18');
+    await user.click(screen.getByRole('button', { name: 'One-time' }));
+    await user.click(screen.getByRole('button', { name: 'Subscription' }));
+    await user.selectOptions(screen.getByLabelText('Frequency'), 'weekly');
+    await user.click(screen.getByRole('button', { name: 'Add Expense' }));
+
+    expect(within(cards().subscriptions).getByText('Veg box')).toBeInTheDocument();
+    expect(screen.getByText('Weekly · €18.00 · Food')).toBeInTheDocument();
+  });
+
+  it('keeps a name-matched item out of Subscriptions when marked a Bill', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+
+    await fillBasics(user, 'Internet subscription', '49');
+    await user.click(screen.getByRole('button', { name: 'One-time' }));
+    await user.click(screen.getByRole('button', { name: 'Add Expense' })); // left as Bill
+
+    expect(within(cards().recurring).getByText('Internet subscription')).toBeInTheDocument();
+    expect(within(cards().subscriptions).queryByText('Internet subscription')).not.toBeInTheDocument();
+  });
+
+  it('resets the choice to Bill after an add', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+
+    await fillBasics(user, 'Kleiderei', '29');
+    await user.click(screen.getByRole('button', { name: 'One-time' }));
+    await user.click(screen.getByRole('button', { name: 'Subscription' }));
+    await user.click(screen.getByRole('button', { name: 'Add Expense' }));
+
+    await user.click(screen.getByRole('button', { name: 'One-time' }));
+    expect(screen.getByRole('button', { name: 'Bill' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Subscription' })).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('sends the flag to the cloud', async () => {
+    const user = userEvent.setup();
+    const onSync = vi.fn().mockResolvedValue(undefined);
+    render(<Harness onSync={onSync} />);
+
+    await fillBasics(user, 'Kleiderei', '29');
+    await user.click(screen.getByRole('button', { name: 'One-time' }));
+    await user.click(screen.getByRole('button', { name: 'Subscription' }));
+    await user.click(screen.getByRole('button', { name: 'Add Expense' }));
+
+    const pushed = onSync.mock.calls.at(-1)![0].expenses.at(-1);
+    expect(pushed.isRecurring).toBe(true);
+    expect(pushed.isSubscription).toBe(true);
+  });
+
+  it('leaves a one-off expense with no opinion on the matter', async () => {
+    const user = userEvent.setup();
+    const onSync = vi.fn().mockResolvedValue(undefined);
+    render(<Harness onSync={onSync} />);
+
+    await fillBasics(user, 'Coffee', '4');
+    await user.click(screen.getByRole('button', { name: 'Add Expense' }));
+
+    expect(onSync.mock.calls.at(-1)![0].expenses.at(-1).isSubscription).toBeUndefined();
   });
 });
 
@@ -286,5 +462,103 @@ describe('Per-card collapse (Breakdown, Recent)', () => {
 
     await user.click(screen.getByRole('button', { name: 'Expand Recent' }));
     expect(screen.getByText('Coffee')).toBeInTheDocument();
+  });
+});
+
+describe('Undo', () => {
+  const groceries = (): Expense => ({
+    id: 'g1', name: 'Groceries', amount: 12.54, category: ExpenseCategory.FOOD,
+    isRecurring: false, date: localYmd(new Date()),
+  });
+
+  it('takes back an expense that was just added', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+
+    await user.type(screen.getAllByPlaceholderText('0.00')[0], '30');
+    await user.type(screen.getByPlaceholderText('e.g. Weekly Groceries'), 'Coffee');
+    await user.click(screen.getByRole('button', { name: 'Add Expense' }));
+    expect(screen.getByText('Coffee')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+
+    expect(screen.queryByText('Coffee')).not.toBeInTheDocument();
+    expect(screen.getByText('No transactions yet.')).toBeInTheDocument();
+  });
+
+  it('brings back an expense that was just deleted', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={[groceries()]} />);
+
+    await user.click(screen.getByRole('button', { name: 'Delete Groceries' }));
+    expect(screen.queryByText('Groceries')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(screen.getByText('Groceries')).toBeInTheDocument();
+  });
+
+  it('lifts the tombstone when a delete is undone, or the next pull re-deletes it', async () => {
+    // Deletion is a soft delete: the push sets deleted:true and the upsert
+    // writes deleted:false. Restoring the row locally but leaving its id in the
+    // tombstone log would have the push skip it forever — the row would come
+    // back on screen and stay dead in the cloud.
+    const user = userEvent.setup();
+    const onSync = vi.fn().mockResolvedValue(undefined);
+    render(<Harness initial={[groceries()]} onSync={onSync} />);
+
+    await user.click(screen.getByRole('button', { name: 'Delete Groceries' }));
+    expect(onSync.mock.calls.at(-1)![0].deletedExpenseIds).toEqual(['g1']);
+
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+    const restored = onSync.mock.calls.at(-1)![0];
+    expect(restored.deletedExpenseIds).toEqual([]);
+    expect(restored.expenses.map((e: Expense) => e.id)).toContain('g1');
+  });
+
+  it('restores a deleted subscription to the Subscriptions card, flag intact', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={[{
+      id: 's1', name: 'Kleiderei', amount: 29, category: ExpenseCategory.FOOD,
+      isRecurring: true, recurringFrequency: 'monthly', isSubscription: true,
+      date: localYmd(new Date()),
+    }]} />);
+
+    const subscriptionsCard = () => screen.getByText('Subscriptions').closest('div')!.parentElement!;
+    expect(within(subscriptionsCard()).getByText('Kleiderei')).toBeInTheDocument();
+
+    await user.click(screen.getAllByRole('button', { name: 'Delete Kleiderei' })[0]);
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+
+    expect(within(subscriptionsCard()).getByText('Kleiderei')).toBeInTheDocument();
+  });
+
+  it('offers nothing to undo before anything has happened', () => {
+    render(<Harness initial={[groceries()]} />);
+    expect(screen.queryByRole('button', { name: 'Undo' })).not.toBeInTheDocument();
+  });
+
+  it('clears the offer once it has been taken', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={[groceries()]} />);
+
+    await user.click(screen.getByRole('button', { name: 'Delete Groceries' }));
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+
+    expect(screen.queryByRole('button', { name: 'Undo' })).not.toBeInTheDocument();
+  });
+
+  it('only ever offers the most recent action', async () => {
+    const user = userEvent.setup();
+    render(<Harness initial={[groceries(), {
+      id: 'g2', name: 'MEGA LIMITED', amount: 47.6, category: ExpenseCategory.OTHER,
+      isRecurring: false, date: localYmd(new Date()),
+    }]} />);
+
+    await user.click(screen.getByRole('button', { name: 'Delete Groceries' }));
+    await user.click(screen.getByRole('button', { name: 'Delete MEGA LIMITED' }));
+    await user.click(screen.getByRole('button', { name: 'Undo' }));
+
+    expect(screen.getByText('MEGA LIMITED')).toBeInTheDocument();
+    expect(screen.queryByText('Groceries')).not.toBeInTheDocument();
   });
 });

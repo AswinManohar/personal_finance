@@ -7,6 +7,13 @@ export interface Expense {
   category: ExpenseCategory;
   isRecurring: boolean;
   recurringFrequency?: RecurringFrequency;
+  /**
+   * Whether this commitment is a subscription rather than a bill, as stated by
+   * the person who entered it. `undefined` means nobody has said, and the split
+   * falls back to inference — see `isSubscription` in utils/expenseSummary.ts.
+   * Only meaningful when `isRecurring` is true.
+   */
+  isSubscription?: boolean;
   date: string; // ISO date string
   vendor?: string;
   isEssential?: boolean; // counts toward runway / emergency-fund target

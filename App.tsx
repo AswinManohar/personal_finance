@@ -238,6 +238,15 @@ const AppMain: React.FC = () => {
     return next;
   }, [deletedExpenseIds, setDeletedExpenseIds]);
 
+  // The other half of recordExpenseDeletion, for undo. Dropping the id is what
+  // lets the next push upsert the row again — pushToCloud skips anything still
+  // in this log, and the delete it is reversing was soft.
+  const restoreExpenseDeletion = useCallback((id: string): string[] => {
+    const next = deletedExpenseIds.filter(x => x !== id);
+    setDeletedExpenseIds(next);
+    return next;
+  }, [deletedExpenseIds, setDeletedExpenseIds]);
+
   const navigate = useCallback((tab: ActiveTab) => {
     setActiveTab(tab);
     setMoreOpen(false);
@@ -464,7 +473,7 @@ const AppMain: React.FC = () => {
   const renderContent = () => {
     const syncCallback = activeUserKey ? triggerSync : undefined;
     switch (activeTab) {
-      case 'expenses': return <Expenses expenses={expenses} setExpenses={setExpenses} income={income} setIncome={setIncome} onSync={syncCallback} onExpenseDeleted={recordExpenseDeletion} captureFocusKey={captureFocusKey} onCaptureFocusHandled={() => setCaptureFocusKey(null)} />;
+      case 'expenses': return <Expenses expenses={expenses} setExpenses={setExpenses} income={income} setIncome={setIncome} onSync={syncCallback} onExpenseDeleted={recordExpenseDeletion} onExpenseRestored={restoreExpenseDeletion} captureFocusKey={captureFocusKey} onCaptureFocusHandled={() => setCaptureFocusKey(null)} />;
       case 'savings': return <SavingsDashboard portfolio={portfolio} stocks={stocks} netWorthData={netWorthData} setNetWorthData={setNetWorthData} onSync={syncCallback || (async () => { })} expenses={expenses} emergencyFund={emergencyFund} setEmergencyFund={setEmergencyFund} onNavigate={navigate} />;
       case 'investment': return <InvestmentCalculator investment={investment} setInvestment={setInvestment} onSync={syncCallback} />;
       case 'goal': return <SavingsGoal goal={goal} setGoal={setGoal} breakdown={breakdown} monthlySavings={netWorthData.monthlyRecurringSavings || 0} onNavigate={navigate} onSync={syncCallback} />;

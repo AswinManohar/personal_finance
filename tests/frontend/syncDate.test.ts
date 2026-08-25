@@ -14,7 +14,11 @@ type Row = Record<string, any>;
 
 const db = {
   tables: new Map<string, Row[]>(),
-  failures: new Map<string, string>(),
+  // A string fails once (the common case: one stale column, one retry). The
+  // object form fails `times` in a row, which is what an upsert needs when two
+  // columns from two different migrations are both missing and the self-heal
+  // has to shed them one at a time.
+  failures: new Map<string, string | { message: string; times: number }>(),
   log: [] as { table: string; op: string; values?: any; filters: any[]; selectArg?: string }[],
 };
 
@@ -58,10 +62,15 @@ class FakeBuilder {
     const key = `${this.table}.${this.op}`;
     const failure = db.failures.get(key);
     if (failure) {
-      // Consumed on first hit so a retry with a different (legacy) column
-      // list can succeed — mirrors the one-shot self-heal in supabaseService.
-      db.failures.delete(key);
-      return { data: null, error: { code: '42703', message: failure } };
+      // Consumed as it is spent so a retry with a different (legacy) column
+      // list can succeed — mirrors the self-heal ladder in supabaseService.
+      if (typeof failure === 'string') {
+        db.failures.delete(key);
+        return { data: null, error: { code: '42703', message: failure } };
+      }
+      if (failure.times <= 1) db.failures.delete(key);
+      else db.failures.set(key, { ...failure, times: failure.times - 1 });
+      return { data: null, error: { code: '42703', message: failure.message } };
     }
 
     const rows = tableRows(this.table);
@@ -93,7 +102,17 @@ class FakeBuilder {
     }
 
     // select
-    let matched = rows.filter(r => this.matches(r)).map(r => ({ ...r }));
+    //
+    // Honours the requested column list. Returning whole rows regardless would
+    // make every self-heal test vacuous: a fallback that drops a column would
+    // still appear to return it, so a retry ladder that sheds the WRONG column
+    // could not be told from one that sheds the right one.
+    const project = (r: Row): Row => {
+      if (!this.selectArg || this.selectArg.includes('*')) return { ...r };
+      const cols = this.selectArg.split(',').map(c => c.trim());
+      return Object.fromEntries(cols.filter(c => c in r).map(c => [c, r[c]]));
+    };
+    let matched = rows.filter(r => this.matches(r)).map(project);
     if (this.orderBy) {
       const { col, ascending } = this.orderBy;
       matched = matched.sort((a, b) => String(a[col] ?? '').localeCompare(String(b[col] ?? '')) * (ascending ? 1 : -1));
@@ -153,15 +172,28 @@ describe('date resolution on pull', () => {
     expect(data.expenses[0].date).toBe('2026-08-24');
   });
 
-  it('a 42703 on select retries with the legacy column list and still returns expenses', async () => {
+  it('a 42703 on select falls all the way back and still returns expenses', async () => {
     tableRows('user_expenses').push(cloudRow('legacy', { date: null }));
-    db.failures.set('user_expenses.select', 'column "date" does not exist');
+    // Two failures: the ladder sheds `is_subscription` first, then `date`.
+    db.failures.set('user_expenses.select', { message: 'column "date" does not exist', times: 2 });
     const { data } = await pullFromCloud(USER);
     expect(data.expenses).toHaveLength(1);
     expect(data.expenses[0].id).toBe('legacy');
     // Falls back to the Berlin-derived date since the legacy select never
     // named the `date` column at all.
     expect(data.expenses[0].date).toBe('2026-08-24');
+  });
+
+  it('a missing is_subscription column does not cost us the date column', async () => {
+    // The live pre-migration state: `date` shipped and is correct, the newer
+    // column has not landed. A single retry that dropped straight to the
+    // pre-`date` list would silently re-derive every date from created_at —
+    // undoing the whole reason `date` exists.
+    tableRows('user_expenses').push(cloudRow('kept', { date: '2026-08-20' }));
+    db.failures.set('user_expenses.select', 'column "is_subscription" does not exist');
+    const { data } = await pullFromCloud(USER);
+    expect(data.expenses[0].date).toBe('2026-08-20');
+    expect(data.expenses[0].isSubscription).toBeUndefined();
   });
 });
 
@@ -173,11 +205,76 @@ describe('date on push', () => {
     expect(row.created_at).toBe('2026-08-24T00:00:00.000Z');
   });
 
-  it('a 42703 on upsert retries once without `date` and still saves the row', async () => {
-    db.failures.set('user_expenses.upsert', 'schema cache');
+  it('a 42703 on upsert sheds `date` too and still saves the row', async () => {
+    // Two failures, because the self-heal now sheds one column per retry:
+    // `is_subscription` first, then `date`. A schema missing both is the
+    // genuinely old one this fallback exists for.
+    db.failures.set('user_expenses.upsert', { message: 'schema cache', times: 2 });
     await pushToCloud(USER, { expenses: [expense('a', { date: '2026-08-24' })] });
     const row = cloudExpenseRows()[0];
     expect(row.name).toBe('e-a');
     expect(row.date).toBeUndefined();
+    expect(row.is_subscription).toBeUndefined();
+  });
+
+  it('a single stale-column failure keeps a date that is already correct', async () => {
+    // The regression this ladder prevents: one retry that dropped both columns
+    // discarded a migrated, correct `date` merely because the newer column had
+    // not landed yet.
+    db.failures.set('user_expenses.upsert', 'column "is_subscription" does not exist');
+    await pushToCloud(USER, { expenses: [expense('a', { date: '2026-08-24' })] });
+    expect(cloudExpenseRows()[0].date).toBe('2026-08-24');
+  });
+});
+
+describe('is_subscription round-trip', () => {
+  const cloudRow = (id: string, over: Row = {}): Row => ({
+    id, user_key: USER, name: `e-${id}`, amount: 21, category: 'Other',
+    vendor: null, is_recurring: true, recurring_frequency: 'monthly', is_essential: false,
+    created_at: '2026-08-01T00:00:00+00:00', date: '2026-08-01', deleted: false, ...over,
+  });
+
+  it('pulls an explicit flag through as a boolean', async () => {
+    tableRows('user_expenses').push(cloudRow('sub', { is_subscription: true }));
+    tableRows('user_expenses').push(cloudRow('bill', { is_subscription: false }));
+    const { data } = await pullFromCloud(USER);
+    const byId = Object.fromEntries(data.expenses.map((e: Expense) => [e.id, e.isSubscription]));
+    expect(byId.sub).toBe(true);
+    expect(byId.bill).toBe(false);
+  });
+
+  it('leaves the flag undefined when the column is null, so inference still applies', async () => {
+    // NULL means "nobody has said". Reading it as `false` would silently move
+    // every pre-migration Netflix off the Subscriptions card.
+    tableRows('user_expenses').push(cloudRow('legacy', { is_subscription: null }));
+    const { data } = await pullFromCloud(USER);
+    expect(data.expenses[0].isSubscription).toBeUndefined();
+  });
+
+  it('pushes an explicit false rather than dropping it', async () => {
+    // `false` is a decision, not an absence — a truthiness check here would
+    // discard it and hand the row back to the regex.
+    await pushToCloud(USER, { expenses: [
+      expense('a', { isRecurring: true, isSubscription: false }),
+    ] });
+    expect(cloudExpenseRows()[0].is_subscription).toBe(false);
+  });
+
+  it('writes null for a one-off expense', async () => {
+    await pushToCloud(USER, { expenses: [expense('a')] });
+    expect(cloudExpenseRows()[0].is_subscription).toBeNull();
+  });
+
+  it('a 42703 on upsert drops is_subscription but keeps date', async () => {
+    // The pre-migration state for THIS change: `date` exists, the new column
+    // does not. Dropping both would regress dates that are already correct.
+    db.failures.set('user_expenses.upsert', 'column "is_subscription" does not exist');
+    await pushToCloud(USER, { expenses: [
+      expense('a', { date: '2026-08-24', isRecurring: true, isSubscription: true }),
+    ] });
+    const row = cloudExpenseRows()[0];
+    expect(row.name).toBe('e-a');
+    expect(row.is_subscription).toBeUndefined();
+    expect(row.date).toBe('2026-08-24');
   });
 });

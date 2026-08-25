@@ -43,6 +43,14 @@ export const withinSpan = (expenses: Expense[], span: TimeSpan, now: Date): Expe
 
 export interface WeekTotal extends WeekBucket {
   amount: number;
+  /**
+   * How many one-off rows make up `amount`.
+   *
+   * Carried here rather than recomputed by the caller so the "This week so far"
+   * line and the bar above it cannot disagree. They did: the line rendered the
+   * chip-filtered list's length, which on ALL is every one-off expense ever.
+   */
+  count: number;
 }
 
 /**
@@ -54,12 +62,14 @@ export interface WeekTotal extends WeekBucket {
  */
 export const weeklyTotals = (expenses: Expense[], now: Date, n: number): WeekTotal[] => {
   const rows = oneOffExpenses(expenses);
-  return weekBuckets(now, n).map(w => ({
-    ...w,
-    amount: rows
-      .filter(e => inRange(e.date, w.start, w.end))
-      .reduce((sum, e) => sum + num(e.amount), 0),
-  }));
+  return weekBuckets(now, n).map(w => {
+    const inWeek = rows.filter(e => inRange(e.date, w.start, w.end));
+    return {
+      ...w,
+      amount: inWeek.reduce((sum, e) => sum + num(e.amount), 0),
+      count: inWeek.length,
+    };
+  });
 };
 
 export interface CategoryTotal {
@@ -108,15 +118,19 @@ const SUBSCRIPTION_NAME_RE =
   /netflix|spotify|prime|disney|gym|icloud|storage|membership|subscription|apple|youtube/i;
 
 /**
- * Recurring rows don't carry an explicit `sub` flag yet — that needs a DB
- * migration this change isn't stacking. Until then, subscription-ness is
- * inferred: a name match, or a non-essential monthly Entertainment/Other item.
+ * Whether a recurring row belongs on the Subscriptions card or the Recurring
+ * Expenses one.
  *
- * When an explicit override lands (e.g. `e.isSubscription === true | false`),
- * add it as the very first check here — `if (e.isSubscription !== undefined)
- * return e.isSubscription;` — so callers of this function never need to change.
+ * The stored flag wins outright. Everything below it is the legacy inference,
+ * kept only for rows written before `is_subscription` existed — it is arbitrary
+ * and known to be wrong in both directions: it claims "Internet subscription"
+ * for the Subscriptions card on the strength of its name, and it cannot ever
+ * classify a *weekly* subscription, because the cadence branch requires
+ * monthly. Both are why the explicit flag was added; neither is worth fixing in
+ * the fallback, which every row loses the moment a human states an answer.
  */
 export const isSubscription = (e: Expense): boolean => {
+  if (e.isSubscription !== undefined) return e.isSubscription;
   if (SUBSCRIPTION_NAME_RE.test(e.name)) return true;
   // `!e.recurringFrequency` defaults to monthly, matching monthlyCommitment's
   // reading elsewhere: a recurring row with no cadence set is assumed monthly.

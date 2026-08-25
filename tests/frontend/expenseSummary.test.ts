@@ -85,6 +85,25 @@ describe('weeklyTotals', () => {
     expect(weeklyTotals(rows, MONDAY, 4).at(-1)!.amount).toBe(12);
   });
 
+  it('carries how many transactions made each bar', () => {
+    // The "This week so far" line used to render the chip-filtered list's
+    // length, so with the chip on ALL it reported every one-off expense ever
+    // (255) under a label that says "this week".
+    const rows = [
+      mk({ date: '2026-08-24', amount: 12.54 }),
+      mk({ date: '2026-08-24', amount: 5.29 }),
+      mk({ date: '2026-08-23', amount: 500 }),   // last week
+      mk({ date: '2026-08-24', amount: 900, isRecurring: true }), // never counted
+    ];
+    const weeks = weeklyTotals(rows, MONDAY, 4);
+    expect(weeks.at(-1)!.count).toBe(2);
+    expect(weeks[2].count).toBe(1);
+  });
+
+  it('counts zero for a week with nothing in it', () => {
+    expect(weeklyTotals([], MONDAY, 4).map(w => w.count)).toEqual([0, 0, 0, 0]);
+  });
+
   it('is not clipped by the chip period — all four weeks can be non-zero', () => {
     const rows = [
       mk({ date: '2026-08-24', amount: 1 }),
@@ -126,6 +145,56 @@ describe('groupByDay', () => {
 
   it('returns nothing for an empty list', () => {
     expect(groupByDay([])).toEqual([]);
+  });
+});
+
+describe('isSubscription — explicit flag', () => {
+  const rec = (over: Partial<Expense>): Expense =>
+    mk({ date: '2026-08-24', amount: 10, isRecurring: true, ...over });
+
+  it('an explicit true wins over every heuristic', () => {
+    // Essential + Housing + monthly is as un-subscription-like as the heuristic
+    // gets. Saying so must still win.
+    expect(isSubscription(rec({
+      name: 'House rent', category: ExpenseCategory.HOUSING,
+      isEssential: true, isSubscription: true,
+    }))).toBe(true);
+  });
+
+  it('an explicit false wins over the name regex', () => {
+    // "Internet subscription" is a bill that the regex claims for Subscriptions.
+    expect(isSubscription(rec({ name: 'Internet subscription', isSubscription: false }))).toBe(false);
+    expect(isSubscription(rec({ name: 'Netflix', isSubscription: false }))).toBe(false);
+  });
+
+  it('makes a weekly subscription possible at all', () => {
+    // The heuristic branch requires isMonthly, so without an explicit flag a
+    // weekly row could only be a subscription by name coincidence.
+    const weekly = rec({
+      name: 'Veg box', category: ExpenseCategory.FOOD, recurringFrequency: 'weekly',
+    });
+    expect(isSubscription(weekly)).toBe(false);
+    expect(isSubscription({ ...weekly, isSubscription: true })).toBe(true);
+  });
+
+  it('falls back to inference when the flag is absent', () => {
+    // Undefined is a real state: rows written before the column existed. They
+    // must keep rendering exactly where they render today.
+    expect(isSubscription(rec({ name: 'Netflix' }))).toBe(true);
+    expect(isSubscription(rec({ name: 'House rent', category: ExpenseCategory.HOUSING }))).toBe(false);
+  });
+});
+
+describe('subscriptionExpenses / recurringBills — explicit flag', () => {
+  it('routes each row to the card its flag names', () => {
+    const rows: Expense[] = [
+      mk({ date: '2026-08-24', amount: 63, name: 'DB ticket', isRecurring: true,
+           category: ExpenseCategory.TRANSPORT, isSubscription: false }),
+      mk({ date: '2026-08-24', amount: 21, name: 'Anthropic', isRecurring: true,
+           category: ExpenseCategory.OTHER, isSubscription: true }),
+    ];
+    expect(subscriptionExpenses(rows).map(e => e.name)).toEqual(['Anthropic']);
+    expect(recurringBills(rows).map(e => e.name)).toEqual(['DB ticket']);
   });
 });
 
