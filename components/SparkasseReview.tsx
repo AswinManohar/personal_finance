@@ -5,6 +5,7 @@ import { recallLocalMerchant, learnMerchant } from '../services/advanziaCapture'
 import { newId } from '../utils/id';
 import type { SparkasseItem } from '../services/sparkasseCapture';
 import { Field, FormError, GhostButton, Input, PrimaryButton, SectionLabel, Select } from './ui';
+import { ymdFromEpoch } from '../utils/expenseDate';
 
 /**
  * Turning a captured Kartenumsatz into an expense.
@@ -25,8 +26,6 @@ import { Field, FormError, GhostButton, Input, PrimaryButton, SectionLabel, Sele
  * which structured output cannot catch because the result is well-formed.
  */
 
-const isoDate = (epochMs: number): string => new Date(epochMs).toISOString().split('T')[0];
-
 export const SparkasseReview: React.FC<{
   item: SparkasseItem;
   onCancel: () => void;
@@ -41,7 +40,7 @@ export const SparkasseReview: React.FC<{
   const [category, setCategory] = useState<ExpenseCategory>(
     remembered?.category ?? ExpenseCategory.OTHER,
   );
-  const [date, setDate] = useState(isoDate(item.postedAt));
+  const [date, setDate] = useState(ymdFromEpoch(item.postedAt));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

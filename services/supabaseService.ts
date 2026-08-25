@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { Expense, SavingsHistoryRecord, IncomeState, PortfolioAsset, Stock } from '../types';
 import { newId } from '../utils/id';
+import { resolveExpenseDate, todayYmd } from '../utils/expenseDate';
 // SHA-256 with a software fallback: crypto.subtle is secure-context-only, so
 // token generation threw over a plain-HTTP origin.
 import { sha256Hex } from '../utils/sha256';
@@ -85,6 +86,60 @@ export const deleteHistoryRecord = async (id: string) => {
   } catch (e) {
     logError("deleteHistoryRecord", e);
   }
+};
+
+// The columns read from user_expenses once `date` exists.
+const EXPENSE_SELECT_COLUMNS =
+  'id, name, amount, category, vendor, is_recurring, recurring_frequency, is_essential, created_at, date';
+// Pre-migration fallback: the exact list this file used before the `date`
+// column existed. Kept verbatim so the self-heal below can drop back to
+// "the old app" behaviour rather than guessing at a second schema.
+const EXPENSE_SELECT_COLUMNS_LEGACY =
+  'id, name, amount, category, vendor, is_recurring, recurring_frequency, is_essential, created_at';
+
+/**
+ * True for the specific failure mode PostgREST produces when a column named in
+ * a query does not exist (`42703`) or its schema cache has not caught up with a
+ * migration yet (`PGRST204`, or a message mentioning "schema cache"). Both look
+ * identical to "the migration was never run" — see
+ * migrations/2026-07-31-user-expenses-is-essential.sql for what happens when
+ * nothing catches this: sync breaks in both directions and a fresh install
+ * silently drops every expense.
+ */
+const isMissingColumnError = (error: any): boolean => {
+  if (!error) return false;
+  if (error.code === '42703' || error.code === 'PGRST204') return true;
+  const message = String(error.message || '').toLowerCase();
+  return message.includes('schema cache') || message.includes("column") && message.includes("does not exist");
+};
+
+/**
+ * Pulls expenses with the current column list, and — only if that fails with a
+ * missing-column error — retries once against the pre-`date` legacy list. This
+ * is the one defence that does not depend on anyone remembering to run the
+ * migration's `NOTIFY pgrst, 'reload schema'` first.
+ */
+const selectExpenses = async (userKey: string) => {
+  const res = await supabase.from('user_expenses').select(EXPENSE_SELECT_COLUMNS).eq('user_key', userKey).eq('deleted', false);
+  if (res.error && isMissingColumnError(res.error)) {
+    return supabase.from('user_expenses').select(EXPENSE_SELECT_COLUMNS_LEGACY).eq('user_key', userKey).eq('deleted', false);
+  }
+  return res;
+};
+
+/**
+ * Upserts expense records, retrying once without `date` if the column is
+ * missing/uncached. Same rationale as `selectExpenses`: a schema that lags the
+ * client must degrade to "date is derived from created_at again", not to
+ * "every push fails and the user loses their edits".
+ */
+const upsertExpenseRecords = async (records: Record<string, any>[]) => {
+  const res = await supabase.from('user_expenses').upsert(records, { onConflict: 'id' });
+  if (res.error && isMissingColumnError(res.error)) {
+    const legacyRecords = records.map(({ date: _date, ...rest }) => rest);
+    return supabase.from('user_expenses').upsert(legacyRecords, { onConflict: 'id' });
+  }
+  return res;
 };
 
 /**
@@ -181,11 +236,18 @@ export const pushToCloud = async (userKey: string, payload: any) => {
 
       if (toUpsert.length > 0) {
         const records = toUpsert.map((e: Expense) => {
+          // created_at keeps being derived as UTC midnight of the chosen date —
+          // byte-identical to the old behaviour — so an old client (or a
+          // rollback) reading only created_at still sees the right day. `date`
+          // is the new, authoritative field; the two are written together so
+          // neither can drift from the other.
           let isoDate = new Date().toISOString();
+          let dateStr = todayYmd();
           if (e.date) {
             const parsed = new Date(e.date);
             if (!isNaN(parsed.getTime())) {
               isoDate = parsed.toISOString();
+              dateStr = e.date;
             }
           }
           return {
@@ -199,11 +261,12 @@ export const pushToCloud = async (userKey: string, payload: any) => {
             recurring_frequency: e.isRecurring ? (e.recurringFrequency || 'monthly') : null,
             is_essential: !!e.isEssential,
             created_at: isoDate,
+            date: dateStr,
             updated_at: now,
             deleted: false
           };
         });
-        const { error: upsertError } = await supabase.from('user_expenses').upsert(records, { onConflict: 'id' });
+        const { error: upsertError } = await upsertExpenseRecords(records);
         if (upsertError) throw upsertError;
       }
     } catch (err) {
@@ -224,8 +287,8 @@ export const pullFromCloud = async (userKey: string) => {
   try {
     const [financesRes, expensesRes, deletedRes, incomeRes, historyData] = await Promise.all([
       supabase.from('user_finances').select('data, updated_at').eq('user_key', userKey).limit(1),
-      // MATCHING SCHEMA: id, name, amount, category, vendor, is_recurring, recurring_frequency, is_essential, created_at
-      supabase.from('user_expenses').select('id, name, amount, category, vendor, is_recurring, recurring_frequency, is_essential, created_at').eq('user_key', userKey).eq('deleted', false),
+      // MATCHING SCHEMA: id, name, amount, category, vendor, is_recurring, recurring_frequency, is_essential, created_at, date
+      selectExpenses(userKey),
       // Tombstones, so the caller can tell "deleted upstream" from "never
       // pushed from here". Without them a row missing from the active set is
       // ambiguous, and treating it as a delete loses unsynced local work.
@@ -243,21 +306,14 @@ export const pullFromCloud = async (userKey: string) => {
     const mainBlob = financesRes.data?.[0]?.data || {};
     const updatedAt = financesRes.data?.[0]?.updated_at;
 
-    const todayIso = new Date().toISOString().split('T')[0];
-
-    // Transform expenses from user_expenses table back to internal Expense type
-    // Since the schema lacks a 'date' column, we use 'created_at' as the source for 'date'
+    // Transform expenses from user_expenses table back to internal Expense type.
+    // `date` wins verbatim when present — no `new Date()` round-trip, which is
+    // what filed Berlin-midnight expenses onto the previous day. `created_at`
+    // is only consulted for rows written before the column existed, or from a
+    // producer that never sets it (the Telegram bot). One bad row must not
+    // poison the whole pull, so resolveExpenseDate degrades to today per-row.
     const expenses: Expense[] = (expensesRes.data || []).map(e => {
-      // An unparseable created_at must not poison the whole pull:
-      // new Date(garbage).toISOString() throws, so validate per row and fall
-      // back to today for just that row.
-      let date = todayIso;
-      if (e.created_at) {
-        const parsed = new Date(e.created_at);
-        if (!isNaN(parsed.getTime())) {
-          date = parsed.toISOString().split('T')[0];
-        }
-      }
+      const date = resolveExpenseDate(e);
       return {
         id: e.id || newId(),
         name: e.name,

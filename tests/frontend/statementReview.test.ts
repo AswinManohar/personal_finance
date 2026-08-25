@@ -93,4 +93,29 @@ describe('importTransaction', () => {
       date: '2026-06-01',
     });
   });
+  it('prefers the DB date column over a conflicting created_at', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        id: 'e9', name: 'REWE', amount: '54.30', category: 'Food',
+        // created_at is a Berlin-00:30 instant, whose UTC day is the 31st.
+        created_at: '2026-05-31T22:30:00+00:00',
+        date: '2026-06-01',
+      }),
+    }) as any;
+    expect((await importTransaction(tx)).date).toBe('2026-06-01');
+  });
+
+  it('falls back to the statement date, not today, when the row carries neither', async () => {
+    // Regression: the fallback chain used to end at resolveExpenseDate, which
+    // returns TODAY. Importing an old statement line would file it into the
+    // current week instead of the week it was actually spent in.
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ id: 'e9', name: 'REWE', amount: '54.30', category: 'Food' }),
+    }) as any;
+    const created = await importTransaction(tx);
+    expect(created.date).toBe('2026-06-01');
+    expect(created.date).not.toBe(new Date().toLocaleDateString('en-CA'));
+  });
 });

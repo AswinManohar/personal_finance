@@ -11,6 +11,7 @@ import {
   requestNotificationPermission, resolvePending,
   type CaptureStatus, type PendingItem,
 } from '../services/advanziaCapture';
+import { ymdFromEpoch } from '../utils/expenseDate';
 
 /**
  * Captured Advanzia transactions waiting to be confirmed.
@@ -43,8 +44,6 @@ const relativeTime = (epochMs: number): string => {
   if (hours < 24) return `${hours}h ago`;
   return new Date(epochMs).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 };
-
-const isoDate = (epochMs: number): string => new Date(epochMs).toISOString().split('T')[0];
 
 const parsedAmount = (item: PendingItem): number | null =>
   item.parse.kind === 'strict' ? item.parse.amount
@@ -258,7 +257,7 @@ const ReviewSheet: React.FC<{
   const [name, setName] = useState(merchant ?? '');
   const [amountText, setAmountText] = useState(amount === null ? '' : amount.toFixed(2));
   const [category, setCategory] = useState<ExpenseCategory>(ExpenseCategory.OTHER);
-  const [date, setDate] = useState(isoDate(item.postedAt));
+  const [date, setDate] = useState(ymdFromEpoch(item.postedAt));
   const [isEssential, setIsEssential] = useState(false);
   const [guessing, setGuessing] = useState(false);
   const [guessFailed, setGuessFailed] = useState(false);

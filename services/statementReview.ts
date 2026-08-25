@@ -2,6 +2,7 @@ import { supabase } from './supabaseService';
 import { apiUrl } from './apiBase';
 import { Expense } from '../types';
 import { newId } from '../utils/id';
+import { resolveExpenseDate } from '../utils/expenseDate';
 
 export interface StatementTransaction {
   date: string;
@@ -104,6 +105,14 @@ export const importTransaction = async (tx: StatementTransaction): Promise<Expen
     isRecurring: !!row.is_recurring,
     recurringFrequency: row.recurring_frequency || undefined,
     isEssential: !!row.is_essential,
-    date: row.created_at ? new Date(row.created_at).toISOString().split('T')[0] : tx.date,
+    // The backend derives `date` itself now (Europe/Berlin, from created_at when
+    // omitted), so the column is a straight passthrough — never a UTC round-trip.
+    //
+    // The last fallback is `tx.date`, NOT resolveExpenseDate's "today": this is a
+    // statement import, so the statement's own transaction date is known-good and
+    // is the right answer for a row that came back without one. Defaulting to
+    // today would file a three-week-old line into this week — the exact bug the
+    // date column exists to prevent.
+    date: row.date || (row.created_at ? resolveExpenseDate(row) : tx.date),
   };
 };
