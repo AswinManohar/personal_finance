@@ -7,6 +7,11 @@ import forms from '@tailwindcss/forms';
 // APK so the app opens offline; a runtime CDN defeats that, and the app would
 // render unstyled with no network.
 export default {
+  // `hover:` utilities stick after a tap in a WebView: touch leaves the element
+  // in :hover until something else is touched, so a tapped button keeps its
+  // hover background. This emits every hover: rule inside `@media (hover:
+  // hover)`, so they apply on a pointer and never on the phone.
+  future: { hoverOnlyWhenSupported: true },
   darkMode: 'class',
   content: [
     './index.html',
