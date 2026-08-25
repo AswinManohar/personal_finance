@@ -11,7 +11,7 @@ import {
   type SparkasseStatus,
 } from '../services/sparkasseCapture';
 import { SparkasseReview } from './SparkasseReview';
-import { Card, GhostButton, ListRow, Pill, SectionLabel } from './ui';
+import { Card, CollapseToggle, GhostButton, ListRow, Pill, SectionLabel } from './ui';
 
 /**
  * Pending Sparkasse captures, at the top of the Expenses tab.
@@ -48,6 +48,11 @@ export const SparkasseInbox: React.FC<{
   const [status, setStatus] = useState<SparkasseStatus>(() => readSparkasseStatus());
   const [reviewing, setReviewing] = useState<SparkasseItem | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
+  // In-memory like the Breakdown and Recent toggles in Expenses, not persisted:
+  // the card only exists while something is pending or wrong, so a collapse that
+  // outlived the session would hide a *different* problem than the one it was
+  // aimed at.
+  const [collapsed, setCollapsed] = useState(false);
 
   // A poll that throws — network gone mid-session — must still leave the
   // component with fresh state. An escaping rejection would skip both setters
@@ -120,14 +125,34 @@ export const SparkasseInbox: React.FC<{
   return (
     <>
       <Card className="flex flex-col gap-3">
-        <div className="flex items-baseline justify-between">
+        {/* items-center, not items-baseline: the toggle is a 28px box with no
+            text baseline of its own to align to. */}
+        <div className="flex items-center justify-between gap-2">
           <SectionLabel>Sparkasse</SectionLabel>
-          {status.lastPolledAt > 0 && (
-            <span className="text-label text-secondary opacity-70">
-              zuletzt geprüft {relativeTime(status.lastPolledAt)}
-            </span>
-          )}
+          <span className="flex items-center gap-2 min-w-0">
+            {collapsed ? (
+              /* Collapsing must not be able to hide a broken capture — the
+                 counts and the alarm survive into the header. */
+              <>
+                {pending.length > 0 && <Pill tone="neutral">{pending.length} offen</Pill>}
+                {needsAttention && <Pill tone="negative">bitte prüfen</Pill>}
+              </>
+            ) : (
+              status.lastPolledAt > 0 && (
+                <span className="text-label text-secondary opacity-70 truncate">
+                  zuletzt geprüft {relativeTime(status.lastPolledAt)}
+                </span>
+              )
+            )}
+            <CollapseToggle
+              collapsed={collapsed}
+              onClick={() => setCollapsed(v => !v)}
+              label="Sparkasse"
+            />
+          </span>
         </div>
+
+        {!collapsed && <>
 
         {!status.authorized && (
           <GhostButton onClick={connect} className="text-left justify-start h-auto whitespace-normal">
@@ -177,6 +202,8 @@ export const SparkasseInbox: React.FC<{
             </ListRow>
           ))}
         </div>
+
+        </>}
       </Card>
 
       {reviewing && (

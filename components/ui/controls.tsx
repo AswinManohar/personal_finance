@@ -230,3 +230,35 @@ export const ToggleButton: React.FC<{
     </button>
   );
 };
+
+/**
+ * 28px chevron a card uses to collapse its own body. Rotates 0° -> -90° rather
+ * than swapping icons, so the transition is a transform, not a re-render;
+ * `inline-block` is load-bearing — a rotate transform on an inline element is
+ * silently ignored.
+ *
+ * `expand_more` is a ligature, so it only renders as a glyph while that name is
+ * in scripts/fetch-icon-font.sh. Absent from the subset it renders as the
+ * literal word, clipped by this button's 28px to something like "epand".
+ */
+export const CollapseToggle: React.FC<{
+  collapsed: boolean;
+  onClick: () => void;
+  label: string;
+}> = ({ collapsed, onClick, label }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    aria-expanded={!collapsed}
+    aria-label={collapsed ? `Expand ${label}` : `Collapse ${label}`}
+    className="w-7 h-7 flex items-center justify-center rounded-lg text-secondary hover:bg-primary/[0.14] hover:text-primary transition-colors flex-none"
+  >
+    <span
+      className="material-symbols-outlined inline-block transition-transform duration-200"
+      style={{ fontSize: 20, lineHeight: 1, transform: `rotate(${collapsed ? -90 : 0}deg)` }}
+      aria-hidden="true"
+    >
+      expand_more
+    </span>
+  </button>
+);

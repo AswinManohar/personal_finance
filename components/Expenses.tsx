@@ -2,8 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { Expense, ExpenseCategory, IncomeState, RecurringFrequency } from '../types';
 import { Trash2, Repeat } from 'lucide-react';
 import {
-  Card, ChipGroup, ColumnChart, Donut, Dot, EmptyState, Field, FieldLabel, IconBox, Input,
-  ListRow, PrimaryButton, SectionLabel, Select, ToggleButton, FormError,
+  Card, ChipGroup, CollapseToggle, ColumnChart, Donut, Dot, EmptyState, Field, FieldLabel,
+  IconBox, Input, ListRow, PrimaryButton, SectionLabel, Select, ToggleButton, FormError,
 } from './ui';
 import { newId } from '../utils/id';
 import { localYmd, todayYmd } from '../utils/expenseDate';
@@ -218,32 +218,6 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
       month: 'short', day: 'numeric', year: 'numeric',
     });
   };
-
-  /**
-   * 28px chevron used by Breakdown and Recent to collapse their body. Rotates
-   * 0° -> -90° rather than swapping icons, so the transition is a transform,
-   * not a re-render; `inline-block` is load-bearing — a rotate transform on an
-   * inline element is silently ignored.
-   */
-  const CollapseToggle: React.FC<{ collapsed: boolean; onClick: () => void; label: string }> = ({
-    collapsed, onClick, label,
-  }) => (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-expanded={!collapsed}
-      aria-label={collapsed ? `Expand ${label}` : `Collapse ${label}`}
-      className="w-7 h-7 flex items-center justify-center rounded-lg text-secondary hover:bg-primary/[0.14] hover:text-primary transition-colors flex-none"
-    >
-      <span
-        className="material-symbols-outlined inline-block transition-transform duration-200"
-        style={{ fontSize: 20, lineHeight: 1, transform: `rotate(${collapsed ? -90 : 0}deg)` }}
-        aria-hidden="true"
-      >
-        expand_more
-      </span>
-    </button>
-  );
 
   /** Shared 56px row for Recurring Expenses and Subscriptions. */
   const RecurringRow: React.FC<{ expense: Expense; tone: 'primary' | 'tertiary'; divider: boolean }> = ({

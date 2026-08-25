@@ -69,6 +69,37 @@ beforeEach(() => {
 });
 
 describe('SparkasseInbox', () => {
+  /**
+   * Collapsing is a display concern only. The card is already conditional — it
+   * exists ONLY while something is pending or wrong — so a collapse that also
+   * hid the reason would leave a card that says nothing at all.
+   */
+  it('collapses the body but keeps the pending count and the alarm visible', async () => {
+    readSparkassePending.mockReturnValue([item()]);
+    readSparkasseStatus.mockReturnValue({ ...healthy, lastPollFailedAt: Date.now() });
+    const user = userEvent.setup();
+    render(<SparkasseInbox onAddExpense={async () => {}} />);
+
+    expect(await screen.findByText(/EDEKA/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /Collapse Sparkasse/i }));
+
+    expect(screen.queryByText(/EDEKA/)).not.toBeInTheDocument();
+    expect(screen.getByText(/1 offen/)).toBeInTheDocument();
+    expect(screen.getByText(/bitte prüfen/)).toBeInTheDocument();
+  });
+
+  it('restores the body when expanded again', async () => {
+    readSparkassePending.mockReturnValue([item()]);
+    const user = userEvent.setup();
+    render(<SparkasseInbox onAddExpense={async () => {}} />);
+
+    await user.click(await screen.findByRole('button', { name: /Collapse Sparkasse/i }));
+    await user.click(screen.getByRole('button', { name: /Expand Sparkasse/i }));
+
+    expect(await screen.findByText(/EDEKA/)).toBeInTheDocument();
+  });
+
   it('renders nothing when idle and healthy', () => {
     const { container } = render(<SparkasseInbox onAddExpense={async () => {}} />);
     expect(container).toBeEmptyDOMElement();
