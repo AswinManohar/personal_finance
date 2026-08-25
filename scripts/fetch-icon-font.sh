@@ -14,7 +14,7 @@ cd "$(dirname "$0")/.."
 
 # Every Material Symbol the app renders, plus a few common spares so adding one
 # does not silently ship a missing glyph (which renders as its literal name).
-ICONS="account_balance,account_balance_wallet,add,apps,arrow_back,autorenew,calculate,calendar_month,candlestick_chart,check,check_circle,close,cloud,cloud_off,credit_card,database,delete,diamond,document_scanner,donut_small,edit,error,flag,history,home_work,info,key,lightbulb,local_fire_department,more_vert,payments,person,photo_camera,pie_chart,receipt_long,refresh,savings,search,settings,shield,sync,task_alt,timeline,trending_down,trending_up,upload_file,verified,warning"
+ICONS="account_balance,account_balance_wallet,add,apps,arrow_back,autorenew,calculate,calendar_month,candlestick_chart,check,check_circle,chevron_right,close,cloud,cloud_off,credit_card,database,delete,diamond,document_scanner,donut_small,edit,error,expand_more,flag,history,home_work,info,key,lightbulb,local_fire_department,more_vert,notifications_active,payments,person,photo_camera,pie_chart,receipt_long,refresh,savings,search,settings,shield,subscriptions,sync,task_alt,timeline,trending_down,trending_up,upload_file,verified,warning"
 
 AXES="opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
 UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36"
