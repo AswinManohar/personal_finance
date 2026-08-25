@@ -4,6 +4,7 @@ import { render, screen, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Expenses } from '../../components/Expenses';
 import { Expense, ExpenseCategory, IncomeState } from '../../types';
+import { localYmd } from '../../utils/expenseDate';
 
 const { importedExpense, report } = vi.hoisted(() => {
   // 'Food' rather than ExpenseCategory.FOOD: vi.hoisted runs before this
@@ -33,11 +34,13 @@ vi.mock('../../services/statementReview', () => ({
   importTransaction: vi.fn().mockResolvedValue(importedExpense),
 }));
 
-// YYYY-MM-DD for `n` days ago (the form/filter use local date strings).
+// YYYY-MM-DD for `n` days ago. Uses the local calendar, not toISOString():
+// the latter yields the UTC date, so east of Greenwich this helper disagreed
+// with the component it was testing for the first two hours of every day.
 const daysAgo = (n: number) => {
   const d = new Date();
   d.setDate(d.getDate() - n);
-  return d.toISOString().split('T')[0];
+  return localYmd(d);
 };
 
 /** Controlled harness mirroring how App.tsx owns expense + income state. */
@@ -49,7 +52,7 @@ function Harness({ initial = [], initialIncome = { salaryMe: 0, salaryPartner: 0
 }
 
 const totalSpentText = () =>
-  screen.getByText('Total Spent').parentElement?.textContent ?? '';
+  screen.getByText('One-off spend').parentElement?.textContent ?? '';
 
 describe('Expense logging', () => {
   it('logs a new expense and shows it in Recent + the period total', async () => {
@@ -121,16 +124,19 @@ describe('Calculations', () => {
     expect(screen.getByText('20%')).toBeInTheDocument(); // Transport 20/100
   });
 
-  it('recurring "monthly commitment" sums only monthly-cadence items', () => {
+  it('Recurring Expenses header totals bills at their monthly equivalent', () => {
     const data: Expense[] = [
       { id: '1', name: 'Rent', amount: 1200, category: ExpenseCategory.HOUSING, isRecurring: true, recurringFrequency: 'monthly', date: daysAgo(1) },
-      { id: '2', name: 'Insurance', amount: 600, category: ExpenseCategory.OTHER, isRecurring: true, recurringFrequency: 'yearly', date: daysAgo(1) },
+      { id: '2', name: 'Insurance', amount: 600, category: ExpenseCategory.OTHER, isRecurring: true, recurringFrequency: 'yearly', isEssential: true, date: daysAgo(1) },
     ];
     render(<Harness initial={data} />);
-    expect(screen.getByText('2 active')).toBeInTheDocument();
-    // Target the commitment box specifically (the rent line item also shows €1200.00).
-    const commitment = screen.getByText('Monthly commitment').parentElement;
-    expect(commitment).toHaveTextContent('€1200.00'); // yearly 600 excluded (not €1800.00)
+    // Both are bills: Rent by category, Insurance because it's essential (never a
+    // subscription regardless of category) — 1200 + 600/12 = 1250.
+    const header = screen.getByText('Recurring Expenses').parentElement;
+    expect(header).toHaveTextContent('€1250.00');
+    expect(screen.getAllByText('Rent').length).toBeGreaterThan(0); // also appears in Recent
+    expect(screen.getByText('Monthly · Housing')).toBeInTheDocument();
+    expect(screen.getByText('Yearly · €600.00 · Other')).toBeInTheDocument();
   });
 
   it('total monthly income sums both salaries', () => {
@@ -184,5 +190,101 @@ describe('Add validation feedback', () => {
 
     expect(await screen.findByText('Coffee')).toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+});
+
+describe('Recurring Expenses / Subscriptions split', () => {
+  it('routes a name-matched subscription to Subscriptions and an ordinary bill to Recurring Expenses', () => {
+    const data: Expense[] = [
+      { id: 'sub', name: 'Netflix', amount: 15, category: ExpenseCategory.ENTERTAINMENT, isRecurring: true, recurringFrequency: 'monthly', date: daysAgo(1) },
+      { id: 'bill', name: 'Rent', amount: 1200, category: ExpenseCategory.HOUSING, isRecurring: true, recurringFrequency: 'monthly', date: daysAgo(1) },
+    ];
+    render(<Harness initial={data} />);
+
+    const recurringCard = screen.getByText('Recurring Expenses').closest('div')!.parentElement!;
+    const subscriptionsCard = screen.getByText('Subscriptions').closest('div')!.parentElement!;
+
+    expect(within(recurringCard).getByText('Rent')).toBeInTheDocument();
+    expect(within(recurringCard).queryByText('Netflix')).not.toBeInTheDocument();
+    expect(within(subscriptionsCard).getByText('Netflix')).toBeInTheDocument();
+    expect(within(subscriptionsCard).queryByText('Rent')).not.toBeInTheDocument();
+  });
+
+  it('routes a non-essential monthly Entertainment/Other item to Subscriptions by category heuristic alone', () => {
+    const data: Expense[] = [
+      { id: '1', name: 'Cinema Pass', amount: 12, category: ExpenseCategory.ENTERTAINMENT, isRecurring: true, recurringFrequency: 'monthly', isEssential: false, date: daysAgo(1) },
+    ];
+    render(<Harness initial={data} />);
+    const subscriptionsCard = screen.getByText('Subscriptions').closest('div')!.parentElement!;
+    expect(within(subscriptionsCard).getByText('Cinema Pass')).toBeInTheDocument();
+  });
+
+  it('keeps an essential monthly Entertainment item a bill, not a subscription', () => {
+    const data: Expense[] = [
+      { id: '1', name: 'Cinema Pass', amount: 12, category: ExpenseCategory.ENTERTAINMENT, isRecurring: true, recurringFrequency: 'monthly', isEssential: true, date: daysAgo(1) },
+    ];
+    render(<Harness initial={data} />);
+    const recurringCard = screen.getByText('Recurring Expenses').closest('div')!.parentElement!;
+    expect(within(recurringCard).getByText('Cinema Pass')).toBeInTheDocument();
+  });
+
+  it('shows native frequency and native amount alongside the monthly-equivalent figure', () => {
+    const data: Expense[] = [
+      { id: '1', name: 'Cleaning', amount: 95.20, category: ExpenseCategory.HOUSING, isRecurring: true, recurringFrequency: 'weekly', date: daysAgo(1) },
+    ];
+    render(<Harness initial={data} />);
+    // Native cadence + native amount in the sublabel...
+    expect(screen.getByText('Weekly · €95.20 · Housing')).toBeInTheDocument();
+    // ...while the headline figure is the monthly equivalent (95.20 * 52/12).
+    // Appears twice with a single row: once as the row amount, once as the
+    // card's header total (which, with one item, is the same figure).
+    expect(screen.getAllByText('€412.53').length).toBeGreaterThan(0);
+  });
+
+  it('Subscriptions footer reports active count and annualised total', () => {
+    const data: Expense[] = [
+      { id: '1', name: 'Netflix', amount: 15, category: ExpenseCategory.ENTERTAINMENT, isRecurring: true, recurringFrequency: 'monthly', date: daysAgo(1) },
+      { id: '2', name: 'Spotify', amount: 10, category: ExpenseCategory.ENTERTAINMENT, isRecurring: true, recurringFrequency: 'monthly', date: daysAgo(1) },
+    ];
+    render(<Harness initial={data} />);
+    expect(screen.getByText('2 active · €300.00 per year')).toBeInTheDocument();
+  });
+});
+
+describe('Per-card collapse (Breakdown, Recent)', () => {
+  it('collapses Breakdown to a one-line summary and restores it on toggle', async () => {
+    const user = userEvent.setup();
+    const data: Expense[] = [
+      { id: '1', name: 'Groceries', amount: 80, category: ExpenseCategory.FOOD, isRecurring: false, date: daysAgo(2) },
+      { id: '2', name: 'Bus', amount: 20, category: ExpenseCategory.TRANSPORT, isRecurring: false, date: daysAgo(2) },
+    ];
+    render(<Harness initial={data} />);
+
+    expect(screen.getByText('One-off spending')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Collapse Breakdown' }));
+    expect(screen.getByText('€100 total spent · 2 categories')).toBeInTheDocument();
+    expect(screen.queryByText('One-off spending')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Expand Breakdown' }));
+    expect(screen.getByText('One-off spending')).toBeInTheDocument();
+  });
+
+  it('collapses Recent while keeping the "N in period" count visible', async () => {
+    const user = userEvent.setup();
+    const data: Expense[] = [
+      { id: '1', name: 'Coffee', amount: 3, category: ExpenseCategory.FOOD, isRecurring: false, date: daysAgo(1) },
+    ];
+    render(<Harness initial={data} />);
+
+    expect(screen.getByText('Coffee')).toBeInTheDocument();
+    expect(screen.getByText('1 in period')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Collapse Recent' }));
+    expect(screen.queryByText('Coffee')).not.toBeInTheDocument();
+    expect(screen.getByText('1 in period')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Expand Recent' }));
+    expect(screen.getByText('Coffee')).toBeInTheDocument();
   });
 });

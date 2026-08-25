@@ -3,9 +3,15 @@ import { Expense, ExpenseCategory, IncomeState, RecurringFrequency } from '../ty
 import { Trash2, Repeat } from 'lucide-react';
 import {
   Card, ChipGroup, ColumnChart, Donut, Dot, EmptyState, Field, FieldLabel, IconBox, Input,
-  ListRow, Pill, PrimaryButton, SectionLabel, Select, ToggleButton, FormError,
+  ListRow, PrimaryButton, SectionLabel, Select, ToggleButton, FormError,
 } from './ui';
 import { newId } from '../utils/id';
+import { localYmd, todayYmd } from '../utils/expenseDate';
+import { monthlyAmount } from '../utils/finance';
+import {
+  categoryTotals, monthlyTotal, oneOffExpenses, recurringBills, recurringIcon,
+  recurringSublabel, subscriptionExpenses, weeklyTotals, withinSpan,
+} from '../utils/expenseSummary';
 import { AdvanziaInbox } from './AdvanziaInbox';
 import { SparkasseInbox } from './SparkasseInbox';
 
@@ -22,7 +28,7 @@ interface ExpensesProps {
   onCaptureFocusHandled?: () => void;
 }
 
-type TimeSpan = '7d' | '30d' | '90d' | 'all';
+import type { TimeSpan } from '../utils/expenseSummary';
 
 const CATEGORY_COLORS: Record<string, { stroke: string; bg: string; text: string }> = {
   [ExpenseCategory.HOUSING]:       { stroke: '#c1c1ff', bg: 'bg-primary',      text: 'text-primary' },
@@ -33,17 +39,42 @@ const CATEGORY_COLORS: Record<string, { stroke: string; bg: string; text: string
   [ExpenseCategory.OTHER]:         { stroke: '#ccc5c0', bg: 'bg-secondary',     text: 'text-secondary' },
 };
 
+
+const SPAN_LABEL: Record<TimeSpan, string> = {
+  '7d': 'last 7 days',
+  '30d': 'last 30 days',
+  '90d': 'last 90 days',
+  all: 'all time',
+};
+
+const MONTH_OF = (ymd: string) =>
+  new Date(ymd + 'T00:00:00').toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+
+/**
+ * Newest first. `YYYY-MM-DD` sorts correctly as a string, so this avoids the
+ * `new Date(...)` round-trip that reinterpreted each date as UTC midnight.
+ */
+const byDateDesc = (a: Expense, b: Expense): number =>
+  a.date < b.date ? 1 : a.date > b.date ? -1 : 0;
+
 export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, income, setIncome, onSync, onExpenseDeleted, captureFocusKey, onCaptureFocusHandled }) => {
   const [newName, setNewName] = useState('');
   const [newAmount, setNewAmount] = useState('');
   const [newCategory, setNewCategory] = useState<ExpenseCategory>(ExpenseCategory.FOOD);
   const [newVendor, setNewVendor] = useState('');
-  const [newDate, setNewDate] = useState(new Date().toISOString().split('T')[0]);
+  const [newDate, setNewDate] = useState(todayYmd());
   const [newIsRecurring, setNewIsRecurring] = useState(false);
   const [newRecurringFrequency, setNewRecurringFrequency] = useState<RecurringFrequency>('monthly');
   const [newIsEssential, setNewIsEssential] = useState(false);
   const [timeSpan, setTimeSpan] = useState<TimeSpan>('30d');
   const [formError, setFormError] = useState<string | null>(null);
+  /** Category whose day-by-day breakdown is open, or null. */
+  const [drilldown, setDrilldown] = useState<ExpenseCategory | null>(null);
+  // Per-card collapse, independent of the drill-down above — collapsing
+  // Breakdown hides the whole donut/category list, drill-down is a detail
+  // inside that list.
+  const [breakdownCollapsed, setBreakdownCollapsed] = useState(false);
+  const [recentCollapsed, setRecentCollapsed] = useState(false);
 
   const [localSalaryMe, setLocalSalaryMe] = useState(income.salaryMe?.toString() || '');
   const [localSalaryPartner, setLocalSalaryPartner] = useState(income.salaryPartner?.toString() || '');
@@ -80,7 +111,7 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
       isEssential: newIsEssential,
     };
 
-    const updatedExpenses = [...expenses, newExpense].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    const updatedExpenses = [...expenses, newExpense].sort(byDateDesc);
     setExpenses(updatedExpenses);
 
     if (onSync) {
@@ -102,8 +133,7 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
    * reach the cloud.
    */
   const handleAddCaptured = async (expense: Expense) => {
-    const updatedExpenses = [...expenses, expense]
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    const updatedExpenses = [...expenses, expense].sort(byDateDesc);
     setExpenses(updatedExpenses);
     if (onSync) {
       await onSync({ expenses: updatedExpenses });
@@ -132,73 +162,130 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
     setIsSavingIncome(false);
   };
 
-  // Time-based Filtering
-  const filteredExpenses = useMemo(() => {
-    const now = new Date();
-    const cutoff = new Date();
+  /**
+   * What the Breakdown card and Weekly Trends count.
+   *
+   * Recurring rows are excluded from BOTH, and consistently so. Tapping a
+   * category bar has to open a sheet that sums to the bar — a €912 Housing bar
+   * opening a €12 list would be worse than either number alone.
+   */
+  const oneOff = useMemo(() => oneOffExpenses(expenses), [expenses]);
 
-    if (timeSpan === '7d') cutoff.setDate(now.getDate() - 7);
-    else if (timeSpan === '30d') cutoff.setDate(now.getDate() - 30);
-    else if (timeSpan === '90d') cutoff.setDate(now.getDate() - 90);
-    else return expenses;
+  const filteredExpenses = useMemo(
+    () => withinSpan(oneOff, timeSpan, new Date()),
+    [oneOff, timeSpan]
+  );
 
-    return expenses.filter(e => new Date(e.date) >= cutoff);
-  }, [expenses, timeSpan]);
+  // Calendar weeks over the full history, not the chip-filtered slice: a 7D chip
+  // would otherwise zero every bar but the last and make the chart unreadable.
+  const weeklyChartData = useMemo(() => weeklyTotals(expenses, new Date(), 4), [expenses]);
 
-  // Daily Aggregation for Weekly Trends bar chart
-  const weeklyChartData = useMemo(() => {
-    // Build 4 weeks of data from the filtered set
-    const now = new Date();
-    const weeks: { label: string; amount: number }[] = [];
-    for (let w = 3; w >= 0; w--) {
-      const weekEnd = new Date(now);
-      weekEnd.setDate(now.getDate() - w * 7);
-      const weekStart = new Date(weekEnd);
-      weekStart.setDate(weekEnd.getDate() - 6);
-      const total = filteredExpenses
-        .filter(e => {
-          const d = new Date(e.date);
-          return d >= weekStart && d <= weekEnd;
-        })
-        .reduce((sum, e) => sum + e.amount, 0);
-      weeks.push({ label: `W${4 - w}`, amount: total });
-    }
-    return weeks;
-  }, [filteredExpenses]);
-
-  // Category Distribution
-  const chartData = useMemo(() => Object.values(ExpenseCategory).map(cat => ({
-    name: cat,
-    value: filteredExpenses.filter(e => e.category === cat).reduce((sum, e) => sum + e.amount, 0)
-  })).filter(d => d.value > 0), [filteredExpenses]);
+  const chartData = useMemo(() => categoryTotals(filteredExpenses), [filteredExpenses]);
 
   const periodTotal = filteredExpenses.reduce((sum, item) => sum + item.amount, 0);
+
+  /**
+   * The open category's transactions, newest first.
+   *
+   * Reads `filteredExpenses` — the same list the bars are computed from — so the
+   * list always reconciles with the bar that opened it, and changing the span
+   * re-filters an already-open category rather than going stale.
+   */
+  const drilldownItems = useMemo(
+    () => (drilldown ? [...filteredExpenses.filter(e => e.category === drilldown)].sort(byDateDesc) : []),
+    [drilldown, filteredExpenses]
+  );
   const totalIncome = income.salaryMe + income.salaryPartner;
 
   // Grouping expenses for recent list (use all expenses, most recent 8)
   const recentExpenses = useMemo(() => {
-    return [...expenses]
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-      .slice(0, 8);
+    return [...expenses].sort(byDateDesc).slice(0, 8);
   }, [expenses]);
 
-  // Recurring expenses
-  const recurringExpenses = useMemo(() => expenses.filter(e => e.isRecurring), [expenses]);
+  // Recurring expenses, split the way the design does: name/category-heuristic
+  // subscriptions (Netflix, gym, ...) get their own card, everything else
+  // recurring is a bill. See utils/expenseSummary.ts `isSubscription` — there's
+  // no persisted flag for this yet, so it's inferred every render.
+  const recurringExpensesList = useMemo(() => recurringBills(expenses), [expenses]);
+  const subscriptionsList = useMemo(() => subscriptionExpenses(expenses), [expenses]);
 
+  // Local calendar days. Deriving these from toISOString() made "Today" flip at
+  // 02:00 Berlin rather than at midnight.
   const formatDate = (dateStr: string) => {
-    const today = new Date().toISOString().split('T')[0];
-    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-    if (dateStr === today) return 'Today';
-    if (dateStr === yesterday) return 'Yesterday';
-    return new Date(dateStr).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    if (dateStr === todayYmd()) return 'Today';
+    if (dateStr === localYmd(new Date(Date.now() - 86400000))) return 'Yesterday';
+    return new Date(dateStr + 'T00:00:00').toLocaleDateString(undefined, {
+      month: 'short', day: 'numeric', year: 'numeric',
+    });
+  };
+
+  /**
+   * 28px chevron used by Breakdown and Recent to collapse their body. Rotates
+   * 0° -> -90° rather than swapping icons, so the transition is a transform,
+   * not a re-render; `inline-block` is load-bearing — a rotate transform on an
+   * inline element is silently ignored.
+   */
+  const CollapseToggle: React.FC<{ collapsed: boolean; onClick: () => void; label: string }> = ({
+    collapsed, onClick, label,
+  }) => (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-expanded={!collapsed}
+      aria-label={collapsed ? `Expand ${label}` : `Collapse ${label}`}
+      className="w-7 h-7 flex items-center justify-center rounded-lg text-secondary hover:bg-primary/[0.14] hover:text-primary transition-colors flex-none"
+    >
+      <span
+        className="material-symbols-outlined inline-block transition-transform duration-200"
+        style={{ fontSize: 20, lineHeight: 1, transform: `rotate(${collapsed ? -90 : 0}deg)` }}
+        aria-hidden="true"
+      >
+        expand_more
+      </span>
+    </button>
+  );
+
+  /** Shared 56px row for Recurring Expenses and Subscriptions. */
+  const RecurringRow: React.FC<{ expense: Expense; tone: 'primary' | 'tertiary'; divider: boolean }> = ({
+    expense, tone, divider,
+  }) => {
+    const tint = tone === 'primary' ? 'bg-[rgba(193,193,255,0.1)] text-primary' : 'bg-[rgba(238,192,96,0.1)] text-tertiary';
+    return (
+      <ListRow divider={divider} className="h-14 group">
+        <span className="flex items-center gap-3 min-w-0">
+          <span className={`w-9 h-9 rounded-field flex items-center justify-center flex-none ${tint}`}>
+            <span className="material-symbols-outlined" aria-hidden="true" style={{ fontSize: 18 }}>
+              {recurringIcon(expense)}
+            </span>
+          </span>
+          <span className="min-w-0">
+            <span className="block text-caption font-semibold truncate">{expense.name}</span>
+            <span className="block text-label text-secondary opacity-70 truncate">
+              {recurringSublabel(expense)}
+            </span>
+          </span>
+        </span>
+        <span className="flex items-center gap-2 flex-none">
+          <span className={`text-caption font-bold tabular-nums ${tone === 'primary' ? 'text-primary' : 'text-tertiary'}`}>
+            €{monthlyAmount(expense).toFixed(2)}
+          </span>
+          <button
+            onClick={() => handleDelete(expense.id)}
+            aria-label={`Delete ${expense.name}`}
+            className="w-11 h-11 flex items-center justify-center text-secondary hover:text-negative transition-colors md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100"
+          >
+            <Trash2 size={14} />
+          </button>
+        </span>
+      </ListRow>
+    );
   };
 
   const catColor = (c: string) =>
     (CATEGORY_COLORS[c] || CATEGORY_COLORS[ExpenseCategory.OTHER]).stroke;
 
-  const monthlyCommitment = recurringExpenses
-    .filter(e => e.recurringFrequency === 'monthly' || !e.recurringFrequency)
-    .reduce((sum, e) => sum + e.amount, 0);
+  const recurringMonthlyTotal = useMemo(() => monthlyTotal(recurringExpensesList), [recurringExpensesList]);
+  const subscriptionsMonthlyTotal = useMemo(() => monthlyTotal(subscriptionsList), [subscriptionsList]);
 
   return (
     <div className="flex flex-col gap-3 lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">
@@ -211,60 +298,6 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
         onFocusHandled={onCaptureFocusHandled}
       />
       <SparkasseInbox onAddExpense={handleAddCaptured} />
-
-      {/* ── Breakdown ── */}
-      <Card>
-        <div className="flex justify-between items-center gap-2 mb-5">
-          <h2 className="text-title font-bold">Breakdown</h2>
-          <ChipGroup
-            aria-label="Time span"
-            value={timeSpan}
-            onChange={setTimeSpan}
-            options={[
-              { value: '7d' as TimeSpan, label: '7D' },
-              { value: '30d' as TimeSpan, label: '30D' },
-              { value: '90d' as TimeSpan, label: '90D' },
-              { value: 'all' as TimeSpan, label: 'ALL' },
-            ]}
-          />
-        </div>
-
-        <div className="flex justify-center mb-5">
-          <Donut
-            size={192}
-            segments={chartData.map(d => ({ label: d.name, value: d.value, color: catColor(d.name) }))}
-            label="Total Spent"
-            value={`€${periodTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
-          />
-        </div>
-
-        <div className="flex flex-col gap-3">
-          {chartData.length === 0 ? (
-            <EmptyState icon="donut_small">No data for this period.</EmptyState>
-          ) : (
-            chartData.map(d => {
-              const pct = periodTotal > 0 ? (d.value / periodTotal) * 100 : 0;
-              return (
-                <div key={d.name} className="flex flex-col gap-1.5">
-                  <div className="flex justify-between text-caption">
-                    <span className="flex items-center gap-2 font-medium">
-                      <Dot color={catColor(d.name)} />
-                      {d.name}
-                    </span>
-                    <span className="text-secondary font-bold tabular-nums">{pct.toFixed(0)}%</span>
-                  </div>
-                  <div className="h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full"
-                      style={{ width: `${pct}%`, backgroundColor: catColor(d.name) }}
-                    />
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
-      </Card>
 
       {/* ── Log expense ── */}
       <Card className="flex flex-col gap-3">
@@ -363,12 +396,195 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
         <PrimaryButton onClick={handleAdd}>Add Expense</PrimaryButton>
       </Card>
 
-      {/* ── Recent ── */}
+      {/* ── Recurring Expenses ── */}
       <Card>
+        <div className="flex justify-between items-center mb-3">
+          <SectionLabel>Recurring Expenses</SectionLabel>
+          <span className="text-label font-bold tabular-nums text-primary">
+            €{recurringMonthlyTotal.toFixed(2)}
+          </span>
+        </div>
+        <div className="flex flex-col">
+          {recurringExpensesList.length === 0 ? (
+            <EmptyState icon="autorenew">No recurring expenses.</EmptyState>
+          ) : (
+            recurringExpensesList.map((expense, i, arr) => (
+              <RecurringRow key={expense.id} expense={expense} tone="primary" divider={i < arr.length - 1} />
+            ))
+          )}
+        </div>
+        <p className="mt-3 text-label text-secondary opacity-70 italic">amounts shown per month</p>
+      </Card>
+
+      {/* ── Subscriptions ── */}
+      <Card>
+        <div className="flex justify-between items-center mb-3">
+          <SectionLabel>Subscriptions</SectionLabel>
+          <span className="text-label font-bold tabular-nums text-tertiary">
+            €{subscriptionsMonthlyTotal.toFixed(2)}
+          </span>
+        </div>
+        <div className="flex flex-col">
+          {subscriptionsList.length === 0 ? (
+            <EmptyState icon="subscriptions">No subscriptions.</EmptyState>
+          ) : (
+            subscriptionsList.map((expense, i, arr) => (
+              <RecurringRow key={expense.id} expense={expense} tone="tertiary" divider={i < arr.length - 1} />
+            ))
+          )}
+        </div>
+        {subscriptionsList.length > 0 && (
+          <p className="mt-3 text-label text-secondary opacity-70">
+            {subscriptionsList.length} active · €{(subscriptionsMonthlyTotal * 12).toFixed(2)} per year
+          </p>
+        )}
+      </Card>
+
+      {/* ── Breakdown ── */}
+      <Card className="pr-11 relative">
+        <div className="flex justify-between items-center gap-2 mb-5">
+          <div>
+            <h2 className="text-title font-bold">Breakdown</h2>
+            <p className="text-label text-secondary opacity-70">
+              {breakdownCollapsed
+                ? `€${periodTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })} total spent · ${chartData.length} categor${chartData.length === 1 ? 'y' : 'ies'}`
+                : 'One-off spending'}
+            </p>
+          </div>
+          {!breakdownCollapsed && (
+            <ChipGroup
+              aria-label="Time span"
+              value={timeSpan}
+              onChange={setTimeSpan}
+              options={[
+                { value: '7d' as TimeSpan, label: '7D' },
+                { value: '30d' as TimeSpan, label: '30D' },
+                { value: '90d' as TimeSpan, label: '90D' },
+                { value: 'all' as TimeSpan, label: 'ALL' },
+              ]}
+            />
+          )}
+        </div>
+        <div className="absolute top-3.5 right-2.5">
+          <CollapseToggle
+            collapsed={breakdownCollapsed}
+            onClick={() => setBreakdownCollapsed(v => !v)}
+            label="Breakdown"
+          />
+        </div>
+
+        {!breakdownCollapsed && <>
+        <div className="flex justify-center mb-5">
+          <Donut
+            size={192}
+            segments={chartData.map(d => ({ label: d.name, value: d.value, color: catColor(d.name) }))}
+            label="One-off spend"
+            value={`€${periodTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+          />
+        </div>
+
+        <div className="flex flex-col gap-3">
+          {chartData.length === 0 ? (
+            <EmptyState icon="donut_small">No data for this period.</EmptyState>
+          ) : (
+            chartData.map(d => {
+              const pct = periodTotal > 0 ? (d.value / periodTotal) * 100 : 0;
+              const open = drilldown === d.name;
+              return (
+                <div key={d.name} className="flex flex-col">
+                  {/* The bar is the control: tapping it expands this category in place. */}
+                  <button
+                    type="button"
+                    onClick={() => setDrilldown(open ? null : d.name)}
+                    aria-expanded={open}
+                    aria-label={`${d.name}, €${d.value.toFixed(2)} — ${open ? 'hide' : 'show'} transactions`}
+                    className={`flex flex-col gap-1.5 text-left rounded-lg p-1.5 -m-1.5 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary ${open ? 'bg-primary/[0.06]' : 'hover:bg-primary/[0.06]'}`}
+                  >
+                    <div className="flex justify-between items-center text-caption w-full">
+                      <span className="flex items-center gap-2 font-medium">
+                        <span
+                          className="material-symbols-outlined text-secondary transition-transform duration-200 inline-block"
+                          style={{ fontSize: 16, lineHeight: 1, transform: `rotate(${open ? 0 : -90}deg)` }}
+                          aria-hidden="true"
+                        >
+                          expand_more
+                        </span>
+                        <Dot color={catColor(d.name)} />
+                        {d.name}
+                      </span>
+                      <span className="flex items-center gap-2">
+                        <span className="text-secondary tabular-nums">€{d.value.toFixed(2)}</span>
+                        <span className="text-secondary font-bold tabular-nums">{pct.toFixed(0)}%</span>
+                      </span>
+                    </div>
+                    <div className="h-1.5 w-full bg-surface-container-highest rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full"
+                        style={{ width: `${pct}%`, backgroundColor: catColor(d.name) }}
+                      />
+                    </div>
+                  </button>
+
+                  {open && (
+                    <div className="mt-2 ml-2 pl-3 border-l-2 border-outline-variant/40 flex flex-col">
+                      {drilldownItems.length === 0 ? (
+                        <p className="text-label text-secondary opacity-70 py-2">
+                          Nothing in {SPAN_LABEL[timeSpan]}.
+                        </p>
+                      ) : (
+                        <>
+                          {drilldownItems.map(item => (
+                            <div
+                              key={item.id}
+                              className="flex justify-between items-center gap-2 min-h-[44px] py-1"
+                            >
+                              <span className="min-w-0">
+                                <span className="block truncate text-caption font-semibold">{item.name}</span>
+                                <span className="block text-label text-secondary opacity-70">
+                                  {formatDate(item.date)}
+                                  {item.vendor ? ` · ${item.vendor}` : ''}
+                                </span>
+                              </span>
+                              <span className="text-caption font-bold tabular-nums whitespace-nowrap">
+                                €{item.amount.toFixed(2)}
+                              </span>
+                            </div>
+                          ))}
+                          <p className="text-label text-secondary opacity-70 pt-2">
+                            {drilldownItems.length} transaction{drilldownItems.length === 1 ? '' : 's'} · {SPAN_LABEL[timeSpan]}
+                          </p>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+        </>}
+      </Card>
+
+
+      {/* ── Recent ── */}
+      <Card className="pr-11 relative">
         {/* No "Clear Cache" here any more. The cloud is the source of truth, so
             a button that emptied local state only ever produced a screen full
             of zeroes until the next pull — it looked exactly like data loss. */}
-        <SectionLabel className="mb-2 block">Recent</SectionLabel>
+        <div className="flex justify-between items-center mb-2">
+          <SectionLabel>Recent</SectionLabel>
+          <span className="text-label text-secondary tabular-nums">
+            {recentExpenses.length} in period
+          </span>
+        </div>
+        <div className="absolute top-3.5 right-2.5">
+          <CollapseToggle
+            collapsed={recentCollapsed}
+            onClick={() => setRecentCollapsed(v => !v)}
+            label="Recent"
+          />
+        </div>
+        {!recentCollapsed && (
         <div className="flex flex-col">
           {recentExpenses.length === 0 ? (
             <EmptyState icon="receipt_long">No transactions yet.</EmptyState>
@@ -413,23 +629,28 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
             })
           )}
         </div>
+        )}
       </Card>
 
       {/* ── Weekly trends ── */}
       <Card>
-        <SectionLabel className="mb-4">Weekly Trends</SectionLabel>
+        <SectionLabel>Weekly Trends</SectionLabel>
+        <p className="mt-1 mb-4 text-label text-secondary opacity-70">
+          One-off spending, Monday to Sunday
+        </p>
         <ColumnChart
           color="#c1c1ff"
           columns={weeklyChartData.map(w => ({
             label: w.label,
             value: w.amount,
             caption: `€${w.amount.toFixed(0)}`,
+            highlight: w.isCurrent,
           }))}
         />
         <div className="mt-4 pt-4 border-t border-outline-variant/12 flex justify-between items-center">
           <span className="flex items-center gap-2">
             <Dot color="#c1c1ff" />
-            <span className="text-label text-secondary">Actual Spending</span>
+            <span className="text-label text-secondary">This week so far</span>
           </span>
           <span className="text-label text-secondary tabular-nums">
             {filteredExpenses.length} transactions
@@ -473,68 +694,6 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
         </PrimaryButton>
       </Card>
 
-      {/* ── Recurring ── */}
-      <Card>
-        <div className="flex justify-between items-center mb-3">
-          <SectionLabel>Recurring</SectionLabel>
-          <span className="text-label font-bold tracking-[.08em] uppercase text-primary">
-            {recurringExpenses.length} active
-          </span>
-        </div>
-        <div className="flex flex-col">
-          {recurringExpenses.length === 0 ? (
-            <EmptyState icon="autorenew">No recurring expenses.</EmptyState>
-          ) : (
-            recurringExpenses.slice(0, 5).map((expense, i, arr) => (
-              <ListRow
-                key={expense.id}
-                divider={i < arr.length - 1}
-                className="min-h-14 py-2 group"
-              >
-                <span className="flex flex-col gap-1 min-w-0">
-                  <span className="text-body font-medium truncate">{expense.name}</span>
-                  <span className="flex gap-1">
-                    <Pill
-                      tone={
-                        expense.recurringFrequency === 'yearly' ||
-                        expense.recurringFrequency === 'quarterly'
-                          ? 'tertiary'
-                          : 'primary'
-                      }
-                    >
-                      {expense.recurringFrequency || 'monthly'}
-                    </Pill>
-                    {expense.isEssential && <Pill tone="positive">Essential</Pill>}
-                  </span>
-                </span>
-                <span className="flex items-center gap-2 flex-none">
-                  <span className="text-body font-bold tabular-nums">
-                    €{expense.amount.toFixed(2)}
-                  </span>
-                  <button
-                    onClick={() => handleDelete(expense.id)}
-                    aria-label={`Delete ${expense.name}`}
-                    className="w-11 h-11 flex items-center justify-center text-secondary hover:text-negative transition-colors md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </span>
-              </ListRow>
-            ))
-          )}
-        </div>
-        {recurringExpenses.length > 0 && (
-          <div className="mt-3 p-3 rounded-field bg-surface-container-highest/30 flex items-center gap-3">
-            <IconBox icon="calendar_month" tone="tertiary" />
-            <span className="flex flex-col">
-              <span className="text-label text-secondary font-medium">Monthly commitment</span>
-              <span className="text-body font-bold tabular-nums">
-                €{monthlyCommitment.toFixed(2)}
-              </span>
-            </span>
-          </div>
-        )}
-      </Card>
     </div>
   );
 };
