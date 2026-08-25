@@ -43,6 +43,15 @@ const GMAIL_BASE = 'https://gmail.googleapis.com/gmail/v1/users/me';
  *
  * Caught by its own intent-filter in AndroidManifest.xml, not the capture deep
  * link's — that one pins android:host="review" and would never match.
+ *
+ * Google disables this redirect method by default on Android clients created
+ * after its 2024 custom-URI-scheme restriction, and the consent screen then
+ * refuses the request with `invalid_request` / "Custom URI scheme is not
+ * enabled for your Android client" — a console setting, not a bug here. Turn it
+ * back on under the client's Advanced Settings ("Enable Custom URI scheme");
+ * it can take up to a few hours to propagate. Distinct from
+ * `redirect_uri_mismatch`, which means the scheme below stopped matching the
+ * package name.
  */
 const REDIRECT_URI = 'com.aswinmanohar.cashflow:/oauth2redirect';
 
