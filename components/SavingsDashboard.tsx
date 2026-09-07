@@ -65,6 +65,9 @@ export const SavingsDashboard: React.FC<SavingsDashboardProps> = ({
     const next: EmergencyFundState = {
       targetAmount: efTarget,
       currentAmount: efCurrent,
+      // The log rides along untouched; only present when there is one, so
+      // legacy state still writes the two-field object the tests pin.
+      ...(emergencyFund?.contributions ? { contributions: emergencyFund.contributions } : {}),
       [field]: Math.max(0, parseFloat(value) || 0),
     };
     setEmergencyFund?.(next);

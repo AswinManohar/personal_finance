@@ -169,6 +169,20 @@ export const goalSavings = (b: AssetBreakdown, sources?: GoalSource[]): number =
 export const fmtEuro = (n: number): string =>
   '€' + num(n).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
+/**
+ * The contribution log as it comes off the wire or out of a JSON import:
+ * anything that is not an array of dated entries becomes an empty log, and
+ * amounts are coerced. Both the cloud pull and the file import rebuild the
+ * fund object field by field, so this is what stops either from dropping it.
+ */
+export const normaliseContributions = (raw: unknown): EmergencyFundContribution[] => {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((c): c is { id?: unknown; date: string; amount?: unknown } =>
+      !!c && typeof c === 'object' && typeof (c as { date?: unknown }).date === 'string')
+    .map(c => ({ id: String(c.id ?? ''), date: c.date, amount: num(c.amount) }));
+};
+
 /** Money moved into the emergency fund during the calendar month `now` is in. */
 export const fundContributedInMonth = (
   contributions: readonly EmergencyFundContribution[] | undefined,

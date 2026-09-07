@@ -110,6 +110,15 @@ describe('Editing the two amounts', () => {
     expect(setEmergencyFund).toHaveBeenCalledWith({ currentAmount: 2192, targetAmount: 9000 });
   });
 
+  it('keeps the contribution log when the target is edited', () => {
+    const log = [{ id: 'c1', date: '2026-09-02', amount: 200 }];
+    const { setEmergencyFund } = renderEditable({ currentAmount: 2192, targetAmount: 6735, contributions: log });
+    fireEvent.change(screen.getByLabelText('Target'), { target: { value: '9000' } });
+    expect(setEmergencyFund).toHaveBeenCalledWith({
+      currentAmount: 2192, targetAmount: 9000, contributions: log,
+    });
+  });
+
   it('syncs the new object under the emergencyFund key', () => {
     const { onSync } = renderEditable();
     fireEvent.change(screen.getByLabelText('Current in fund'), { target: { value: '3000' } });

@@ -5,7 +5,7 @@ import {
   monthlyInterest, totalLoanBalance, sortByAvalanche, simulatePayoff,
   remainingBalance, currentBalance,
   assetBreakdown, totalAssets, goalSavings, ALL_GOAL_SOURCES,
-  fundContributedInMonth, monthBudget, fmtEuro,
+  fundContributedInMonth, monthBudget, fmtEuro, normaliseContributions,
 } from '../../utils/finance';
 
 const exp = (over: Partial<Expense>): Expense => ({
@@ -264,5 +264,22 @@ describe('fmtEuro', () => {
     expect(fmtEuro(1500)).toBe('€1,500');
     expect(fmtEuro(12.6)).toBe('€13');
     expect(fmtEuro(NaN)).toBe('€0');
+  });
+});
+
+describe('normaliseContributions', () => {
+  it('keeps well-formed entries and coerces the amount', () => {
+    expect(normaliseContributions([{ id: 'a', date: '2026-09-02', amount: '200' }]))
+      .toEqual([{ id: 'a', date: '2026-09-02', amount: 200 }]);
+  });
+
+  it('drops anything that is not an entry with a string date', () => {
+    expect(normaliseContributions([null, 'x', { id: 'b', amount: 5 }, { id: 'c', date: '2026-09-03', amount: 1 }]))
+      .toEqual([{ id: 'c', date: '2026-09-03', amount: 1 }]);
+  });
+
+  it('returns an empty log for a missing or malformed field', () => {
+    expect(normaliseContributions(undefined)).toEqual([]);
+    expect(normaliseContributions('nope')).toEqual([]);
   });
 });
