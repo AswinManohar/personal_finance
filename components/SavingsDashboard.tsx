@@ -1,6 +1,7 @@
 
 import React, { useMemo, useState } from 'react';
-import { ActiveTab, NetWorthState, PortfolioAsset, Stock, Expense, EmergencyFundState } from '../types';
+import { ActiveTab, NetWorthState, PortfolioAsset, Stock, Expense, EmergencyFundState, IncomeState } from '../types';
+import { MonthBudgetCard } from './MonthBudgetCard';
 import { assetBreakdown, monthlyAmount, num, totalAssets as sumAssets } from '../utils/finance';
 import {
   AreaChart, AxisLabels, Card, Donut, Dot, EmptyState, Field, FieldLabel, Input, ListRow,
@@ -14,6 +15,8 @@ interface SavingsDashboardProps {
   setNetWorthData: React.Dispatch<React.SetStateAction<NetWorthState>>;
   onSync: (overrides?: any) => Promise<void>;
   expenses?: Expense[];
+  /** The two salaries from the Expenses screen; the This Month card divides them up. */
+  income?: IncomeState;
   emergencyFund?: EmergencyFundState;
   setEmergencyFund?: (next: EmergencyFundState) => void;
   /** Lets the "Optimize Savings" callout hand off to the Calculator. */
@@ -27,6 +30,7 @@ export const SavingsDashboard: React.FC<SavingsDashboardProps> = ({
   setNetWorthData,
   onSync,
   expenses = [],
+  income = { salaryMe: 0, salaryPartner: 0 },
   emergencyFund,
   setEmergencyFund,
   onNavigate,
@@ -160,6 +164,14 @@ export const SavingsDashboard: React.FC<SavingsDashboardProps> = ({
 
   return (
     <>
+      {/* ── This month: income split into spent, to fund, left ── */}
+      <MonthBudgetCard
+        income={income}
+        expenses={expenses}
+        emergencyFund={emergencyFund}
+        onNavigate={onNavigate}
+      />
+
       {/* ── Hero: total tracked assets ── */}
       <Card className="relative overflow-hidden">
         <FieldLabel className="!tracking-[.16em] mb-2">Total Tracked Assets</FieldLabel>
