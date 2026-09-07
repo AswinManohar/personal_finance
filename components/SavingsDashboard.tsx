@@ -2,7 +2,7 @@
 import React, { useMemo, useState } from 'react';
 import { ActiveTab, NetWorthState, PortfolioAsset, Stock, Expense, EmergencyFundState, IncomeState } from '../types';
 import { MonthBudgetCard } from './MonthBudgetCard';
-import { assetBreakdown, monthlyAmount, num, totalAssets as sumAssets } from '../utils/finance';
+import { assetBreakdown, fmtEuro as fmt, monthlyAmount, num, totalAssets as sumAssets } from '../utils/finance';
 import {
   AreaChart, AxisLabels, Card, Donut, Dot, EmptyState, Field, FieldLabel, Input, ListRow,
   Pill, PrimaryButton, ProgressBar, SectionLabel, StackedBar, StatBlock, FormError,
@@ -148,11 +148,6 @@ export const SavingsDashboard: React.FC<SavingsDashboardProps> = ({
     totalAssets > 0
       ? Math.min(100, Math.round((gold / totalAssets) * 300))
       : 25;
-
-  const fmt = (n: number) =>
-    '€' +
-    num(n).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-
 
   const pct = (value: number, total: number) => (total > 0 ? (value / total) * 100 : 0);
   const efPct = pct(efCurrent, efTarget);
