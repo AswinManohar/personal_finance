@@ -53,6 +53,24 @@ async def health_check():
 DIST_DIR = "dist"
 DIST_ASSETS_DIR = os.path.join(DIST_DIR, "assets")
 
+
+def safe_dist_path(dist_root: str, requested: str) -> str | None:
+    """The file under `dist_root` that `requested` names, or None.
+
+    None means "serve index.html instead" — for a route the SPA owns, and
+    just as much for a path that escapes the folder. A request path of
+    `..%2Fpyproject.toml` decodes to `../pyproject.toml`, and joining that
+    onto `dist/` used to produce a real file outside it, which the old
+    `os.path.isfile` check then served. Resolving both sides and requiring
+    the file to sit inside the root closes that.
+    """
+    root = os.path.realpath(dist_root)
+    candidate = os.path.realpath(os.path.join(root, requested.lstrip("/")))
+    if not candidate.startswith(root + os.sep):
+        return None
+    return candidate if os.path.isfile(candidate) else None
+
+
 if os.path.isdir(DIST_DIR):
     if os.path.isdir(DIST_ASSETS_DIR):
         app.mount("/assets", StaticFiles(directory=DIST_ASSETS_DIR), name="assets")
@@ -60,17 +78,15 @@ if os.path.isdir(DIST_DIR):
     @app.get("/{full_path:path}")
     async def serve_react_app(full_path: str):
         # Serve static files directly when they exist; otherwise hand off to SPA router.
-        file_path = os.path.join(DIST_DIR, full_path)
-        if os.path.isfile(file_path):
+        file_path = safe_dist_path(DIST_DIR, full_path)
+        if file_path:
             return FileResponse(file_path, headers={"Cache-Control": "public, max-age=31536000"})
         # Never cache index.html so the browser always fetches the latest JS bundle hashes
         return FileResponse(
-            os.path.join(DIST_DIR, "index.html"), 
+            os.path.join(DIST_DIR, "index.html"),
             headers={"Cache-Control": "no-cache, no-store, must-revalidate"}
         )
 else:
     @app.get("/")
     async def root():
         return {"message": "Welcome to FinanceFlow API. React dist not found."}
-
-# Dummy change to trigger Cloud Build deployment (logging fix test)
