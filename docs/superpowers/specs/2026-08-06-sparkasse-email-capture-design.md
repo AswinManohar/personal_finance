@@ -150,7 +150,7 @@ Advanzia notification ──►  advanziaCapture  ──►  advanzia.pending  �
 The shared imports are all exported already and all pure or storage-local, so
 importing them is not a modification. `parseGermanAmount` in particular must be
 reused rather than re-implemented: it is the 1000× misparse guard
-(`lessons/05`, §2), and a second copy is a second chance to get it wrong.
+(`docs/lessons/05`, §2), and a second copy is a second chance to get it wrong.
 
 Sparkasse gets its own `SparkasseLine` type and its own storage keys —
 `sparkasse.pending`, `sparkasse.handled`, `sparkasse.watermark`,
@@ -222,7 +222,7 @@ wrong rather than loudly broken.
   `kind: 'settlement'`, non-convertible.
 - **Amount.** Reuses `parseGermanAmount` from `advanziaNotification.ts`
   unchanged; it already refuses anything not unambiguously German EUR, which is
-  the 1000× guard (`lessons/05`, §2).
+  the 1000× guard (`docs/lessons/05`, §2).
 
 Dedup key: `gmail:<messageId>#<lineIndex>`. The message ID is Gmail's own
 identity, so re-polling is exactly idempotent; the line index disambiguates

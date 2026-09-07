@@ -24,12 +24,10 @@ jobs:
           python-version: "3.13"
       - name: Install uv
         uses: astral-sh/setup-uv@v5
-      - name: Install dependencies (mirror Dockerfile, + test tools)
-        run: |
-          uv export --frozen --no-dev --format requirements-txt -o requirements.txt
-          uv pip install --system -r requirements.txt pytest httpx
+      - name: Install dependencies from the lockfile (dev group included, for pytest and the test PDFs)
+        run: uv sync --frozen
       - name: Run backend tests
-        run: pytest tests/test_integrations.py -q
+        run: uv run pytest -q
 
   frontend-tests:
     name: Frontend tests (vitest)

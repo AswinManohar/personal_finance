@@ -16,7 +16,7 @@
 - **The Advanzia test suite must pass unchanged at every commit.** If a change requires editing an Advanzia test, the isolation has been broken — stop and report.
 - Test command is `npm test` (`vitest run`). Single file: `npx vitest run tests/frontend/<file>`.
 - Frontend tests live in `tests/frontend/**/*.test.{ts,tsx}` — that glob is the only thing vitest picks up.
-- **Reuse `parseGermanAmount` from `utils/advanziaNotification.ts` by import. Never re-implement it.** It is the 1000× misparse guard (`lessons/05` §2); a second copy is a second chance to get it wrong.
+- **Reuse `parseGermanAmount` from `utils/advanziaNotification.ts` by import. Never re-implement it.** It is the 1000× misparse guard (`docs/lessons/05` §2); a second copy is a second chance to get it wrong.
 - Native sources are **Java**, in `android/app/src/main/java/com/aswinmanohar/cashflow/`. There is no Kotlin in this project.
 - Storage keys are `sparkasse.pending`, `sparkasse.handled`, `sparkasse.watermark`, `sparkasse.seen`. The merchant map stays shared at `advanzia.merchants`, reached only through the exported `recallLocalMerchant` / `learnMerchant`.
 - Nothing auto-saves. Every state, including `clean`, requires a user tap.

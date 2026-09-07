@@ -28,3 +28,13 @@ dist-ssr
 
 # Logfire project credentials — contains a write token, must never be committed.
 .logfire/
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+.ruff_cache/
+
+# Supabase CLI scratch
+supabase/.temp/
