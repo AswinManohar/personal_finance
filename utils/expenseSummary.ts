@@ -146,26 +146,42 @@ export const isSubscription = (e: Expense): boolean => {
  * Material Symbol for a recurring row. Name match first (a "Netflix" entered
  * under Other should still show the streaming glyph), category as the fallback.
  */
+const NAME_ICON: ReadonlyArray<readonly [RegExp, string]> = [
+  [/netflix|prime|disney|youtube/, 'smart_display'],
+  [/spotify/, 'music_note'],
+  [/gym|fitness/, 'fitness_center'],
+  [/internet|wifi/, 'wifi'],
+  [/rent|mortgage/, 'home'],
+  [/electric/, 'bolt'],
+  [/insurance/, 'shield'],
+  [/phone/, 'smartphone'],
+  [/icloud|storage/, 'cloud'],
+];
+
+const CATEGORY_ICON: Record<ExpenseCategory, string> = {
+  [ExpenseCategory.HOUSING]: 'home',
+  [ExpenseCategory.TRANSPORT]: 'directions_bus',
+  [ExpenseCategory.FOOD]: 'shopping_cart',
+  [ExpenseCategory.UTILITIES]: 'bolt',
+  [ExpenseCategory.ENTERTAINMENT]: 'movie',
+  [ExpenseCategory.OTHER]: 'category',
+};
+
+/**
+ * Every glyph the function below can return. The row renders the name as
+ * ligature text, so each of these has to be in the bundled font subset or the
+ * row shows the word itself — see tests/frontend/iconSubset.test.ts, which is
+ * what makes this list worth exporting.
+ */
+export const RECURRING_ICONS: readonly string[] = [
+  ...NAME_ICON.map(([, icon]) => icon),
+  ...Object.values(CATEGORY_ICON),
+];
+
 export const recurringIcon = (e: Expense): string => {
   const name = e.name.toLowerCase();
-  if (/netflix|prime|disney|youtube/.test(name)) return 'smart_display';
-  if (/spotify/.test(name)) return 'music_note';
-  if (/gym|fitness/.test(name)) return 'fitness_center';
-  if (/internet|wifi/.test(name)) return 'wifi';
-  if (/rent|mortgage/.test(name)) return 'home';
-  if (/electric/.test(name)) return 'bolt';
-  if (/insurance/.test(name)) return 'shield';
-  if (/phone/.test(name)) return 'smartphone';
-  if (/icloud|storage/.test(name)) return 'cloud';
-
-  const CATEGORY_ICON: Record<ExpenseCategory, string> = {
-    [ExpenseCategory.HOUSING]: 'home',
-    [ExpenseCategory.TRANSPORT]: 'directions_bus',
-    [ExpenseCategory.FOOD]: 'shopping_cart',
-    [ExpenseCategory.UTILITIES]: 'bolt',
-    [ExpenseCategory.ENTERTAINMENT]: 'movie',
-    [ExpenseCategory.OTHER]: 'category',
-  };
+  const matched = NAME_ICON.find(([pattern]) => pattern.test(name));
+  if (matched) return matched[1];
   return CATEGORY_ICON[e.category] ?? 'category';
 };
 
