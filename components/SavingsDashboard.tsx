@@ -169,6 +169,7 @@ export const SavingsDashboard: React.FC<SavingsDashboardProps> = ({
         income={income}
         expenses={expenses}
         emergencyFund={emergencyFund}
+        onFundChange={next => { setEmergencyFund?.(next); onSync({ emergencyFund: next }); }}
         onNavigate={onNavigate}
       />
 

@@ -75,7 +75,8 @@ describe('This Month card', () => {
       },
     });
     expect(card().getByText('€1,200')).toBeInTheDocument();
-    expect(card().getByText('€300')).toBeInTheDocument();
+    // The contribution list shows €300 too, so read the To fund column itself.
+    expect(card().getByText('To fund').parentElement?.textContent).toContain('€300');
     expect(card().getByText('€1,500')).toBeInTheDocument();
     expect(card().queryByText('€500')).not.toBeInTheDocument();
     expect(card().queryByText('€200')).not.toBeInTheDocument();
@@ -111,5 +112,85 @@ describe('This Month card', () => {
     expect(card().getByText('To fund').parentElement?.textContent).toContain('€0');
     expect(card().getByText('€3,000')).toBeInTheDocument();
     expect(screen.getByTestId('month-budget-card').textContent).not.toContain('NaN');
+  });
+});
+
+describe('Add to fund', () => {
+  const fund: EmergencyFundState = { targetAmount: 6735, currentAmount: 2192, contributions: [] };
+  const income = { salaryMe: 3000, salaryPartner: 0 };
+
+  it('logs a dated contribution, raises the fund, and syncs it', () => {
+    const { card, setEmergencyFund, onSync } = renderHub({ income, emergencyFund: fund });
+    const input = card().getByLabelText('Add to fund');
+    fireEvent.change(input, { target: { value: '250' } });
+    fireEvent.click(card().getByRole('button', { name: /^add$/i }));
+
+    expect(setEmergencyFund).toHaveBeenCalledTimes(1);
+    const written = setEmergencyFund.mock.calls[0][0];
+    expect(written).toMatchObject({ targetAmount: 6735, currentAmount: 2442 });
+    expect(written.contributions).toHaveLength(1);
+    expect(written.contributions[0]).toMatchObject({ date: thisMonth(15), amount: 250 });
+    expect(typeof written.contributions[0].id).toBe('string');
+    expect(onSync).toHaveBeenCalledWith({ emergencyFund: written });
+    expect((input as HTMLInputElement).value).toBe('');
+  });
+
+  it('refuses an empty or non-positive amount and writes nothing', () => {
+    const { card, setEmergencyFund, onSync } = renderHub({ income, emergencyFund: fund });
+    fireEvent.click(card().getByRole('button', { name: /^add$/i }));
+    expect(card().getByRole('alert').textContent).toMatch(/greater than zero/i);
+    fireEvent.change(card().getByLabelText('Add to fund'), { target: { value: '-5' } });
+    fireEvent.click(card().getByRole('button', { name: /^add$/i }));
+    expect(setEmergencyFund).not.toHaveBeenCalled();
+    expect(onSync).not.toHaveBeenCalled();
+  });
+
+  it('lists only this month\'s contributions, newest first', () => {
+    const { card } = renderHub({
+      income,
+      emergencyFund: {
+        ...fund,
+        contributions: [
+          { id: 'a', date: thisMonth(3), amount: 300 },
+          { id: 'b', date: thisMonth(10), amount: 100 },
+          { id: 'z', date: lastMonth(20), amount: 999 },
+        ],
+      },
+    });
+    const rows = card().getAllByRole('button', { name: /remove contribution/i });
+    expect(rows.map(r => r.getAttribute('aria-label'))).toEqual([
+      'Remove contribution of €100',
+      'Remove contribution of €300',
+    ]);
+  });
+
+  it('removes an entry and takes its amount back out of the fund', () => {
+    const { card, setEmergencyFund, onSync } = renderHub({
+      income,
+      emergencyFund: {
+        ...fund, currentAmount: 350,
+        contributions: [
+          { id: 'a', date: thisMonth(3), amount: 300 },
+          { id: 'b', date: thisMonth(10), amount: 50 },
+        ],
+      },
+    });
+    fireEvent.click(card().getByRole('button', { name: 'Remove contribution of €300' }));
+    const written = setEmergencyFund.mock.calls[0][0];
+    expect(written).toEqual({
+      targetAmount: 6735, currentAmount: 50,
+      contributions: [{ id: 'b', date: thisMonth(10), amount: 50 }],
+    });
+    expect(onSync).toHaveBeenCalledWith({ emergencyFund: written });
+  });
+
+  it('never drives the fund below zero on removal', () => {
+    // The current amount was edited by hand below the logged contribution.
+    const { card, setEmergencyFund } = renderHub({
+      income,
+      emergencyFund: { ...fund, currentAmount: 100, contributions: [{ id: 'a', date: thisMonth(3), amount: 300 }] },
+    });
+    fireEvent.click(card().getByRole('button', { name: 'Remove contribution of €300' }));
+    expect(setEmergencyFund.mock.calls[0][0].currentAmount).toBe(0);
   });
 });
