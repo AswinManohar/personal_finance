@@ -140,11 +140,25 @@ export interface Loan {
   lender?: string;
 }
 
+/** One transfer into the emergency fund, logged from the Savings Hub. */
+export interface EmergencyFundContribution {
+  id: string;
+  /** Calendar day, YYYY-MM-DD. */
+  date: string;
+  /** Always positive. */
+  amount: number;
+}
+
 export interface EmergencyFundState {
   /** What the fund should hold, in €. Entered by hand. */
   targetAmount: number;
   /** What the fund holds today, in €. Entered by hand; a slice of accumulatedSavings. */
   currentAmount: number;
+  /**
+   * Money moved into the fund, oldest first. Optional: payloads written
+   * before it existed omit it, and readers treat absence as an empty log.
+   */
+  contributions?: EmergencyFundContribution[];
 }
 
 // 'stmt' is Statement Review. It used to render inside the Expenses screen; the

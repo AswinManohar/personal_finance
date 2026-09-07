@@ -1,4 +1,5 @@
-import { Expense, GoalSource, Loan, NetWorthState, PortfolioAsset, RecurringFrequency, Stock } from '../types';
+import { EmergencyFundContribution, Expense, GoalSource, Loan, NetWorthState, PortfolioAsset, RecurringFrequency, Stock } from '../types';
+import { inRange, monthBounds } from './expenseDate';
 
 /** Coerce any value to a finite number; invalid input becomes 0. */
 export const num = (v: unknown): number => {
@@ -163,3 +164,46 @@ export const totalAssets = (b: AssetBreakdown): number =>
  */
 export const goalSavings = (b: AssetBreakdown, sources?: GoalSource[]): number =>
   (sources ?? ALL_GOAL_SOURCES).reduce((sum, k) => sum + b[k], 0);
+
+/** Whole euros with a thousands separator: the Savings Hub's house style. */
+export const fmtEuro = (n: number): string =>
+  '€' + num(n).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+
+/** Money moved into the emergency fund during the calendar month `now` is in. */
+export const fundContributedInMonth = (
+  contributions: readonly EmergencyFundContribution[] | undefined,
+  now: Date,
+): number => {
+  const { lo, hi } = monthBounds(now);
+  return (contributions ?? [])
+    .filter(c => inRange(c.date, lo, hi))
+    .reduce((sum, c) => sum + num(c.amount), 0);
+};
+
+export interface MonthBudget {
+  income: number;
+  spent: number;
+  toFund: number;
+  /** Income not yet spent or set aside. Never negative. */
+  left: number;
+  /** How far spent + toFund exceeds income, or 0. */
+  over: number;
+}
+
+/**
+ * The month's income split three ways. Money put into the emergency fund is
+ * as gone as money spent, which is why it comes off `left` too.
+ */
+export const monthBudget = (input: { income: number; spent: number; toFund: number }): MonthBudget => {
+  const income = num(input.income);
+  const spent = num(input.spent);
+  const toFund = num(input.toFund);
+  const remainder = income - spent - toFund;
+  return {
+    income,
+    spent,
+    toFund,
+    left: Math.max(0, remainder),
+    over: Math.max(0, -remainder),
+  };
+};

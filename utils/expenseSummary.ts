@@ -1,5 +1,5 @@
 import { Expense, ExpenseCategory } from '../types';
-import { WeekBucket, inRange, localYmd, weekBuckets } from './expenseDate';
+import { WeekBucket, inRange, localYmd, monthBounds, weekBuckets } from './expenseDate';
 import { monthlyAmount, num } from './finance';
 
 export type TimeSpan = '7d' | '30d' | '90d' | 'all';
@@ -218,3 +218,18 @@ export const subscriptionExpenses = (expenses: Expense[]): Expense[] =>
 /** Monthly-equivalent total across a set of recurring rows. */
 export const monthlyTotal = (expenses: Expense[]): number =>
   expenses.reduce((sum, e) => sum + monthlyAmount(e), 0);
+
+/**
+ * What this calendar month has cost so far: every one-off dated inside it,
+ * plus every recurring row at its monthly equivalent. A bill counts from the
+ * first of the month whatever day it actually leaves the account — the
+ * question the Savings Hub asks is "what of this month's income is spoken
+ * for", and rent is spoken for on the 1st.
+ */
+export const monthSpend = (expenses: Expense[], now: Date): number => {
+  const { lo, hi } = monthBounds(now);
+  const oneOff = oneOffExpenses(expenses)
+    .filter(e => inRange(e.date, lo, hi))
+    .reduce((sum, e) => sum + num(e.amount), 0);
+  return oneOff + monthlyTotal(expenses.filter(e => e.isRecurring));
+};

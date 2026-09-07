@@ -110,6 +110,18 @@ export const weekBuckets = (now: Date, n: number): WeekBucket[] => {
 /** Inclusive both ends. Safe because `YYYY-MM-DD` sorts lexicographically. */
 export const inRange = (ymd: string, lo: string, hi: string): boolean => ymd >= lo && ymd <= hi;
 
+/**
+ * The calendar month `now` falls in, as inclusive `YYYY-MM-DD` bounds. Built
+ * from local calendar parts, like startOfWeek, so the month turns at the
+ * user's midnight and not at UTC's.
+ */
+export const monthBounds = (now: Date): { lo: string; hi: string } => {
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  // Day 0 of the next month is the last day of this one.
+  return { lo: localYmd(new Date(y, m, 1)), hi: localYmd(new Date(y, m + 1, 0)) };
+};
+
 /** The shape of a `user_expenses` row, as far as dating it is concerned. */
 export interface DatedRow {
   date?: string | null;

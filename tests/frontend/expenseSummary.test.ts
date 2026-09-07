@@ -3,7 +3,7 @@ import { Expense, ExpenseCategory } from '../../types';
 import {
   oneOffExpenses, spanBounds, withinSpan, weeklyTotals, categoryTotals, groupByDay,
   isSubscription, recurringIcon, recurringSublabel, recurringBills, subscriptionExpenses,
-  monthlyTotal,
+  monthlyTotal, monthSpend,
 } from '../../utils/expenseSummary';
 
 const mk = (over: Partial<Expense> & { date: string; amount: number }): Expense => ({
@@ -287,5 +287,32 @@ describe('recurringBills / subscriptionExpenses / monthlyTotal', () => {
       mk({ date: 'd', amount: 600, name: 'Insurance', isRecurring: true, recurringFrequency: 'yearly', isEssential: true, category: ExpenseCategory.OTHER }),
     ];
     expect(monthlyTotal(recurringBills(rows))).toBeCloseTo(1250);
+  });
+});
+
+describe('monthSpend', () => {
+  const NOW = new Date(2026, 8, 15, 12); // 2026-09-15
+
+  it('counts one-offs dated this month and ignores neighbouring months', () => {
+    const rows = [
+      mk({ date: '2026-09-01', amount: 100 }),
+      mk({ date: '2026-09-30', amount: 50 }),
+      mk({ date: '2026-08-31', amount: 500 }),
+      mk({ date: '2026-10-01', amount: 700 }),
+    ];
+    expect(monthSpend(rows, NOW)).toBe(150);
+  });
+
+  it('adds every recurring row at its monthly equivalent, whatever its date', () => {
+    const rows = [
+      mk({ date: '2026-09-10', amount: 100 }),
+      mk({ date: '2025-01-01', amount: 1100, isRecurring: true, recurringFrequency: 'monthly' }),
+      mk({ date: '2026-03-01', amount: 120, isRecurring: true, recurringFrequency: 'yearly' }),
+    ];
+    expect(monthSpend(rows, NOW)).toBe(1210);
+  });
+
+  it('is zero for no expenses', () => {
+    expect(monthSpend([], NOW)).toBe(0);
   });
 });

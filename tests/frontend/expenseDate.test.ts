@@ -7,6 +7,7 @@ import {
   inRange,
   resolveExpenseDate,
   berlinYmd,
+  monthBounds,
 } from '../../utils/expenseDate';
 
 // A local Date built from calendar parts, so these tests describe wall-clock
@@ -144,5 +145,20 @@ describe('berlinYmd', () => {
     // the device's day, and that day was saved verbatim as `date`.
     expect(berlinYmd(Date.UTC(2026, 5, 1, 22, 30))).toBe('2026-06-02');
     expect(berlinYmd(Date.UTC(2026, 0, 31, 23, 30))).toBe('2026-02-01');
+  });
+});
+
+describe('monthBounds', () => {
+  it('spans the first to the last day of the calendar month', () => {
+    expect(monthBounds(at(2026, 9, 15))).toEqual({ lo: '2026-09-01', hi: '2026-09-30' });
+  });
+
+  it('handles January and a 31-day month', () => {
+    expect(monthBounds(at(2026, 1, 3))).toEqual({ lo: '2026-01-01', hi: '2026-01-31' });
+    expect(monthBounds(at(2026, 7, 31, 23, 59))).toEqual({ lo: '2026-07-01', hi: '2026-07-31' });
+  });
+
+  it('is a February that knows about leap years', () => {
+    expect(monthBounds(at(2028, 2, 10))).toEqual({ lo: '2028-02-01', hi: '2028-02-29' });
   });
 });

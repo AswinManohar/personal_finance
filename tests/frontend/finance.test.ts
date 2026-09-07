@@ -5,6 +5,7 @@ import {
   monthlyInterest, totalLoanBalance, sortByAvalanche, simulatePayoff,
   remainingBalance, currentBalance,
   assetBreakdown, totalAssets, goalSavings, ALL_GOAL_SOURCES,
+  fundContributedInMonth, monthBudget, fmtEuro,
 } from '../../utils/finance';
 
 const exp = (over: Partial<Expense>): Expense => ({
@@ -221,5 +222,47 @@ describe('goalSavings', () => {
   it('counts only the ticked sources', () => {
     expect(goalSavings(b, ['cash', 'gold'])).toBe(17000);
     expect(goalSavings(b, ['stocks'])).toBe(8300);
+  });
+});
+
+describe('fundContributedInMonth', () => {
+  const NOW = new Date(2026, 8, 15, 12); // 2026-09-15
+
+  it('sums only contributions dated this month', () => {
+    const log = [
+      { id: 'a', date: '2026-09-02', amount: 200 },
+      { id: 'b', date: '2026-09-14', amount: 100 },
+      { id: 'c', date: '2026-08-30', amount: 999 },
+    ];
+    expect(fundContributedInMonth(log, NOW)).toBe(300);
+  });
+
+  it('treats a missing log as nothing contributed', () => {
+    expect(fundContributedInMonth(undefined, NOW)).toBe(0);
+  });
+});
+
+describe('monthBudget', () => {
+  it('splits income into spent, to fund and left', () => {
+    expect(monthBudget({ income: 3000, spent: 1200, toFund: 300 }))
+      .toEqual({ income: 3000, spent: 1200, toFund: 300, left: 1500, over: 0 });
+  });
+
+  it('floors left at zero and reports the overrun', () => {
+    expect(monthBudget({ income: 3000, spent: 2900, toFund: 300 }))
+      .toEqual({ income: 3000, spent: 2900, toFund: 300, left: 0, over: 200 });
+  });
+
+  it('turns NaN into zeros rather than propagating it', () => {
+    expect(monthBudget({ income: NaN, spent: NaN, toFund: NaN }))
+      .toEqual({ income: 0, spent: 0, toFund: 0, left: 0, over: 0 });
+  });
+});
+
+describe('fmtEuro', () => {
+  it('formats whole euros with a thousands separator', () => {
+    expect(fmtEuro(1500)).toBe('€1,500');
+    expect(fmtEuro(12.6)).toBe('€13');
+    expect(fmtEuro(NaN)).toBe('€0');
   });
 });
