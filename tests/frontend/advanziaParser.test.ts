@@ -25,10 +25,10 @@ import {
  */
 
 const FIXTURES = {
-  mega: 'Eine Zahlung über 11,89 € der Mastercard mit der Kartenendung 9520 an MEGA LIMITED wurde erfolgreich ausgeführt.',
-  dm: 'Eine Zahlung über 1,95 € der Mastercard mit der Kartenendung 9520 an DM DROGERIE SAGT DANKE wurde erfolgreich ausgeführt.',
-  rewe: 'Eine Zahlung über 49,54 € der Mastercard mit der Kartenendung 9520 an REWE Bonn, Friedenspla wurde erfolgreich ausgeführt.',
-  kaffee: 'Eine Zahlung über 9,20 € der Mastercard mit der Kartenendung 9520 an Der Kaffeeladen GmbH wurde erfolgreich ausgeführt.',
+  mega: 'Eine Zahlung über 11,89 € der Mastercard mit der Kartenendung 1234 an MEGA LIMITED wurde erfolgreich ausgeführt.',
+  dm: 'Eine Zahlung über 1,95 € der Mastercard mit der Kartenendung 1234 an DM DROGERIE SAGT DANKE wurde erfolgreich ausgeführt.',
+  rewe: 'Eine Zahlung über 49,54 € der Mastercard mit der Kartenendung 1234 an REWE Bonn, Friedenspla wurde erfolgreich ausgeführt.',
+  kaffee: 'Eine Zahlung über 9,20 € der Mastercard mit der Kartenendung 1234 an Der Kaffeeladen GmbH wurde erfolgreich ausgeführt.',
 };
 
 describe('parseGermanAmount', () => {
@@ -75,24 +75,24 @@ describe('parseGermanAmount', () => {
 describe('parseAdvanziaBody — strict tier', () => {
   it('parses every captured fixture exactly', () => {
     expect(parseAdvanziaBody(FIXTURES.mega)).toEqual({
-      kind: 'strict', amount: 11.89, merchant: 'MEGA LIMITED', cardEnding: '9520',
+      kind: 'strict', amount: 11.89, merchant: 'MEGA LIMITED', cardEnding: '1234',
     });
     expect(parseAdvanziaBody(FIXTURES.dm)).toEqual({
-      kind: 'strict', amount: 1.95, merchant: 'DM DROGERIE SAGT DANKE', cardEnding: '9520',
+      kind: 'strict', amount: 1.95, merchant: 'DM DROGERIE SAGT DANKE', cardEnding: '1234',
     });
     expect(parseAdvanziaBody(FIXTURES.kaffee)).toEqual({
-      kind: 'strict', amount: 9.2, merchant: 'Der Kaffeeladen GmbH', cardEnding: '9520',
+      kind: 'strict', amount: 9.2, merchant: 'Der Kaffeeladen GmbH', cardEnding: '1234',
     });
   });
 
   it('keeps a merchant that contains a comma and is truncated mid-word', () => {
     expect(parseAdvanziaBody(FIXTURES.rewe)).toEqual({
-      kind: 'strict', amount: 49.54, merchant: 'REWE Bonn, Friedenspla', cardEnding: '9520',
+      kind: 'strict', amount: 49.54, merchant: 'REWE Bonn, Friedenspla', cardEnding: '1234',
     });
   });
 
   it('accepts any card ending, since a replacement card changes the number', () => {
-    const body = FIXTURES.mega.replace('9520', '4417');
+    const body = FIXTURES.mega.replace('1234', '4417');
     expect(parseAdvanziaBody(body)).toMatchObject({ kind: 'strict', cardEnding: '4417' });
   });
 
@@ -108,12 +108,12 @@ describe('parseAdvanziaBody — reject tier', () => {
    * an expense, and a refund booked as a charge has the sign backwards.
    */
   it('rejects a declined payment', () => {
-    const body = 'Eine Zahlung über 11,89 € der Mastercard mit der Kartenendung 9520 an MEGA LIMITED wurde abgelehnt.';
+    const body = 'Eine Zahlung über 11,89 € der Mastercard mit der Kartenendung 1234 an MEGA LIMITED wurde abgelehnt.';
     expect(parseAdvanziaBody(body)).toEqual({ kind: 'rejected', marker: 'abgelehnt' });
   });
 
   it('rejects a refund', () => {
-    const body = 'Eine Gutschrift über 20,00 € der Mastercard mit der Kartenendung 9520 an REWE wurde erfolgreich ausgeführt.';
+    const body = 'Eine Gutschrift über 20,00 € der Mastercard mit der Kartenendung 1234 an REWE wurde erfolgreich ausgeführt.';
     expect(parseAdvanziaBody(body)).toEqual({ kind: 'rejected', marker: 'Gutschrift' });
   });
 
@@ -135,14 +135,14 @@ describe('parseAdvanziaBody — loose tier', () => {
    * strict pattern needs updating.
    */
   it('still extracts fields from a reworded sentence', () => {
-    const body = 'Zahlung über 11,89 € mit Kartenendung 9520 an MEGA LIMITED durchgeführt.';
+    const body = 'Zahlung über 11,89 € mit Kartenendung 1234 an MEGA LIMITED durchgeführt.';
     expect(parseAdvanziaBody(body)).toEqual({
-      kind: 'loose', amount: 11.89, merchant: 'MEGA LIMITED', cardEnding: '9520',
+      kind: 'loose', amount: 11.89, merchant: 'MEGA LIMITED', cardEnding: '1234',
     });
   });
 
   it('drops to loose with a null amount rather than coercing a foreign currency', () => {
-    const body = 'Eine Zahlung über 25,00 USD der Mastercard mit der Kartenendung 9520 an MEGA LIMITED wurde erfolgreich ausgeführt.';
+    const body = 'Eine Zahlung über 25,00 USD der Mastercard mit der Kartenendung 1234 an MEGA LIMITED wurde erfolgreich ausgeführt.';
     expect(parseAdvanziaBody(body)).toMatchObject({ kind: 'loose', amount: null });
   });
 

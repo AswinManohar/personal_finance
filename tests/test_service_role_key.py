@@ -58,3 +58,21 @@ def test_padding_stripped_payload_still_decodes():
     for role_padding in ("service_role", "service_role ", "service_role  "):
         token = _jwt(role_padding.strip())
         assert _is_service_role_key(token) is True
+
+
+def test_data_client_is_built_with_the_service_role_key(monkeypatch):
+    """RLS is enforced on every table and the backend has no user session to
+    hand PostgREST, so the CRUD client must bypass RLS or every endpoint
+    returns nothing. It scopes on user_key itself."""
+    import api.dependencies as deps
+
+    seen = {}
+    monkeypatch.setattr(deps, "create_client", lambda url, key: seen.setdefault("key", key) or object())
+    monkeypatch.setattr(deps, "SUPABASE_URL", "https://example.supabase.co")
+    monkeypatch.setattr(deps, "SUPABASE_KEY", "anon-key")
+    monkeypatch.setattr(deps, "SUPABASE_DATA_KEY", "service-role-key")
+    monkeypatch.setattr(deps, "_supabase_client", None)
+    monkeypatch.setattr(deps, "_supabase_init_error", None)
+
+    assert deps.get_supabase_client() is not None
+    assert seen["key"] == "service-role-key"

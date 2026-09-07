@@ -7,8 +7,8 @@
  *
  * Ground truth is the `Show original` source of a real mail (2026-08-06):
  *
- *   auf dem Konto *8393 wurden folgende Umsätze verbucht:
- *   Pravallik.: -1,00 EUR
+ *   auf dem Konto *1234 wurden folgende Umsätze verbucht:
+ *   Mustermann: -1,00 EUR
  *   Neuer Saldo: 614,93 EUR
  *
  * Three hazards drove every decision below:

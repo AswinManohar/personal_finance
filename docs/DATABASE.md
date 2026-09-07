@@ -274,23 +274,33 @@ web, `signInWithIdToken` on Android with the native client.
 
 ## Row Level Security
 
-Every table has RLS enabled. The policy set, verbatim from
-`SUPABASE_SECURITY.sql`:
+> **Found off on 2026-09-07.** A probe with the public anon key read every
+> user's `user_expenses` and `user_finances` rows and inserted one. The
+> policies in `SUPABASE_SECURITY.sql` were never in force on the project, and
+> `integration_tokens` did not exist. `supabase/migrations/20260907_enforce_rls.sql`
+> is the fix: idempotent, enables RLS on all five tables, and adds the UPDATE
+> policy on `user_expenses` the client always needed. It has to be run in the
+> SQL editor, and the backend must be on the service-role key first (see the
+> access diagram above and the warning `api/dependencies.py` prints).
+
+The policy set once that migration is applied:
 
 | Table | SELECT | INSERT | UPDATE | DELETE |
 |---|:--:|:--:|:--:|:--:|
 | `user_finances` | ✅ | ✅ | ✅ | — |
 | `user_income` | ✅ | ✅ | ✅ | — |
-| `user_expenses` | ✅ | ✅ | **— (none)** | ✅ |
+| `user_expenses` | ✅ | ✅ | ✅ | ✅ |
 | `user_savings_history` | ✅ | ✅ | — | ✅ |
 | `integration_tokens` | ✅ | ✅ | — | ✅ |
 
-All of them use the same predicate: `auth.uid()::text = user_key`.
+All of them use the same predicate: `(select auth.uid())::text = user_key`,
+with `WITH CHECK` on every INSERT and UPDATE so a row cannot be written under
+someone else's key.
 
 ### Four things worth checking in the dashboard
 
-**1. `user_expenses` has no UPDATE policy in this file, and the client updates
-it constantly.** Soft-delete tombstoning (`.update({ deleted: true })`,
+**1. `user_expenses` had no UPDATE policy in `SUPABASE_SECURITY.sql`, and the client updates
+it constantly.** (Fixed in the 2026-09-07 migration; kept here for the reasoning.) Soft-delete tombstoning (`.update({ deleted: true })`,
 `services/supabaseService.ts:160`) and the update half of
 `.upsert(..., { onConflict: 'id' })` are both UPDATEs from the anon-key client.
 Under RLS with no UPDATE policy, those match zero rows and report no error — a

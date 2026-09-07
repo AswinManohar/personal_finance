@@ -118,9 +118,9 @@ const b64url = (s: string): string =>
 const REAL_BODY_QP = [
   'Guten Tag,',
   '',
-  'auf dem Konto *8393 wurden folgende Ums=C3=A4tze verbucht:',
+  'auf dem Konto *1234 wurden folgende Ums=C3=A4tze verbucht:',
   '',
-  'Pravallik.: -1,00 EUR',
+  'Mustermann: -1,00 EUR',
   '',
   'Neuer Saldo: 614,93 EUR',
   '',
@@ -181,7 +181,7 @@ describe('decodeQuotedPrintable', () => {
   });
 
   it('leaves ordinary text untouched', () => {
-    expect(decodeQuotedPrintable('Pravallik.: -1,00 EUR')).toBe('Pravallik.: -1,00 EUR');
+    expect(decodeQuotedPrintable('Mustermann: -1,00 EUR')).toBe('Mustermann: -1,00 EUR');
   });
 
   it('preserves hard line breaks', () => {
@@ -215,7 +215,7 @@ describe('decodeRfc2047', () => {
 
 describe('extractPlainBody', () => {
   it('unwraps the real nested tree end to end', () => {
-    expect(extractPlainBody(REAL_TREE)).toContain('Pravallik.: -1,00 EUR');
+    expect(extractPlainBody(REAL_TREE)).toContain('Mustermann: -1,00 EUR');
     expect(extractPlainBody(REAL_TREE)).toContain('folgende Umsätze verbucht:');
   });
 
@@ -225,11 +225,11 @@ describe('extractPlainBody', () => {
       parts: [
         {
           mimeType: 'text/html',
-          body: { data: b64url('<p>Pravallik.: -1,00 EUR</p>') },
+          body: { data: b64url('<p>Mustermann: -1,00 EUR</p>') },
         },
       ],
     };
-    expect(extractPlainBody(htmlOnly)).toContain('Pravallik.: -1,00 EUR');
+    expect(extractPlainBody(htmlOnly)).toContain('Mustermann: -1,00 EUR');
   });
 
   it('returns null when there is no readable part at all', () => {
@@ -466,9 +466,9 @@ import {
 const REAL = [
   'Guten Tag,',
   '',
-  'auf dem Konto *8393 wurden folgende Umsätze verbucht:',
+  'auf dem Konto *1234 wurden folgende Umsätze verbucht:',
   '',
-  'Pravallik.: -1,00 EUR',
+  'Mustermann: -1,00 EUR',
   '',
   'Neuer Saldo: 614,93 EUR',
   '',
@@ -483,7 +483,7 @@ const batch = (lines: string[], subject: string) => ({
   body: [
     'Guten Tag,',
     '',
-    'auf dem Konto *8393 wurden folgende Umsätze verbucht:',
+    'auf dem Konto *1234 wurden folgende Umsätze verbucht:',
     '',
     ...lines,
     '',
@@ -527,9 +527,9 @@ describe('line extraction', () => {
     expect(lines).toHaveLength(1);
     expect(lines[0]).toMatchObject({
       kind: 'clean',
-      counterparty: 'Pravallik.',
+      counterparty: 'Mustermann',
       amount: 1,
-      raw: 'Pravallik.: -1,00 EUR',
+      raw: 'Mustermann: -1,00 EUR',
     });
   });
 
@@ -541,7 +541,7 @@ describe('line extraction', () => {
 
   it('excludes Neuer Saldo by label even when it is moved above the transactions', () => {
     const body = [
-      'auf dem Konto *8393 wurden folgende Umsätze verbucht:',
+      'auf dem Konto *1234 wurden folgende Umsätze verbucht:',
       'Neuer Saldo: 614,93 EUR',
       'EDEKA: -20,00 EUR',
     ].join('\n');
@@ -708,8 +708,8 @@ Create `utils/sparkasseEmail.ts`:
  *
  * Ground truth is the `Show original` source of a real mail (2026-08-06):
  *
- *   auf dem Konto *8393 wurden folgende Umsätze verbucht:
- *   Pravallik.: -1,00 EUR
+ *   auf dem Konto *1234 wurden folgende Umsätze verbucht:
+ *   Mustermann: -1,00 EUR
  *   Neuer Saldo: 614,93 EUR
  *
  * Three hazards drove every decision below:
@@ -1586,7 +1586,7 @@ const message = (id: string, lines: string[], subject: string, internalDate: str
             body: {
               data: b64url(
                 [
-                  'auf dem Konto *8393 wurden folgende Umsätze verbucht:',
+                  'auf dem Konto *1234 wurden folgende Umsätze verbucht:',
                   ...lines,
                   'Neuer Saldo: 614,93 EUR',
                 ].join('\n'),
@@ -2664,7 +2664,7 @@ Co-Authored-By: AswinManohar <aswinbio@gmail.com>"
 
 ## Known gaps, carried deliberately
 
-- **`Pravallik.`** — the transport carries it verbatim, so the shortening is upstream in the banking system. One sample cannot distinguish a truncation marker from a payee actually named that, so there is **no de-truncation logic anywhere in this plan**. Revisit once several real counterparties have been seen.
+- **`Mustermann`** — the transport carries it verbatim, so the shortening is upstream in the banking system. One sample cannot distinguish a truncation marker from a payee actually named that, so there is **no de-truncation logic anywhere in this plan**. Revisit once several real counterparties have been seen.
 - **The redirect URI form** is the one detail not verifiable from the codebase. Task 9 Step 1 is where it gets settled.
 - **Other Kontowecker mail types** (balance alerts, statement notices) are unobserved. They fail the envelope gate and are ignored; if one quotes a euro amount, the suspicious flag fires. That is deliberately noisy rather than silent.
 - **`Neuer Saldo` as a live balance** would feed the emergency fund's cash figure and is sitting in every mail. Out of scope — capture first.

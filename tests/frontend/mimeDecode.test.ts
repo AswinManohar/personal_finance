@@ -26,9 +26,9 @@ const b64url = (s: string): string =>
 const REAL_BODY_QP = [
   'Guten Tag,',
   '',
-  'auf dem Konto *8393 wurden folgende Ums=C3=A4tze verbucht:',
+  'auf dem Konto *1234 wurden folgende Ums=C3=A4tze verbucht:',
   '',
-  'Pravallik.: -1,00 EUR',
+  'Mustermann: -1,00 EUR',
   '',
   'Neuer Saldo: 614,93 EUR',
   '',
@@ -89,7 +89,7 @@ describe('decodeQuotedPrintable', () => {
   });
 
   it('leaves ordinary text untouched', () => {
-    expect(decodeQuotedPrintable('Pravallik.: -1,00 EUR')).toBe('Pravallik.: -1,00 EUR');
+    expect(decodeQuotedPrintable('Mustermann: -1,00 EUR')).toBe('Mustermann: -1,00 EUR');
   });
 
   it('preserves hard line breaks', () => {
@@ -123,7 +123,7 @@ describe('decodeRfc2047', () => {
 
 describe('extractPlainBody', () => {
   it('unwraps the real nested tree end to end', () => {
-    expect(extractPlainBody(REAL_TREE)).toContain('Pravallik.: -1,00 EUR');
+    expect(extractPlainBody(REAL_TREE)).toContain('Mustermann: -1,00 EUR');
     expect(extractPlainBody(REAL_TREE)).toContain('folgende Umsätze verbucht:');
   });
 
@@ -133,11 +133,11 @@ describe('extractPlainBody', () => {
       parts: [
         {
           mimeType: 'text/html',
-          body: { data: b64url('<p>Pravallik.: -1,00 EUR</p>') },
+          body: { data: b64url('<p>Mustermann: -1,00 EUR</p>') },
         },
       ],
     };
-    expect(extractPlainBody(htmlOnly)).toContain('Pravallik.: -1,00 EUR');
+    expect(extractPlainBody(htmlOnly)).toContain('Mustermann: -1,00 EUR');
   });
 
   it('returns null when there is no readable part at all', () => {

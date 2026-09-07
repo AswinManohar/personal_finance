@@ -1,5 +1,6 @@
 import base64
 import hashlib
+import hmac
 import json
 import os
 from dotenv import load_dotenv
@@ -50,12 +51,24 @@ def _is_service_role_key(key: str) -> bool:
 _configured_service_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "") or SUPABASE_KEY
 SUPABASE_SERVICE_ROLE_KEY = _configured_service_key if _is_service_role_key(_configured_service_key) else ""
 
+# The key the CRUD and statement-review endpoints query with.
+#
+# The backend never holds a user session to hand PostgREST: it verifies the
+# caller's JWT (or personal token) itself and then scopes every query with
+# `.eq("user_key", user_id)`. Under RLS the anon key therefore sees nothing —
+# auth.uid() is null for it — so the data client has to be the service-role key
+# and application code is the access control. Every query in api/routers and
+# api/statement_review filters on user_key; keep it that way.
+SUPABASE_DATA_KEY = SUPABASE_SERVICE_ROLE_KEY or SUPABASE_KEY
+
 if not SUPABASE_SERVICE_ROLE_KEY:
     # Loud at import, not at the first confusing empty response.
     print(
         "WARNING: no service-role key configured (SUPABASE_SERVICE_ROLE_KEY). "
-        "Read-only integration feeds are disabled. Any backend read that relies "
-        "on bypassing RLS will return nothing once RLS is enforced."
+        "RLS is enforced on every table, so with only the anon key the expense "
+        "endpoints, statement review and the integration feeds will all return "
+        "nothing. Set SUPABASE_SERVICE_ROLE_KEY (or make SUPABASE_KEY the "
+        "service-role key)."
     )
 PERSONAL_API_TOKEN = os.getenv("PERSONAL_API_TOKEN")
 PERSONAL_USER_ID = os.getenv("PERSONAL_USER_ID")
@@ -74,11 +87,11 @@ def get_supabase_client() -> Optional[Client]:
         return _supabase_client
     if _supabase_init_error is not None:
         return None
-    if not SUPABASE_URL or not SUPABASE_KEY:
+    if not SUPABASE_URL or not SUPABASE_DATA_KEY:
         return None
 
     try:
-        _supabase_client = create_client(SUPABASE_URL, SUPABASE_KEY)
+        _supabase_client = create_client(SUPABASE_URL, SUPABASE_DATA_KEY)
         return _supabase_client
     except Exception as exc:
         _supabase_init_error = str(exc)
@@ -141,7 +154,8 @@ def get_current_user_id(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="PERSONAL_API_TOKEN and PERSONAL_USER_ID must be set for personal token auth",
             )
-        if personal_token == PERSONAL_API_TOKEN:
+        # Constant-time: a plain == leaks how many leading bytes matched.
+        if hmac.compare_digest(personal_token, PERSONAL_API_TOKEN):
             return PERSONAL_USER_ID
 
     raise HTTPException(

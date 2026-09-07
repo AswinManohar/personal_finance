@@ -173,10 +173,10 @@ Tier 1 must parse all four ticket-02 fixtures exactly:
 
 | Body | → amount | → merchant | → card |
 |---|---|---|---|
-| `Eine Zahlung über 11,89 € … Kartenendung 9520 an MEGA LIMITED wurde erfolgreich ausgeführt.` | `11.89` | `MEGA LIMITED` | `9520` |
-| `… über 1,95 € … an DM DROGERIE SAGT DANKE …` | `1.95` | `DM DROGERIE SAGT DANKE` | `9520` |
-| `… über 49,54 € … an REWE Bonn, Friedenspla …` | `49.54` | `REWE Bonn, Friedenspla` | `9520` |
-| `… über 9,20 € … an Der Kaffeeladen GmbH …` | `9.20` | `Der Kaffeeladen GmbH` | `9520` |
+| `Eine Zahlung über 11,89 € … Kartenendung 1234 an MEGA LIMITED wurde erfolgreich ausgeführt.` | `11.89` | `MEGA LIMITED` | `1234` |
+| `… über 1,95 € … an DM DROGERIE SAGT DANKE …` | `1.95` | `DM DROGERIE SAGT DANKE` | `1234` |
+| `… über 49,54 € … an REWE Bonn, Friedenspla …` | `49.54` | `REWE Bonn, Friedenspla` | `1234` |
+| `… über 9,20 € … an Der Kaffeeladen GmbH …` | `9.20` | `Der Kaffeeladen GmbH` | `1234` |
 
 Plus negative cases: the content-free `AUTOGROUP_SUMMARY`; a `1,234.56` amount (must not parse);
 a synthetic `abgelehnt` sentence (must reject, not become an expense).

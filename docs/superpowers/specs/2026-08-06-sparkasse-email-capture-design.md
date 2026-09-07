@@ -25,9 +25,9 @@ Subject: Ihr Umsatzwecker: 1 neuer Umsatz
 
 Guten Tag,
 
-auf dem Konto *8393 wurden folgende Umsätze verbucht:
+auf dem Konto *1234 wurden folgende Umsätze verbucht:
 
-Pravallik.: -1,00 EUR
+Mustermann: -1,00 EUR
 
 Neuer Saldo: 614,93 EUR
 
@@ -42,7 +42,7 @@ the whole design:
 |---|---|---|
 | Transactions per event | exactly 1 | **N** — "1 neuer Umsatz" implies "3 neue Umsätze" |
 | Direction | always a charge | **signed** — `-1,00` is out, a positive is money in |
-| Counterparty | acquirer descriptor (`REWE Bonn, Friedenspla`) | often a **person** (`Pravallik.`), truncated |
+| Counterparty | acquirer descriptor (`REWE Bonn, Friedenspla`) | often a **person** (`Mustermann`), truncated |
 | Decoy field | — | `Neuer Saldo: 614,93 EUR` — a balance a loose regex would read as an amount |
 
 Sender is `noreply@kontowecker.de`, not a `sparkasse.de` domain. That address is
@@ -78,7 +78,7 @@ No `text/html` part exists in this message. The HTML fallback survives anyway as
 a safety net: a `multipart/related` wrapper around a single text part is a
 strong hint that other Kontowecker mail types do carry HTML with inline images.
 
-**Outstanding gap.** The true nature of `Pravallik.` is still unknown. The
+**Outstanding gap.** The true nature of `Mustermann` is still unknown. The
 transport is not truncating it — the plain-text part carries it verbatim — so
 whatever shortening happened is upstream in the banking system, and one sample
 cannot distinguish a truncation marker from a payee literally named that. More
@@ -110,9 +110,9 @@ Settled before design, recorded so the reasoning survives:
    booking them as negative expenses was rejected because one mis-tap turns a
    salary payment into a category-wrecking refund.
 4. **No LLM for Sparkasse counterparties.** `/api/merchants/guess` is prompted
-   for card acquirer descriptors and will confidently turn `Pravallik.` into a
+   for card acquirer descriptors and will confidently turn `Mustermann` into a
    business — a failure `output_type=MerchantGuess` cannot catch, because
-   "Pravallik GmbH" is a structurally valid answer. Sparkasse items use the
+   "Mustermann GmbH" is a structurally valid answer. Sparkasse items use the
    learned `merchantMemory` map only, falling back to the raw string with
    category `Other`. Side benefit: no person's name leaves the phone.
 5. **The Advanzia settlement must never be addable.** The Advanzia Mastercard is

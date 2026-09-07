@@ -41,7 +41,7 @@ const message = (id: string, lines: string[], subject: string, internalDate: str
             body: {
               data: b64url(
                 [
-                  'auf dem Konto *8393 wurden folgende Umsätze verbucht:',
+                  'auf dem Konto *1234 wurden folgende Umsätze verbucht:',
                   ...lines,
                   'Neuer Saldo: 614,93 EUR',
                 ].join('\n'),
@@ -172,7 +172,7 @@ describe('pollSparkasse', () => {
   // unless it raises the same alarm as a rejected one.
   it('raises the suspicious flag when a gate-passing mail parses no lines', async () => {
     respondWith([
-      message('m13', ['Pravallik. -1,00 EUR'], 'Ihr Umsatzwecker: 1 neuer Umsatz', '1786027523000'),
+      message('m13', ['Mustermann -1,00 EUR'], 'Ihr Umsatzwecker: 1 neuer Umsatz', '1786027523000'),
     ]);
     await pollSparkasse();
     expect(readSparkasseStatus().lastSuspiciousAt).toBeGreaterThan(0);

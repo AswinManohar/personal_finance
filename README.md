@@ -75,8 +75,7 @@ optional and read from `.env` — see `.env.example` for the full annotated list
 |---|---|
 | `OPENAI_API_KEY` | Statement review and merchant guessing |
 | `OPENAI_MODEL` | Overrides the default model |
-| `SUPABASE_URL`, `SUPABASE_KEY` | Backend Supabase access |
-| `SUPABASE_SERVICE_ROLE_KEY` | Integration feeds (service-to-service reads) |
+| `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | Backend Supabase access. Every table has RLS on and the backend scopes queries itself, so it needs the service-role key; `SUPABASE_KEY` (anon) alone returns nothing |
 | `REDACT_NAMES` | Extra names for the statement redactor to mask |
 | `LOGFIRE_TOKEN` | Tracing; without it instrumentation is a no-op |
 | `VITE_GOOGLE_WEB_CLIENT_ID` | Google sign-in on Android |

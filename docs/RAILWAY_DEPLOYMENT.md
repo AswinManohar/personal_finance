@@ -40,8 +40,8 @@ Set on the `web` service (Railway → service → Variables, or CLI). Required:
 | Variable | Purpose | Secret? |
 |----------|---------|---------|
 | `SUPABASE_URL` | Supabase project URL | no |
-| `SUPABASE_KEY` | Anon key — user-JWT path + RLS | no (public anon) |
-| `SUPABASE_SERVICE_ROLE_KEY` | Bypasses RLS for the read-only Life OS feeds | **yes** |
+| `SUPABASE_KEY` | Anon key. Only used if no service-role key is set, and then every endpoint returns nothing under RLS | no (public anon) |
+| `SUPABASE_SERVICE_ROLE_KEY` | The key the API queries with: CRUD, statement review and the Life OS feeds. RLS is enforced and the backend has no user session, so it scopes on user_key itself | **yes** |
 | `PERSONAL_API_TOKEN` | `X-Personal-Token` automation auth | **yes** |
 | `PERSONAL_USER_ID` | user_key returned for the personal token | yes |
 

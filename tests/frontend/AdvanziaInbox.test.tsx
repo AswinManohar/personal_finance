@@ -52,9 +52,9 @@ vi.mock('../../services/advanziaCapture', () => ({
 import { AdvanziaInbox } from '../../components/AdvanziaInbox';
 
 const BODIES = {
-  mega: 'Eine Zahlung über 11,89 € der Mastercard mit der Kartenendung 9520 an MEGA LIMITED wurde erfolgreich ausgeführt.',
-  declined: 'Eine Zahlung über 11,89 € der Mastercard mit der Kartenendung 9520 an MEGA LIMITED wurde abgelehnt.',
-  reworded: 'Zahlung über 49,54 € mit Kartenendung 9520 an REWE Bonn, Friedenspla durchgeführt.',
+  mega: 'Eine Zahlung über 11,89 € der Mastercard mit der Kartenendung 1234 an MEGA LIMITED wurde erfolgreich ausgeführt.',
+  declined: 'Eine Zahlung über 11,89 € der Mastercard mit der Kartenendung 1234 an MEGA LIMITED wurde abgelehnt.',
+  reworded: 'Zahlung über 49,54 € mit Kartenendung 1234 an REWE Bonn, Friedenspla durchgeführt.',
 };
 
 const item = (over: Partial<PendingItem> & { body?: string } = {}): PendingItem => {

@@ -27,9 +27,9 @@ import {
 const REAL = [
   'Guten Tag,',
   '',
-  'auf dem Konto *8393 wurden folgende Umsätze verbucht:',
+  'auf dem Konto *1234 wurden folgende Umsätze verbucht:',
   '',
-  'Pravallik.: -1,00 EUR',
+  'Mustermann: -1,00 EUR',
   '',
   'Neuer Saldo: 614,93 EUR',
   '',
@@ -44,7 +44,7 @@ const batch = (lines: string[], subject: string) => ({
   body: [
     'Guten Tag,',
     '',
-    'auf dem Konto *8393 wurden folgende Umsätze verbucht:',
+    'auf dem Konto *1234 wurden folgende Umsätze verbucht:',
     '',
     ...lines,
     '',
@@ -88,9 +88,9 @@ describe('line extraction', () => {
     expect(lines).toHaveLength(1);
     expect(lines[0]).toMatchObject({
       kind: 'clean',
-      counterparty: 'Pravallik.',
+      counterparty: 'Mustermann',
       amount: 1,
-      raw: 'Pravallik.: -1,00 EUR',
+      raw: 'Mustermann: -1,00 EUR',
     });
   });
 
@@ -102,7 +102,7 @@ describe('line extraction', () => {
 
   it('excludes Neuer Saldo by label even when it is moved above the transactions', () => {
     const body = [
-      'auf dem Konto *8393 wurden folgende Umsätze verbucht:',
+      'auf dem Konto *1234 wurden folgende Umsätze verbucht:',
       'Neuer Saldo: 614,93 EUR',
       'EDEKA: -20,00 EUR',
     ].join('\n');

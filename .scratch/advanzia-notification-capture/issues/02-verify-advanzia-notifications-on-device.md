@@ -15,7 +15,7 @@ while an Advanzia notification is live, or a notification-log app):
 1. **Package name** of the Advanzia Android app (settings → app info, or `dumpsys`).
 2. **Extras structure** of a transaction notification: what's in `EXTRA_TITLE`
    ("Kartentransaktion") vs `EXTRA_TEXT` vs `EXTRA_BIG_TEXT` — and whether the full sentence
-   ("Eine Zahlung über 11,89 € der Mastercard mit der Kartenendung 9520 an MEGA LIMITED wurde
+   ("Eine Zahlung über 11,89 € der Mastercard mit der Kartenendung 1234 an MEGA LIMITED wurde
    erfolgreich ausgeführt.") arrives untruncated in `EXTRA_BIG_TEXT`.
 3. **Grouping behaviour**: whether Advanzia posts a group summary notification (the "5 ˄" stack
    in the screenshot) that would look like a duplicate/garbled event to the listener, and how
@@ -49,7 +49,7 @@ key=0|com.advanzia.mobile|0|FCM-Notification:18666216|10286
 
 ### 2. Extras → full sentence in BOTH `android.text` and `android.bigText`, untruncated
 
-Verbatim record (card ending 9520 kept — it is already only the last 4):
+Verbatim record (card ending 1234 kept — it is already only the last 4):
 
 ```
 NotificationRecord(0x081a8407: pkg=com.advanzia.mobile user=UserHandle{0} id=0
@@ -60,8 +60,8 @@ NotificationRecord(0x081a8407: pkg=com.advanzia.mobile user=UserHandle{0} id=0
     extras={
         android.title=String (Kartentransaktion)
         android.template=String (android.app.Notification$BigTextStyle)
-        android.text=String (Eine Zahlung über 11,89 € der Mastercard mit der Kartenendung 9520 an MEGA LIMITED wurde erfolgreich ausgeführt.)
-        android.bigText=String (Eine Zahlung über 11,89 € der Mastercard mit der Kartenendung 9520 an MEGA LIMITED wurde erfolgreich ausgeführt.)
+        android.text=String (Eine Zahlung über 11,89 € der Mastercard mit der Kartenendung 1234 an MEGA LIMITED wurde erfolgreich ausgeführt.)
+        android.bigText=String (Eine Zahlung über 11,89 € der Mastercard mit der Kartenendung 1234 an MEGA LIMITED wurde erfolgreich ausgeführt.)
         android.subText=null
         android.largeIcon=null
         androidx.core.app.extra.COMPAT_TEMPLATE=String (androidx.core.app.NotificationCompat$BigTextStyle)
