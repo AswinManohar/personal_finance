@@ -1,10 +1,12 @@
 """Deterministic statement-vs-ledger comparison. Deliberately no LLM: the
 numbers either line up or they don't."""
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from difflib import SequenceMatcher
+from zoneinfo import ZoneInfo
 
 from api.statement_review.models import AmountMismatch, CrosscheckReport, StatementTransaction
 
+BERLIN = ZoneInfo("Europe/Berlin")
 DATE_WINDOW_DAYS = 3
 AMOUNT_TOLERANCE = 0.01
 AMOUNT_TOLERANCE_CENTS = round(AMOUNT_TOLERANCE * 100)
@@ -24,7 +26,12 @@ def _row_date(row: dict) -> date:
     # ever sends created_at).
     if row.get("date"):
         return date.fromisoformat(row["date"])
-    return datetime.fromisoformat(row["created_at"].replace("Z", "+00:00")).date()
+    # Read in Europe/Berlin, as the migration backfill and the integration
+    # feed do: the UTC day would put a 00:30 purchase on the previous date.
+    parsed = datetime.fromisoformat(row["created_at"].replace("Z", "+00:00"))
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(BERLIN).date()
 
 
 def _similarity(tx: StatementTransaction, row: dict) -> float:

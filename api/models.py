@@ -27,6 +27,11 @@ class ExpenseBase(BaseModel):
     recurring_frequency: Optional[RecurringFrequency] = Field(
         default=None, description="Cadence of a recurring expense (only set when is_recurring is true)"
     )
+    # Tri-state on purpose: None means nobody has said, and the client then
+    # infers bill-or-subscription from the name. False is a decision.
+    is_subscription: Optional[bool] = Field(
+        default=None, description="Whether a recurring expense is a subscription rather than a bill; null = not decided"
+    )
     date: Optional[date_type] = Field(default=None, description="Calendar date the money was spent")
 
 class ExpenseCreate(ExpenseBase):
@@ -42,6 +47,7 @@ class ExpenseUpdate(BaseModel):
     vendor: Optional[str] = Field(default=None, description="Merchant/vendor")
     is_recurring: Optional[bool] = Field(default=None, description="Whether the expense is recurring")
     recurring_frequency: Optional[RecurringFrequency] = Field(default=None, description="Cadence of a recurring expense")
+    is_subscription: Optional[bool] = Field(default=None, description="Subscription rather than bill; null = not decided")
     date: Optional[date_type] = Field(default=None, description="Calendar date the money was spent")
     created_at: Optional[datetime] = Field(default=None, description="Timestamp the expense was recorded")
 
@@ -64,6 +70,9 @@ class IntegrationExpense(BaseModel):
     vendor: Optional[str] = None
     isRecurring: bool = False
     recurringFrequency: Optional[str] = None
+    isSubscription: Optional[bool] = Field(
+        default=None, description="For a recurring row: subscription (true) or bill (false); null when never decided"
+    )
     date: Optional[str] = Field(default=None, description="Calendar date the money was spent, YYYY-MM-DD")
     created_at: Optional[str] = Field(
         default=None, description="ISO 8601 instant the row was recorded; kept for consumers that want the timestamp, not just the day"

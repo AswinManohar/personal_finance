@@ -101,3 +101,13 @@ def test_matching_is_order_independent_across_ambiguous_candidates():
         report = crosscheck(txs, rows)
         assert report.missing_in_app == []
         assert report.amount_mismatch == []
+
+
+def test_created_at_fallback_reads_the_berlin_day():
+    # 22:30Z on June 1 is 00:30 on June 2 in Berlin. The migration backfill and
+    # the integration feed both date such a row June 2; the crosscheck must
+    # agree, or a row sits inside the statement period for every other view
+    # and outside it here.
+    report = crosscheck([tx("2026-06-02", "Lieferando", 28.90)],
+                        [app_row("e1", "Coffee", 3.20, "2026-06-01T22:30:00+00:00")])
+    assert [r["id"] for r in report.missing_on_statement] == ["e1"]

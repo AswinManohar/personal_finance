@@ -122,7 +122,14 @@ def _berlin_date(created_at) -> Optional[str]:
         return None
     if parsed.tzinfo is None:
         parsed = parsed.replace(tzinfo=ZoneInfo("UTC"))
-    return parsed.astimezone(BERLIN).date().isoformat()
+    try:
+        return parsed.astimezone(BERLIN).date().isoformat()
+    except (OverflowError, ValueError):
+        # A timestamp at the edge of datetime's range (the write path accepts
+        # 9999-12-31T23:59:59Z) cannot be shifted forward into Berlin's
+        # offset. The UTC day is the honest fallback; a 500 for the whole
+        # feed is not.
+        return parsed.date().isoformat()
 
 
 def _shape_expense(row: dict) -> dict:
@@ -144,6 +151,10 @@ def _shape_expense(row: dict) -> dict:
         "vendor": row.get("vendor") or None,
         "isRecurring": bool(row.get("is_recurring")),
         "recurringFrequency": row.get("recurring_frequency") or None,
+        # Passed through as the tri-state it is stored as: None is "not
+        # decided", and a consumer that flattened it to false would move every
+        # undecided subscription onto the bills side.
+        "isSubscription": row.get("is_subscription"),
         # NOTE: this used to be the full created_at timestamp; it is now the
         # bare YYYY-MM-DD calendar day the money was spent. created_at is
         # still emitted below for a consumer that wants the recorded instant.
@@ -174,7 +185,11 @@ def expenses_feed(
 
     query = (
         supabase.table("user_expenses")
-        .select("id, name, amount, category, vendor, is_recurring, recurring_frequency, created_at, updated_at, deleted")
+        # `date` and `is_subscription` are named here on purpose: without them
+        # _shape_expense's created_at fallback fired for every row, and a
+        # back-dated expense reached Life OS under the day it was typed in.
+        .select("id, name, amount, category, vendor, is_recurring, recurring_frequency, "
+                "is_subscription, date, created_at, updated_at, deleted")
         .eq("user_key", user_key)
     )
     query = _apply_since(query, "updated_at", since_value)

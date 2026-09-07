@@ -7,6 +7,25 @@ from api.models import Expense, ExpenseCreate, ExpenseUpdate
 
 BERLIN = ZoneInfo("Europe/Berlin")
 
+
+def berlin_day(created_at: datetime) -> str:
+    """The Europe/Berlin calendar day a recorded instant falls on.
+
+    A naive timestamp (no offset in the payload) is treated as UTC rather
+    than the server's local time, matching how the DB stores it and how the
+    migration's backfill reinterprets it.
+    """
+    if created_at.tzinfo is None:
+        created_at = created_at.replace(tzinfo=ZoneInfo("UTC"))
+    try:
+        return created_at.astimezone(BERLIN).date().isoformat()
+    except (OverflowError, ValueError):
+        # A timestamp at the extreme edge of datetime's range (e.g.
+        # 9999-12-31T23:59:59Z) overflows when shifted forward into Berlin's
+        # positive offset. Fall back to the UTC calendar day rather than
+        # failing the whole request.
+        return created_at.date().isoformat()
+
 router = APIRouter(
     prefix="/expenses",
     tags=["expenses"],
@@ -51,20 +70,7 @@ async def create_expense(expense: ExpenseCreate, user_id: str = Depends(get_curr
         # only ever sends created_at — gets the right day without a round trip.
         if not data.get("date"):
             if expense.created_at is not None:
-                # A naive timestamp (no offset in the payload) is treated as
-                # UTC rather than the server's local time, matching how the
-                # DB stores it and how the migration's backfill reinterprets it.
-                created_at = expense.created_at
-                if created_at.tzinfo is None:
-                    created_at = created_at.replace(tzinfo=ZoneInfo("UTC"))
-                try:
-                    data["date"] = created_at.astimezone(BERLIN).date().isoformat()
-                except (OverflowError, ValueError):
-                    # A timestamp at the extreme edge of datetime's range
-                    # (e.g. 9999-12-31T23:59:59Z) can overflow when shifted
-                    # forward into Berlin's positive offset. Fall back to the
-                    # UTC calendar day rather than failing the whole request.
-                    data["date"] = created_at.date().isoformat()
+                data["date"] = berlin_day(expense.created_at)
             else:
                 data["date"] = datetime.now(BERLIN).date().isoformat()
 
@@ -96,6 +102,13 @@ async def update_expense(
         updates = expense.model_dump(mode="json", exclude_unset=True)
         if not updates:
             raise HTTPException(status_code=400, detail="No fields provided for update")
+
+        # The fill trigger is BEFORE INSERT only. A caller that moves
+        # created_at without saying which day it now means (the Telegram bot
+        # correcting a timestamp) would otherwise leave `date` on the old day
+        # while every reader that trusts the column shows it there.
+        if expense.created_at is not None and "date" not in updates:
+            updates["date"] = berlin_day(expense.created_at)
 
         # `.eq("deleted", False)` makes a tombstoned row invisible to this
         # update: it matches zero rows instead of resurrecting/editing a
