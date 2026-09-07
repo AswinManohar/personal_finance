@@ -99,6 +99,10 @@ OAuth in plain WebViews) and instead exchanges a native Google ID token via `sig
 `services/auth.ts` holds that branch, and the native module is dynamically imported so the web bundle
 never pulls it in.
 
+`docs/ANDROID.md` has the full build story — JDK and SDK versions, `local.properties`, release
+signing — and the four places a fork edits to make notification capture read its own bank rather
+than Advanzia, plus how to change the merchant-guess prompt.
+
 ## Tests
 
 ```bash
@@ -112,10 +116,29 @@ Evals for the merchant-guess agent live in `evals/` and run through `pydantic-ev
 CI (`.github/workflows/ci-cd.yml`) runs backend tests, typecheck and frontend tests on every PR into
 `main` and on pushes to `main`/`dev`. A push to `main` that passes deploys to Railway.
 
+## Architecture
+
+`docs/ARCHITECTURE.md` is the system map: the layers, the three ways a caller authenticates, how
+an expense from any producer ends up in `user_expenses`, and the two automated paths in detail.
+
+- **Bank statements** go through `api/statement_review/`: `pypdf` reads the text layer, a
+  deterministic regex redactor masks IBANs, card and account numbers, phones, balances, addresses
+  and names, and only that masked text reaches OpenAI. Extraction uses a typed structured output
+  that is validated and retried; a second model call flags avoidable spend against the user's own
+  income and 90-day baseline; a model-free cross-check matches statement debits to logged expenses
+  on amount and date and reports what is missing on either side.
+- **Real-time capture** has two sources. Advanzia card notifications are read by a deliberately
+  dumb Android `NotificationListenerService` that writes raw text to a queue; the TypeScript side
+  drains it on resume, parses the German sentence fail-closed (strict, loose, or rejected), dedups
+  on the notification key, asks the backend's Pydantic AI agent once per unseen merchant, and
+  puts the result in a review inbox. Sparkasse Kontowecker emails are polled from Gmail with a
+  watermark plus seen-set so a dismissed line never returns. Nothing reaches the cloud until the
+  user confirms it.
+
 ## Layout
 
 ```
-App.tsx                  Root component, tab routing, persisted state
+App.tsx                  Root component, tab routing, persisted state, cloud sync
 components/              One file per screen, plus shell/ (nav) and ui/ (primitives)
 services/                Supabase, auth, Gmail, notification capture, API base
 utils/                   Pure logic — finance math, parsers, merge, dedup, hashing
@@ -123,10 +146,11 @@ api/                     FastAPI app
   routers/               expenses, statements, merchants, integrations
   statement_review/      parser, redactor, extractor, reviewer, crosscheck, pipeline
   dependencies.py        Auth: Supabase JWT, personal token, integration token
+android/                 Capacitor project; the notification listener lives in app/src/main/java
 tests/                   pytest suites; tests/frontend holds the vitest suites
 evals/                   Agent evals and synthetic fixtures
-migrations/              SQL migrations
-docs/                    Plans and design notes
+supabase/migrations/     SQL migrations (docs/RUN-*.sql are the step-by-step runbooks)
+docs/                    ARCHITECTURE, DATABASE, ANDROID, lessons/, writing/, plans and specs
 ```
 
 ## Deployment
