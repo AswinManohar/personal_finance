@@ -121,6 +121,11 @@ const AppMain: React.FC = () => {
 
   const pullInProgressRef = useRef(false);
   const syncInProgressRef = useRef(false);
+  // Set when a push is asked for while one is already running. The running
+  // push cannot carry the newer state, so a follow-up is queued for when it
+  // finishes rather than the request being dropped — which is what happened
+  // to an Undo tapped while the delete it reversed was still syncing.
+  const pushPendingRef = useRef(false);
   // Bumped after each successful pull; the effect below pushes once per bump.
   const [autoPushQueued, setAutoPushQueued] = useState(0);
   // The cloud is the source of truth. Until the first pull lands we do not know
@@ -197,7 +202,11 @@ const AppMain: React.FC = () => {
   }, [activeUserKey, toast, setExpenses, setPortfolio, setStocks, setIncome, setInvestment, setGoal, setFire, setNetWorthData, setHistory, setEmergencyFund, setLoans]);
 
   const triggerSync = useCallback(async (overrides?: any) => {
-    if (!activeUserKey || syncInProgressRef.current) return;
+    if (!activeUserKey) return;
+    if (syncInProgressRef.current) {
+      pushPendingRef.current = true;
+      return;
+    }
 
     syncInProgressRef.current = true;
     setSyncStatus('syncing');
@@ -227,6 +236,13 @@ const AppMain: React.FC = () => {
       }
     } finally {
       syncInProgressRef.current = false;
+      if (pushPendingRef.current) {
+        pushPendingRef.current = false;
+        // Through the queue, not a direct call: the effect runs after the
+        // next render, so the follow-up push carries the state the second
+        // request was made with, not this closure's.
+        setAutoPushQueued(q => q + 1);
+      }
     }
   }, [activeUserKey, expenses, portfolio, stocks, income, investment, goal, fire, netWorthData, emergencyFund, loans, deletedExpenseIds, setDeletedExpenseIds]);
 
