@@ -33,6 +33,24 @@ CREATE TABLE IF NOT EXISTS public.integration_tokens (
     created_at timestamp with time zone DEFAULT timezone('utc'::text, now())
 );
 
+-- Drop EVERY existing policy on these tables first, whatever it is called.
+-- Studio's quick-start policies ("Enable read access for all users", USING
+-- (true)) are permissive and OR together with ours, so leaving any of them in
+-- place keeps the table wide open even with RLS enabled. Only the policies
+-- created below survive.
+DO $$
+DECLARE pol record;
+BEGIN
+  FOR pol IN
+    SELECT schemaname, tablename, policyname
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename IN ('user_finances','user_income','user_expenses','user_savings_history','integration_tokens')
+  LOOP
+    EXECUTE format('DROP POLICY IF EXISTS %I ON %I.%I', pol.policyname, pol.schemaname, pol.tablename);
+  END LOOP;
+END $$;
+
 ALTER TABLE public.user_finances        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_income          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_expenses        ENABLE ROW LEVEL SECURITY;
@@ -87,8 +105,15 @@ CREATE POLICY "Users can view their own tokens"   ON public.integration_tokens F
 CREATE POLICY "Users can insert their own tokens" ON public.integration_tokens FOR INSERT WITH CHECK ((select auth.uid())::text = user_key);
 CREATE POLICY "Users can delete their own tokens" ON public.integration_tokens FOR DELETE USING ((select auth.uid())::text = user_key);
 
--- Check: every row should read `t` in the second column.
+-- Check 1: every table should read `t` for relrowsecurity.
 SELECT relname, relrowsecurity
 FROM pg_class
 WHERE relnamespace = 'public'::regnamespace
   AND relname IN ('user_finances','user_income','user_expenses','user_savings_history','integration_tokens');
+
+-- Check 2: ONLY the "Users can ..." policies should be listed. Any other name
+-- (an "Enable ... for all users" from Studio) means the table is still open.
+SELECT tablename, policyname, cmd, roles, qual, with_check
+FROM pg_policies
+WHERE schemaname = 'public'
+ORDER BY tablename, policyname;
