@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Expense, ExpenseCategory, IncomeState, RecurringFrequency } from '../types';
 import { Trash2, Repeat } from 'lucide-react';
 import {
@@ -58,6 +58,73 @@ const MONTH_OF = (ymd: string) =>
  */
 const byDateDesc = (a: Expense, b: Expense): number =>
   a.date < b.date ? 1 : a.date > b.date ? -1 : 0;
+
+/**
+ * Shared 56px row for Recurring Expenses and Subscriptions.
+ *
+ * Module-scoped on purpose. Declared inside Expenses it was a new component
+ * type on every render, so every keystroke in the add form unmounted and
+ * remounted every recurring row: hover-revealed buttons vanished mid-tap and
+ * focus was lost.
+ */
+const RecurringRow: React.FC<{
+  expense: Expense;
+  tone: 'primary' | 'tertiary';
+  divider: boolean;
+  onDelete: (id: string) => void;
+}> = ({ expense, tone, divider, onDelete }) => {
+  const tint = tone === 'primary' ? 'bg-[rgba(193,193,255,0.1)] text-primary' : 'bg-[rgba(238,192,96,0.1)] text-tertiary';
+  return (
+    <ListRow divider={divider} className="h-14 group">
+      <span className="flex items-center gap-3 min-w-0">
+        <span className={`w-9 h-9 rounded-field flex items-center justify-center flex-none ${tint}`}>
+          <span className="material-symbols-outlined" aria-hidden="true" style={{ fontSize: 18 }}>
+            {recurringIcon(expense)}
+          </span>
+        </span>
+        <span className="min-w-0">
+          <span className="block text-caption font-semibold truncate">{expense.name}</span>
+          <span className="block text-label text-secondary opacity-70 truncate">
+            {recurringSublabel(expense)}
+          </span>
+        </span>
+      </span>
+      <span className="flex items-center gap-2 flex-none">
+        <span className={`text-caption font-bold tabular-nums ${tone === 'primary' ? 'text-primary' : 'text-tertiary'}`}>
+          €{monthlyAmount(expense).toFixed(2)}
+        </span>
+        <button
+          onClick={() => onDelete(expense.id)}
+          aria-label={`Delete ${expense.name}`}
+          className="w-11 h-11 flex items-center justify-center text-secondary hover:text-negative transition-colors md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100"
+        >
+          <Trash2 size={14} />
+        </button>
+      </span>
+    </ListRow>
+  );
+};
+
+/**
+ * The clock the period window and the week buckets are computed against.
+ *
+ * Reading `new Date()` inside a useMemo froze it: a phone left on this tab
+ * across midnight kept yesterday's 7D/30D window and yesterday's "this week"
+ * bucket until an expense changed. Re-read when the tab comes back to the
+ * foreground and once a minute, but only publish a new value when the
+ * calendar day has actually moved, so nothing re-renders for no reason.
+ */
+const useToday = (): Date => {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const refresh = () => setNow(prev => (localYmd(prev) === localYmd(new Date()) ? prev : new Date()));
+    const onVisible = () => { if (document.visibilityState === 'visible') refresh(); };
+    document.addEventListener('visibilitychange', onVisible);
+    const timer = setInterval(refresh, 60_000);
+    return () => { document.removeEventListener('visibilitychange', onVisible); clearInterval(timer); };
+  }, []);
+  return now;
+};
 
 export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, income, setIncome, onSync, onExpenseDeleted, onExpenseRestored, captureFocusKey, onCaptureFocusHandled }) => {
   const [newName, setNewName] = useState('');
@@ -221,15 +288,16 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
    * opening a €12 list would be worse than either number alone.
    */
   const oneOff = useMemo(() => oneOffExpenses(expenses), [expenses]);
+  const today = useToday();
 
   const filteredExpenses = useMemo(
-    () => withinSpan(oneOff, timeSpan, new Date()),
-    [oneOff, timeSpan]
+    () => withinSpan(oneOff, timeSpan, today),
+    [oneOff, timeSpan, today]
   );
 
   // Calendar weeks over the full history, not the chip-filtered slice: a 7D chip
   // would otherwise zero every bar but the last and make the chart unreadable.
-  const weeklyChartData = useMemo(() => weeklyTotals(expenses, new Date(), 4), [expenses]);
+  const weeklyChartData = useMemo(() => weeklyTotals(expenses, today, 4), [expenses, today]);
 
   // The last bucket is the week containing today — `weekBuckets` builds oldest
   // first and marks it `isCurrent`. Read from the same array the bars render so
@@ -275,42 +343,6 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
     return new Date(dateStr + 'T00:00:00').toLocaleDateString(undefined, {
       month: 'short', day: 'numeric', year: 'numeric',
     });
-  };
-
-  /** Shared 56px row for Recurring Expenses and Subscriptions. */
-  const RecurringRow: React.FC<{ expense: Expense; tone: 'primary' | 'tertiary'; divider: boolean }> = ({
-    expense, tone, divider,
-  }) => {
-    const tint = tone === 'primary' ? 'bg-[rgba(193,193,255,0.1)] text-primary' : 'bg-[rgba(238,192,96,0.1)] text-tertiary';
-    return (
-      <ListRow divider={divider} className="h-14 group">
-        <span className="flex items-center gap-3 min-w-0">
-          <span className={`w-9 h-9 rounded-field flex items-center justify-center flex-none ${tint}`}>
-            <span className="material-symbols-outlined" aria-hidden="true" style={{ fontSize: 18 }}>
-              {recurringIcon(expense)}
-            </span>
-          </span>
-          <span className="min-w-0">
-            <span className="block text-caption font-semibold truncate">{expense.name}</span>
-            <span className="block text-label text-secondary opacity-70 truncate">
-              {recurringSublabel(expense)}
-            </span>
-          </span>
-        </span>
-        <span className="flex items-center gap-2 flex-none">
-          <span className={`text-caption font-bold tabular-nums ${tone === 'primary' ? 'text-primary' : 'text-tertiary'}`}>
-            €{monthlyAmount(expense).toFixed(2)}
-          </span>
-          <button
-            onClick={() => handleDelete(expense.id)}
-            aria-label={`Delete ${expense.name}`}
-            className="w-11 h-11 flex items-center justify-center text-secondary hover:text-negative transition-colors md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100"
-          >
-            <Trash2 size={14} />
-          </button>
-        </span>
-      </ListRow>
-    );
   };
 
   const catColor = (c: string) =>
@@ -485,7 +517,7 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
             <EmptyState icon="autorenew">No recurring expenses.</EmptyState>
           ) : (
             recurringExpensesList.map((expense, i, arr) => (
-              <RecurringRow key={expense.id} expense={expense} tone="primary" divider={i < arr.length - 1} />
+              <RecurringRow key={expense.id} expense={expense} tone="primary" divider={i < arr.length - 1} onDelete={handleDelete} />
             ))
           )}
         </div>
@@ -505,7 +537,7 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
             <EmptyState icon="subscriptions">No subscriptions.</EmptyState>
           ) : (
             subscriptionsList.map((expense, i, arr) => (
-              <RecurringRow key={expense.id} expense={expense} tone="tertiary" divider={i < arr.length - 1} />
+              <RecurringRow key={expense.id} expense={expense} tone="tertiary" divider={i < arr.length - 1} onDelete={handleDelete} />
             ))
           )}
         </div>
@@ -650,7 +682,7 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, setExpenses, incom
         <div className="flex justify-between items-center mb-2">
           <SectionLabel>Recent</SectionLabel>
           <span className="text-label text-secondary tabular-nums">
-            {recentExpenses.length} in period
+            {recentExpenses.length} most recent
           </span>
         </div>
         <div className="absolute top-3.5 right-2.5">

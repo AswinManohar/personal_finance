@@ -6,6 +6,7 @@ import {
   weekBuckets,
   inRange,
   resolveExpenseDate,
+  berlinYmd,
 } from '../../utils/expenseDate';
 
 // A local Date built from calendar parts, so these tests describe wall-clock
@@ -133,5 +134,15 @@ describe('resolveExpenseDate', () => {
 
   it('ignores an empty-string date rather than returning it', () => {
     expect(resolveExpenseDate({ date: '', created_at: '2026-08-23T22:30:00Z' })).toBe('2026-08-24');
+  });
+});
+
+describe('berlinYmd', () => {
+  it('reads a captured instant in Europe/Berlin, whatever the device zone says', () => {
+    // 22:30Z on June 1 is already June 2 in Berlin. A phone set to another
+    // zone (travelling, or an emulator on UTC) prefilled the review sheet with
+    // the device's day, and that day was saved verbatim as `date`.
+    expect(berlinYmd(Date.UTC(2026, 5, 1, 22, 30))).toBe('2026-06-02');
+    expect(berlinYmd(Date.UTC(2026, 0, 31, 23, 30))).toBe('2026-02-01');
   });
 });

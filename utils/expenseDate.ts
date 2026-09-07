@@ -36,6 +36,17 @@ export const localYmd = (d: Date, timeZone?: string): string =>
 export const ymdFromEpoch = (epochMs: number, timeZone?: string): string =>
   localYmd(new Date(epochMs), timeZone);
 
+/**
+ * The Berlin calendar day a captured instant falls on.
+ *
+ * For a notification's post time or a Kontowecker mail's internalDate. Those
+ * are instants recorded for a German bank transaction, and the ledger dates
+ * such things in Europe/Berlin (see resolveExpenseDate). Reading them in the
+ * device zone prefilled a phone on holiday, or an emulator on UTC, with the
+ * wrong day, and that day was then saved verbatim.
+ */
+export const berlinYmd = (epochMs: number): string => ymdFromEpoch(epochMs, 'Europe/Berlin');
+
 /** Today, as a calendar date. */
 export const todayYmd = (timeZone?: string): string => localYmd(new Date(), timeZone);
 

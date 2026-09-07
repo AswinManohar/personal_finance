@@ -446,7 +446,7 @@ describe('Per-card collapse (Breakdown, Recent)', () => {
     expect(screen.getByText('One-off spending')).toBeInTheDocument();
   });
 
-  it('collapses Recent while keeping the "N in period" count visible', async () => {
+  it('collapses Recent while keeping the "N most recent" count visible', async () => {
     const user = userEvent.setup();
     const data: Expense[] = [
       { id: '1', name: 'Coffee', amount: 3, category: ExpenseCategory.FOOD, isRecurring: false, date: daysAgo(1) },
@@ -454,11 +454,11 @@ describe('Per-card collapse (Breakdown, Recent)', () => {
     render(<Harness initial={data} />);
 
     expect(screen.getByText('Coffee')).toBeInTheDocument();
-    expect(screen.getByText('1 in period')).toBeInTheDocument();
+    expect(screen.getByText('1 most recent')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Collapse Recent' }));
     expect(screen.queryByText('Coffee')).not.toBeInTheDocument();
-    expect(screen.getByText('1 in period')).toBeInTheDocument();
+    expect(screen.getByText('1 most recent')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Expand Recent' }));
     expect(screen.getByText('Coffee')).toBeInTheDocument();

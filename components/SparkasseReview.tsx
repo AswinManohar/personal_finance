@@ -5,7 +5,7 @@ import { recallLocalMerchant, learnMerchant } from '../services/advanziaCapture'
 import { newId } from '../utils/id';
 import type { SparkasseItem } from '../services/sparkasseCapture';
 import { Field, FormError, GhostButton, Input, PrimaryButton, SectionLabel, Select } from './ui';
-import { ymdFromEpoch } from '../utils/expenseDate';
+import { berlinYmd } from '../utils/expenseDate';
 
 /**
  * Turning a captured Kartenumsatz into an expense.
@@ -40,7 +40,7 @@ export const SparkasseReview: React.FC<{
   const [category, setCategory] = useState<ExpenseCategory>(
     remembered?.category ?? ExpenseCategory.OTHER,
   );
-  const [date, setDate] = useState(ymdFromEpoch(item.postedAt));
+  const [date, setDate] = useState(berlinYmd(item.postedAt));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

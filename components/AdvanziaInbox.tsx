@@ -11,7 +11,7 @@ import {
   requestNotificationPermission, resolvePending,
   type CaptureStatus, type PendingItem,
 } from '../services/advanziaCapture';
-import { ymdFromEpoch } from '../utils/expenseDate';
+import { berlinYmd } from '../utils/expenseDate';
 
 /**
  * Captured Advanzia transactions waiting to be confirmed.
@@ -257,7 +257,7 @@ const ReviewSheet: React.FC<{
   const [name, setName] = useState(merchant ?? '');
   const [amountText, setAmountText] = useState(amount === null ? '' : amount.toFixed(2));
   const [category, setCategory] = useState<ExpenseCategory>(ExpenseCategory.OTHER);
-  const [date, setDate] = useState(ymdFromEpoch(item.postedAt));
+  const [date, setDate] = useState(berlinYmd(item.postedAt));
   const [isEssential, setIsEssential] = useState(false);
   const [guessing, setGuessing] = useState(false);
   const [guessFailed, setGuessFailed] = useState(false);
