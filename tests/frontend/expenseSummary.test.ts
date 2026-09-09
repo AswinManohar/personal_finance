@@ -3,7 +3,7 @@ import { Expense, ExpenseCategory } from '../../types';
 import {
   oneOffExpenses, spanBounds, withinSpan, weeklyTotals, categoryTotals, groupByDay,
   isSubscription, recurringIcon, recurringSublabel, recurringBills, subscriptionExpenses,
-  monthlyTotal, monthSpend,
+  monthlyTotal, monthSpend, recurringBills, subscriptionExpenses,
 } from '../../utils/expenseSummary';
 
 const mk = (over: Partial<Expense> & { date: string; amount: number }): Expense => ({
@@ -314,5 +314,40 @@ describe('monthSpend', () => {
 
   it('is zero for no expenses', () => {
     expect(monthSpend([], NOW)).toBe(0);
+  });
+});
+
+describe('monthSpend covers both recurring cards', () => {
+  const NOW = new Date(2026, 8, 15, 12); // 2026-09-15
+
+  // One of each thing the Expenses screen can hold: a one-off this month, a
+  // bill (Recurring Expenses card) and a subscription (Subscriptions card).
+  // The subscription is flagged explicitly, which is what routes it to its own
+  // card — the question is whether that flag also excuses it from the month.
+  const rows = [
+    mk({ date: '2026-09-04', amount: 40 }),
+    mk({ date: '2024-01-01', amount: 1100, isRecurring: true, recurringFrequency: 'monthly', name: 'Rent' }),
+    mk({ date: '2024-03-01', amount: 12.99, isRecurring: true, isSubscription: true, recurringFrequency: 'monthly', name: 'Netflix' }),
+    mk({ date: '2024-05-01', amount: 120, isRecurring: true, isSubscription: true, recurringFrequency: 'yearly', name: 'iCloud' }),
+  ];
+
+  it('deducts bills and subscriptions alike, not just one-offs', () => {
+    // 40 one-off + 1100 rent + 12.99 Netflix + 10 (120/yr) iCloud
+    expect(monthSpend(rows, NOW)).toBeCloseTo(1162.99, 2);
+  });
+
+  it('equals one-offs plus both cards, with nothing double-counted or dropped', () => {
+    const bills = monthlyTotal(recurringBills(rows));
+    const subs = monthlyTotal(subscriptionExpenses(rows));
+    expect(bills).toBeCloseTo(1100, 2);
+    expect(subs).toBeCloseTo(22.99, 2);
+    expect(monthSpend(rows, NOW)).toBeCloseTo(40 + bills + subs, 2);
+  });
+
+  it('counts a subscription whose own date is in a different month', () => {
+    // The flag and the date are both irrelevant to a recurring row: it is a
+    // standing commitment, charged this month like every month.
+    const onlySub = [mk({ date: '2024-03-01', amount: 12.99, isRecurring: true, isSubscription: true, recurringFrequency: 'monthly' })];
+    expect(monthSpend(onlySub, NOW)).toBeCloseTo(12.99, 2);
   });
 });

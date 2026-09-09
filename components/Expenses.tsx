@@ -3,7 +3,7 @@ import { Expense, ExpenseCategory, IncomeState, RecurringFrequency } from '../ty
 import { Trash2, Repeat } from 'lucide-react';
 import {
   Card, ChipGroup, CollapseToggle, ColumnChart, Donut, Dot, EmptyState, Field, FieldLabel,
-  IconBox, Input, ListRow, PrimaryButton, SectionLabel, Select, ToggleButton, FormError,
+  IconBox, Input, ListRow, Pill, PrimaryButton, SectionLabel, Select, ToggleButton, FormError,
 } from './ui';
 import { newId } from '../utils/id';
 import { localYmd, todayYmd } from '../utils/expenseDate';
@@ -77,7 +77,7 @@ const RecurringRow: React.FC<{
   const tint = tone === 'primary' ? 'bg-[rgba(193,193,255,0.1)] text-primary' : 'bg-[rgba(238,192,96,0.1)] text-tertiary';
   return (
     <ListRow divider={divider} className="h-14 group">
-      <span className="flex items-center gap-3 min-w-0">
+      <span data-testid="recurring-row" className="flex items-center gap-3 min-w-0">
         <span className={`w-9 h-9 rounded-field flex items-center justify-center flex-none ${tint}`}>
           <span className="material-symbols-outlined" aria-hidden="true" style={{ fontSize: 18 }}>
             {recurringIcon(expense)}
@@ -85,8 +85,12 @@ const RecurringRow: React.FC<{
         </span>
         <span className="min-w-0">
           <span className="block text-caption font-semibold truncate">{expense.name}</span>
-          <span className="block text-label text-secondary opacity-70 truncate">
-            {recurringSublabel(expense)}
+          <span className="flex items-center gap-1.5 min-w-0">
+            <span className="block text-label text-secondary opacity-70 truncate">
+              {recurringSublabel(expense)}
+            </span>
+            {/* Moved off the Savings Hub's recurring list when that card went. */}
+            {expense.isEssential && <Pill tone="positive">Essential</Pill>}
           </span>
         </span>
       </span>

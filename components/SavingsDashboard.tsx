@@ -2,7 +2,7 @@
 import React, { useMemo, useState } from 'react';
 import { ActiveTab, NetWorthState, PortfolioAsset, Stock, Expense, EmergencyFundState, IncomeState } from '../types';
 import { MonthBudgetCard } from './MonthBudgetCard';
-import { assetBreakdown, fmtEuro as fmt, monthlyAmount, num, totalAssets as sumAssets } from '../utils/finance';
+import { assetBreakdown, fmtEuro as fmt, num, totalAssets as sumAssets } from '../utils/finance';
 import {
   AreaChart, AxisLabels, Card, Donut, Dot, EmptyState, Field, FieldLabel, Input, ListRow,
   Pill, PrimaryButton, ProgressBar, SectionLabel, StackedBar, StatBlock, FormError,
@@ -77,13 +77,6 @@ export const SavingsDashboard: React.FC<SavingsDashboardProps> = ({
     setEmergencyFund?.(next);
     onSync({ emergencyFund: next });
   };
-
-  // Active subscriptions = recurring expenses, most expensive (per month) first
-  const subscriptions = useMemo(
-    () => expenses.filter(e => e.isRecurring).sort((a, b) => monthlyAmount(b) - monthlyAmount(a)),
-    [expenses]
-  );
-  const subscriptionTotal = subscriptions.reduce((s, e) => s + monthlyAmount(e), 0);
 
   // Total assets = Mutual Funds + Stocks + Gold + Cash + Other Assets
   const totalAssets = sumAssets(breakdown);
@@ -371,53 +364,7 @@ export const SavingsDashboard: React.FC<SavingsDashboardProps> = ({
             </div>
           </Card>
 
-          {/* ── Active subscriptions ── */}
-          <Card>
-            <div className="flex justify-between items-center mb-3">
-              <SectionLabel>Active Subscriptions</SectionLabel>
-              <span className="text-label font-bold tracking-[.08em] uppercase text-primary">
-                {subscriptions.length} active
-              </span>
-            </div>
-            {subscriptions.length === 0 ? (
-              <EmptyState icon="autorenew">
-                No active subscriptions. Recurring expenses appear here.
-              </EmptyState>
-            ) : (
-              <>
-                <div className="flex flex-col">
-                  {subscriptions.map((s, i) => (
-                    <ListRow
-                      key={s.id}
-                      divider={i < subscriptions.length - 1}
-                      className="min-h-14 py-2"
-                    >
-                      <span
-                        data-testid="subscription-row"
-                        className="flex flex-col gap-1 min-w-0"
-                      >
-                        <span className="text-body font-medium truncate">{s.name}</span>
-                        <span className="flex gap-1">
-                          <Pill>{s.recurringFrequency || 'monthly'}</Pill>
-                          {s.isEssential && <Pill tone="positive">Essential</Pill>}
-                        </span>
-                      </span>
-                      <span className="text-body font-bold tabular-nums flex-none">
-                        {fmt(monthlyAmount(s))}
-                        <span className="text-micro font-medium text-secondary"> /mo</span>
-                      </span>
-                    </ListRow>
-                  ))}
-                </div>
-                <div className="flex justify-between items-center pt-3">
-                  <FieldLabel>Total / Month</FieldLabel>
-                  <span className="text-stat font-bold tabular-nums">{fmt(subscriptionTotal)}</span>
-                </div>
-              </>
-            )}
-          </Card>
-
-          {/* ── Optimize callout ── */}
+{/* ── Optimize callout ── */}
           <div className="bg-primary/5 border border-primary/10 rounded-card p-5 flex items-center justify-between gap-3">
             <div className="min-w-0">
               <h4 className="text-body font-bold text-primary">Optimize Savings</h4>
