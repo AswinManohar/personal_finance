@@ -3,7 +3,7 @@ import { Expense, ExpenseCategory } from '../../types';
 import {
   oneOffExpenses, spanBounds, withinSpan, weeklyTotals, categoryTotals, groupByDay,
   isSubscription, recurringIcon, recurringSublabel, recurringBills, subscriptionExpenses,
-  monthlyTotal, monthSpend, recurringBills, subscriptionExpenses,
+  monthlyTotal, monthSpend,
 } from '../../utils/expenseSummary';
 
 const mk = (over: Partial<Expense> & { date: string; amount: number }): Expense => ({
